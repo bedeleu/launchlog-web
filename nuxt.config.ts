@@ -32,6 +32,8 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     public: {
+      // Host only (no /api prefix). Callers must include /api/v1/... themselves — see
+      // server/middleware/markdown-negotiation.ts for the canonical pattern.
       apiUrl: process.env.NUXT_PUBLIC_API_URL || 'https://api.launchlog.ai',
       domain: process.env.NUXT_PUBLIC_DOMAIN || 'launchlog.ai',
       firebase: {

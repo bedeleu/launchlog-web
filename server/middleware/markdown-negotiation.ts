@@ -22,7 +22,10 @@ export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
 
   try {
-    const listing: any = await $fetch(`${config.public.apiUrl}/v1/listings/${slug}`).catch(() => null)
+    // NUXT_PUBLIC_API_URL is the host only (e.g. https://api.launchlog.ai), without the /api prefix.
+    // The Laravel routes/api.php is mounted under apiPrefix: 'api' (bootstrap/app.php), so callers must
+    // include /api/v1/... in the path. See D-051 / plan v5 Resolved upfront point 5.
+    const listing: any = await $fetch(`${config.public.apiUrl}/api/v1/listings/${slug}`).catch(() => null)
     if (!listing) {
       setResponseStatus(event, 404)
       setResponseHeaders(event, {
