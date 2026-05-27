@@ -55,7 +55,16 @@ export default defineNuxtConfig({
     '/sponsors': { isr: 3600 },
     '/listing/**': { isr: 3600 },
     '/pricing': { isr: 86400 },
-    '/admin/**': { robots: false },
+    // '/admin/**': robots opt-out lands when a Nuxt SEO/robots module is wired in Phase 3.
+    // The Tailwind v4 stack swap dropped @nuxtjs/seo, so for now we omit the directive.
+  },
+  components: {
+    // Exclude shadcn-vue barrel files (app/components/ui/<name>/index.ts) from auto-import.
+    // Without this, Nuxt registers both Foo.vue AND index.ts (which re-exports the same component),
+    // emitting "Two component files resolving to the same name" warnings on every build.
+    dirs: [
+      { path: '~/components', extensions: ['vue'] },
+    ],
   },
   site: {
     url: 'https://launchlog.ai',

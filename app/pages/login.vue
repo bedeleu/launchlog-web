@@ -66,7 +66,7 @@ useSeoMeta({ title: 'Sign in | LaunchLog' })
           type="email"
           required
           placeholder="you@example.com"
-          class="placeholder:text-muted focus:border-accent w-full rounded border border-white/10 bg-transparent px-3 py-2 text-white focus:outline-none"
+          class="placeholder:text-brand-muted focus:border-brand-accent w-full rounded border border-white/10 bg-transparent px-3 py-2 text-white focus:outline-none"
         >
         <button class="w-full rounded border border-white/10 px-4 py-2 hover:bg-white/5" type="submit">
           Send magic link
@@ -74,10 +74,10 @@ useSeoMeta({ title: 'Sign in | LaunchLog' })
       </form>
     </div>
 
-    <p v-if="status" class="text-success mt-6">
+    <p v-if="status" class="text-brand-success mt-6">
       {{ status }}
     </p>
-    <p v-if="error" class="text-warning mt-6">
+    <p v-if="error" class="text-brand-warning mt-6">
       {{ error }}
     </p>
   </main>
