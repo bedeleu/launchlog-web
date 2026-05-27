@@ -12,6 +12,7 @@ Current stack:
 - Nuxt 4
 - Vue 3 Composition API
 - TypeScript
+- Bun package manager
 - Tailwind CSS
 - Shadcn-Vue when UI components are added
 - Pinia
@@ -27,6 +28,5 @@ Implementation rules:
 - Product copy must stay direct and maker-focused.
 
 Verification:
-- Run `pnpm build` before handing off frontend changes.
+- Run `bun run build` before handing off frontend changes.
 - Use browser verification after substantial UI changes.
-
