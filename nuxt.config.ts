@@ -1,9 +1,16 @@
+import tailwindcss from '@tailwindcss/vite'
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-16',
   devtools: { enabled: true },
+  // Tailwind v4 wired via the official Vite plugin (replaces the deprecated @nuxtjs/tailwindcss
+  // legacy module which was pinned to Tailwind v3 and incompatible with shadcn-vue@2.7+).
+  vite: {
+    plugins: [tailwindcss()],
+  },
+  css: ['~/assets/css/tailwind.css'],
   modules: [
-    '@nuxtjs/tailwindcss',
     '@nuxtjs/sitemap',
     '@vueuse/nuxt',
     '@pinia/nuxt',
