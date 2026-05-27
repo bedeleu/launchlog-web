@@ -28,9 +28,14 @@ export default defineNuxtConfig({
       apiUrl: process.env.NUXT_PUBLIC_API_URL || 'https://api.launchlog.ai',
       domain: process.env.NUXT_PUBLIC_DOMAIN || 'launchlog.ai',
       firebase: {
+        // 6 fields — no measurementId (D-032 — Plausible, not GA4).
+        // storageBucket/messagingSenderId/appId kept for future App Check + headers, harmless if unused.
         apiKey: process.env.NUXT_PUBLIC_FIREBASE_API_KEY,
         authDomain: process.env.NUXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
         projectId: process.env.NUXT_PUBLIC_FIREBASE_PROJECT_ID,
+        storageBucket: process.env.NUXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+        messagingSenderId: process.env.NUXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+        appId: process.env.NUXT_PUBLIC_FIREBASE_APP_ID,
       },
       turnstileSiteKey: process.env.NUXT_PUBLIC_TURNSTILE_SITE_KEY,
       plausibleDomain: process.env.NUXT_PUBLIC_PLAUSIBLE_DOMAIN,
