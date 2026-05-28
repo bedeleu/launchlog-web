@@ -16,7 +16,11 @@ const { user } = useAuth()
       ChatGPT, Perplexity, Claude, and Gemini.
     </p>
 
-    <p class="text-brand-muted mt-10 text-sm">
+    <div class="mt-10">
+      <IntakePreviewForm />
+    </div>
+
+    <p class="text-brand-muted mt-8 text-sm">
       <template v-if="user">
         Signed in as <strong class="text-white">{{ user.email }}</strong> —
         <NuxtLink to="/dashboard" class="text-brand-accent underline">
@@ -24,10 +28,10 @@ const { user } = useAuth()
         </NuxtLink>
       </template>
       <template v-else>
+        Already listed?
         <NuxtLink to="/login" class="text-brand-accent underline">
           Sign in
         </NuxtLink>
-        to submit your product.
       </template>
     </p>
   </main>
