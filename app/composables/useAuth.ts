@@ -51,12 +51,46 @@ export const useAuth = () => {
     await signOut($firebase.auth)
   }
 
-  const getIdToken = async (): Promise<string | null> => {
+  const getIdToken = async (forceRefresh = false): Promise<string | null> => {
     if (!import.meta.client) return null
     const { $firebase } = useNuxtApp() as any
     const u = $firebase?.auth?.currentUser
-    return u ? u.getIdToken() : null
+    return u ? u.getIdToken(forceRefresh) : null
   }
 
-  return { user, loginWithGoogle, loginWithPassword, sendMagicLink, completeMagicLink, logout, getIdToken }
+  // Firebase custom claims (role/plan/subscription_status/entitlements) are the
+  // auth/RBAC source of truth (D-055). Admin UI may read these for affordances,
+  // but the backend remains the final authority on every protected request.
+  const getClaims = async (forceRefresh = false): Promise<Record<string, unknown> | null> => {
+    if (!import.meta.client) return null
+    const { $firebase } = useNuxtApp() as any
+    const u = $firebase?.auth?.currentUser
+    if (!u) return null
+    const result = await u.getIdTokenResult(forceRefresh)
+    return result?.claims ?? null
+  }
+
+  // Force a token refresh so newly-set server-side claims take effect without
+  // requiring the user to log out and back in.
+  const refreshTokenClaims = async (): Promise<Record<string, unknown> | null> => {
+    return getClaims(true)
+  }
+
+  const isAdmin = async (): Promise<boolean> => {
+    const claims = await getClaims()
+    return claims?.role === 'admin'
+  }
+
+  return {
+    user,
+    loginWithGoogle,
+    loginWithPassword,
+    sendMagicLink,
+    completeMagicLink,
+    logout,
+    getIdToken,
+    getClaims,
+    refreshTokenClaims,
+    isAdmin,
+  }
 }
