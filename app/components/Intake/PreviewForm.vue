@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { toTypedSchema } from '@vee-validate/zod'
-import { LoaderCircle } from '@lucide/vue'
+import { RefreshCw } from '@lucide/vue'
 import { useForm } from 'vee-validate'
 import * as z from 'zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
 const { createPreview } = usePreviews()
+const intake = useIntakeStore()
 
 const submitting = ref(false)
 const serverError = ref<string | null>(null)
@@ -21,14 +22,27 @@ const schema = toTypedSchema(
   }),
 )
 
-const { handleSubmit, defineField, errors } = useForm({ validationSchema: schema })
+const { handleSubmit, defineField, errors } = useForm({
+  validationSchema: schema,
+  initialValues: {
+    url: intake.lastUrl || '',
+  },
+})
 const [url, urlAttrs] = defineField('url')
 
 const onSubmit = handleSubmit(async (values) => {
   submitting.value = true
   serverError.value = null
+  intake.rememberSubmittedUrl(values.url)
   try {
+    const reusable = intake.findReusableDraft(values.url)
+    if (reusable) {
+      await navigateTo(`/preview/${reusable.token}`)
+      return
+    }
+
     const preview = await createPreview(values.url)
+    intake.rememberPreview(preview)
     await navigateTo(`/preview/${preview.token}`)
   }
   catch (e: unknown) {
@@ -62,7 +76,7 @@ const onSubmit = handleSubmit(async (values) => {
         class="h-12 flex-1 text-base"
       />
       <Button type="submit" size="lg" class="h-12 px-6" :disabled="submitting">
-        <LoaderCircle v-if="submitting" class="size-4 animate-spin" />
+        <RefreshCw v-if="submitting" class="size-4 animate-spin" />
         {{ submitting ? 'Generating preview…' : 'Preview my listing' }}
       </Button>
     </div>
@@ -72,5 +86,12 @@ const onSubmit = handleSubmit(async (values) => {
       :error="errors.url ?? serverError"
       hint="Preview your listing for free. Pay only when you publish."
     />
+
+    <p v-if="intake.latestDraft" class="mt-5 text-sm text-brand-muted">
+      Already generated a preview?
+      <NuxtLink :to="`/preview/${intake.latestDraft.token}`" class="text-brand-accent underline underline-offset-4">
+        Resume {{ intake.latestDraft.domain }}
+      </NuxtLink>
+    </p>
   </form>
 </template>
