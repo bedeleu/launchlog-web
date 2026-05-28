@@ -54,7 +54,8 @@ export default defineNuxtConfig({
     '/': { isr: 600 },
     '/browse-all': { isr: 1800 },
     '/tech-products': { isr: 1800 },
-    '/sponsors': { isr: 3600 },
+    '/featured': { isr: 3600 },
+    '/sponsors': { redirect: '/featured' },
     '/listing/**': { isr: 3600 },
     '/pricing': { isr: 86400 },
     // '/admin/**': robots opt-out lands when a Nuxt SEO/robots module is wired in Phase 3.
