@@ -25,7 +25,9 @@ export default defineEventHandler(async (event) => {
     // NUXT_PUBLIC_API_URL is the host only (e.g. https://api.launchlog.ai), without the /api prefix.
     // The Laravel routes/api.php is mounted under apiPrefix: 'api' (bootstrap/app.php), so callers must
     // include /api/v1/... in the path. See D-051 / plan v5 Resolved upfront point 5.
-    const listing: any = await $fetch(`${config.public.apiUrl}/api/v1/listings/${slug}`).catch(() => null)
+    // The API wraps the resource in a JsonResource envelope ({ data: {...} }).
+    const envelope: any = await $fetch(`${config.public.apiUrl}/api/v1/listings/${slug}`).catch(() => null)
+    const listing = envelope?.data ?? null
     if (!listing) {
       setResponseStatus(event, 404)
       setResponseHeaders(event, {
@@ -65,9 +67,13 @@ ${listing.description ?? ''}
 
 ${(listing.tech_stack ?? []).map((t: string) => `- ${t}`).join('\n')}
 
-## Categories
+## Category
 
 ${listing.category?.name ?? 'Uncategorized'}
+
+## Tags
+
+${(listing.tags ?? []).map((t: { name: string }) => `- ${t.name}`).join('\n') || '_None_'}
 
 ---
 
