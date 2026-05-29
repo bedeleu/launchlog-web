@@ -61,6 +61,7 @@ export default defineNuxtConfig({
     '/pricing': { isr: 86400 },
     '/blog': { isr: 3600 },
     '/blog/**': { isr: 3600 },
+    '/about': { isr: 86400 },
     // Private/non-indexable routes are kept out of the sitemap via `sitemap.exclude`
     // below (the canonical @nuxtjs/sitemap API) — no per-route `sitemap: false`
     // rules here, which aren't typed on NitroRouteConfig.
@@ -84,7 +85,6 @@ export default defineNuxtConfig({
       '/login',
       '/checkout',
       '/preview/**',
-      '/about',
       '/contact',
       '/cookies',
       '/dmca',

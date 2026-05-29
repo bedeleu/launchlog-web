@@ -24,7 +24,6 @@ const noindexPaths = new Set([
   '/dashboard',
   '/login',
   '/checkout',
-  '/about',
   '/contact',
   '/cookies',
   '/dmca',
