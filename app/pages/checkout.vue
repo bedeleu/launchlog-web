@@ -156,7 +156,12 @@ const payNotice = ref(false)
             </div>
 
             <Button size="lg" class="w-full" :disabled="!canPublish" @click="payNotice = true">
-              Pay &amp; publish — {{ selectedPlan.priceLabel }}
+              <template v-if="selectedPlan.tier === 'free'">
+                Request manual review
+              </template>
+              <template v-else>
+                Pay &amp; publish — {{ selectedPlan.priceLabel }}
+              </template>
             </Button>
 
             <div class="min-h-10 text-center" aria-live="polite">
@@ -164,7 +169,12 @@ const payNotice = ref(false)
                 Screenshot is required before publishing. Try again shortly or contact support.
               </p>
               <p v-else-if="payNotice" class="text-sm text-brand-warning" role="alert">
-                Payment is wired up in Phase 2 (Stripe). The intake + preview flow is live now.
+                <template v-if="selectedPlan.tier === 'free'">
+                  Free listing review queue is being wired next. The preview is saved.
+                </template>
+                <template v-else>
+                  Payment is wired up in Phase 2 (Stripe). The intake + preview flow is live now.
+                </template>
               </p>
             </div>
             <p class="text-center text-xs text-brand-muted">

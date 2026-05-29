@@ -1,4 +1,4 @@
-export type PlanTier = 'basic' | 'premium' | 'featured'
+export type PlanTier = 'free' | 'basic' | 'premium' | 'featured'
 
 export interface Plan {
   tier: PlanTier
@@ -18,6 +18,20 @@ export interface Plan {
 
 // Pricing per D-058 (annual, USD). Monthly = annual / 12, for the "just $X/mo" framing.
 const PLANS: Plan[] = [
+  {
+    tier: 'free',
+    name: 'Free',
+    priceLabel: '$0',
+    monthlyLabel: '$0',
+    badge: 'Founding Listing',
+    features: [
+      'Directory listing',
+      'Direct website link',
+      'Category tagging',
+      'Manual review',
+      'Founding Listing badge',
+    ],
+  },
   {
     tier: 'basic',
     name: 'Basic',
@@ -65,7 +79,7 @@ const PLANS: Plan[] = [
 
 export const usePlans = () => {
   const findPlan = (tier: string | null | undefined): Plan =>
-    PLANS.find(p => p.tier === tier) ?? PLANS[0]!
+    PLANS.find(p => p.tier === tier) ?? PLANS[1]!
 
   return { plans: PLANS, findPlan }
 }

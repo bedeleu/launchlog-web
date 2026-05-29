@@ -5,6 +5,10 @@ import type { ListingCard, ListingTier } from '~/composables/useListings'
 const { listing } = defineProps<{ listing: ListingCard }>()
 
 const tierMeta: Record<ListingTier, { label: string, classes: string }> = {
+  free: {
+    label: 'Founding',
+    classes: 'border-brand-success/40 bg-brand-success/10 text-brand-success',
+  },
   featured: {
     label: 'Featured',
     classes: 'border-brand-accent/50 bg-brand-accent/10 text-brand-accent shadow-[0_0_24px_rgba(99,102,241,0.25)]',
@@ -19,7 +23,7 @@ const tierMeta: Record<ListingTier, { label: string, classes: string }> = {
   },
 }
 
-const tier = computed(() => tierMeta[listing.tier] ?? tierMeta.basic)
+const tier = computed(() => tierMeta[listing.tier] ?? tierMeta.free)
 
 // Premium/Featured get a subtly stronger card border treatment.
 const cardClass = computed(() => {
@@ -27,6 +31,8 @@ const cardClass = computed(() => {
     return 'border-brand-accent/30 bg-brand-accent/[0.03] hover:border-brand-accent/50'
   if (listing.tier === 'premium')
     return 'border-brand-border bg-white/[0.025] hover:border-brand-accent/40'
+  if (listing.tier === 'free')
+    return 'border-brand-success/20 bg-brand-success/[0.025] hover:border-brand-success/40'
   return 'border-brand-border bg-white/[0.02] hover:border-brand-accent/40'
 })
 </script>
@@ -60,7 +66,7 @@ const cardClass = computed(() => {
           class="inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
           :class="tier.classes"
         >
-          <Sparkles v-if="listing.tier === 'featured'" class="size-2.5" />
+          <Sparkles v-if="listing.tier === 'featured' || listing.tier === 'free'" class="size-2.5" />
           {{ tier.label }}
         </span>
       </div>
