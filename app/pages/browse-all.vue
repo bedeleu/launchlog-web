@@ -134,7 +134,7 @@ useSeoMeta({
       v-if="listings && listings.length"
       class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
     >
-      <ListingListingCard
+      <ListingTile
         v-for="listing in listings"
         :key="listing.slug"
         :listing="listing"
