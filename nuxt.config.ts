@@ -58,11 +58,9 @@ export default defineNuxtConfig({
     '/sponsors': { redirect: '/featured' },
     '/listing/**': { isr: 3600 },
     '/pricing': { isr: 86400 },
-    '/admin': { sitemap: false },
-    '/dashboard': { sitemap: false },
-    '/login': { sitemap: false },
-    '/checkout': { sitemap: false },
-    '/preview/**': { sitemap: false },
+    // Private/non-indexable routes are kept out of the sitemap via `sitemap.exclude`
+    // below (the canonical @nuxtjs/sitemap API) — no per-route `sitemap: false`
+    // rules here, which aren't typed on NitroRouteConfig.
   },
   components: {
     // Exclude shadcn-vue barrel files (app/components/ui/<name>/index.ts) from auto-import.
