@@ -20,7 +20,13 @@ const displayTagline = computed(() => props.tagline || 'Your one-line pitch goes
 const techEdge = ['schema.org', 'llms.txt', 'markdown']
 
 // Real sample listing screenshots, blurred, to read as live directory context.
-const samples = ['/images/samples/1.png', '/images/samples/2.png']
+const samples = [
+  '/images/samples/1.png',
+  '/images/samples/2.png',
+  '/images/samples/3.png',
+  '/images/samples/4.png',
+  '/images/samples/5.png',
+]
 </script>
 
 <template>
@@ -133,7 +139,7 @@ const samples = ['/images/samples/1.png', '/images/samples/2.png']
           <div class="grid select-none grid-cols-3 gap-3 opacity-50 blur-[2px]">
             <div v-for="n in 3" :key="n" class="overflow-hidden rounded-xl border border-brand-border bg-white/[0.02]">
               <div class="aspect-video w-full overflow-hidden bg-muted">
-                <img :src="samples[n % samples.length]" alt="" class="h-full w-full object-cover object-top">
+                <img :src="samples[(n + 1) % samples.length]" alt="" class="h-full w-full object-cover object-top">
               </div>
               <div class="space-y-1.5 p-2.5">
                 <div class="h-1.5 w-2/3 rounded bg-white/10" />
