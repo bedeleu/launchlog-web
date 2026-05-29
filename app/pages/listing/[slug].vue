@@ -7,7 +7,6 @@ import {
   FileText,
   Globe,
   ImageOff,
-  Languages,
   Layers,
   ListTree,
   Lock,
@@ -241,44 +240,57 @@ const tierLabel = (t?: ListingTier): string =>
       </nav>
 
       <!-- HERO -->
-      <header class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
-        <div class="min-w-0">
-          <span
-            class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wider"
-            :class="tier.classes"
+      <header class="max-w-3xl">
+        <span
+          class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wider"
+          :class="tier.classes"
+        >
+          <Sparkles v-if="listing.tier === 'featured'" class="size-3.5" />
+          {{ tier.label }}
+        </span>
+
+        <h1 class="mt-4 text-4xl font-bold tracking-tight text-brand-fg lg:text-5xl">
+          {{ listing.name }}
+        </h1>
+        <p class="mt-3 text-lg text-brand-muted">
+          {{ listing.tagline }}
+        </p>
+
+        <div class="mt-5 flex flex-wrap items-center gap-3">
+          <a
+            :href="listing.url"
+            target="_blank"
+            rel="noopener nofollow"
+            class="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/80"
           >
-            <Sparkles v-if="listing.tier === 'featured'" class="size-3.5" />
-            {{ tier.label }}
+            Visit Website
+            <ExternalLink class="size-4" />
+          </a>
+          <span class="inline-flex items-center gap-1.5 text-sm text-brand-muted">
+            <Globe class="size-4" />
+            {{ hostname(listing.url) }}
           </span>
-
-          <h1 class="mt-4 text-4xl font-bold tracking-tight text-brand-fg lg:text-5xl">
-            {{ listing.name }}
-          </h1>
-          <p class="mt-3 max-w-2xl text-lg text-brand-muted">
-            {{ listing.tagline }}
-          </p>
-
-          <div class="mt-5 flex flex-wrap items-center gap-3">
-            <a
-              :href="listing.url"
-              target="_blank"
-              rel="noopener nofollow"
-              class="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/80"
-            >
-              Visit Website
-              <ExternalLink class="size-4" />
-            </a>
-            <span class="inline-flex items-center gap-1.5 text-sm text-brand-muted">
-              <Globe class="size-4" />
-              {{ hostname(listing.url) }}
-            </span>
-          </div>
         </div>
       </header>
 
-      <!-- Screenshot -->
-      <div class="mt-8 overflow-hidden rounded-2xl border border-brand-border bg-white/[0.02] shadow-2xl shadow-black/40">
-        <div class="aspect-[16/10] w-full">
+      <!-- Screenshot — framed as a real browser viewport (reads as authentic product,
+           not a floating AI image). Featured gets an accent ring + glow. -->
+      <figure
+        class="mt-8 overflow-hidden rounded-2xl border bg-[#0c1120] shadow-2xl shadow-black/40"
+        :class="listing.tier === 'featured'
+          ? 'border-brand-accent/40 ring-1 ring-brand-accent/20 shadow-[0_28px_70px_-16px_rgba(99,102,241,0.3)]'
+          : 'border-brand-border'"
+      >
+        <div class="flex items-center gap-2 border-b border-brand-border bg-white/[0.03] px-4 py-2.5">
+          <span class="size-2.5 rounded-full bg-white/15" />
+          <span class="size-2.5 rounded-full bg-white/15" />
+          <span class="size-2.5 rounded-full bg-white/15" />
+          <div class="mx-auto flex max-w-full items-center gap-1.5 truncate rounded-md bg-black/30 px-3 py-1 text-xs text-brand-muted">
+            <Globe class="size-3 shrink-0" />
+            <span class="truncate">{{ hostname(listing.url) }}</span>
+          </div>
+        </div>
+        <div class="aspect-[16/10] w-full bg-white/[0.02]">
           <img
             v-if="listing.screenshot_url"
             :src="listing.screenshot_url"
@@ -295,7 +307,7 @@ const tierLabel = (t?: ListingTier): string =>
             <span class="text-sm">No screenshot available</span>
           </div>
         </div>
-      </div>
+      </figure>
 
       <!-- Facts row -->
       <div class="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-brand-muted">
@@ -423,14 +435,6 @@ const tierLabel = (t?: ListingTier): string =>
                 </dt>
                 <dd class="text-right" :class="isSecure ? 'text-brand-success' : 'text-brand-warning'">
                   {{ isSecure ? 'Secure' : 'Not secure' }}
-                </dd>
-              </div>
-              <div class="flex items-center justify-between gap-3">
-                <dt class="inline-flex items-center gap-2 text-brand-muted">
-                  <Languages class="size-4" /> Language
-                </dt>
-                <dd class="text-right text-brand-fg">
-                  EN
                 </dd>
               </div>
               <div v-if="listing.category" class="flex items-center justify-between gap-3">
