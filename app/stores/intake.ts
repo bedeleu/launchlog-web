@@ -65,6 +65,9 @@ export const useIntakeStore = defineStore('intake', () => {
   const lastUrl = useLocalStorage('launchlog:intake:last-url', '')
   const latestToken = useLocalStorage<string | null>('launchlog:intake:latest-token', null)
   const drafts = useLocalStorage<Record<string, PreviewDraft>>('launchlog:intake:drafts', {})
+  // Normalized-URL → token index, so ANY previously-previewed URL (not just the
+  // last) resolves to its saved token in O(1).
+  const previewByUrlKey = useLocalStorage<Record<string, string>>('launchlog:intake:url-index', {})
 
   const latestDraft = computed(() =>
     latestToken.value ? drafts.value[latestToken.value] ?? null : null,
@@ -82,6 +85,13 @@ export const useIntakeStore = defineStore('intake', () => {
     }
     latestToken.value = preview.token
     lastUrl.value = preview.source_url || preview.url
+
+    const index = { ...previewByUrlKey.value }
+    for (const candidate of [preview.source_url, preview.url]) {
+      const key = normalizeUrlKey(candidate)
+      if (key) index[key] = preview.token
+    }
+    previewByUrlKey.value = index
   }
 
   const updateDraft = (token: string, patch: Partial<Omit<PreviewDraft, 'token'>>) => {
@@ -99,18 +109,16 @@ export const useIntakeStore = defineStore('intake', () => {
 
   const getDraft = (token: string) => drafts.value[token] ?? null
 
-  const findReusableDraft = (url: string): PreviewDraft | null => {
-    const wanted = normalizeUrlKey(url)
-    if (!wanted) return null
+  const previewForUrl = (url: string): PreviewDraft | null => {
+    const key = normalizeUrlKey(url)
+    if (!key) return null
 
-    return Object.values(drafts.value)
-      .filter(draft => draft.status !== 'converted' && !isExpired(draft))
-      .find((draft) => {
-        const source = normalizeUrlKey(draft.sourceUrl)
-        const canonical = normalizeUrlKey(draft.url)
+    const token = previewByUrlKey.value[key]
+    const draft = token ? drafts.value[token] : null
+    if (!draft) return null
+    if (draft.status === 'converted' || isExpired(draft)) return null
 
-        return source === wanted || canonical === wanted
-      }) ?? null
+    return draft
   }
 
   return {
@@ -118,10 +126,11 @@ export const useIntakeStore = defineStore('intake', () => {
     lastUrl,
     latestToken,
     latestDraft,
+    previewByUrlKey,
     rememberSubmittedUrl,
     rememberPreview,
     updateDraft,
     getDraft,
-    findReusableDraft,
+    previewForUrl,
   }
 })

@@ -17,12 +17,46 @@ useSeoMeta({
   robots: 'noindex, nofollow',
 })
 
-const { data: preview, error } = await useAsyncData(`preview-${token}`, () => getPreview(token))
+const draft = computed(() => intake.getDraft(token))
+
+// Map a persisted draft to a Preview shape so back-nav paints instantly,
+// before (or instead of) blocking on the network. Declared BEFORE useAsyncData.
+const previewFromDraft = (): Preview | null => {
+  const d = intake.getDraft(token)
+  if (!d) return null
+  return {
+    token: d.token,
+    status: d.status as Preview['status'],
+    source_url: d.sourceUrl,
+    url: d.url,
+    domain: d.domain,
+    title: d.title || null,
+    tagline: d.tagline || null,
+    description: d.description || null,
+    primary_category_id: null,
+    email: d.email || null,
+    tier: d.tier,
+    screenshot_url: d.screenshotUrl,
+    crawl: null,
+    error_code: null,
+    error_message: null,
+    expires_at: d.expiresAt,
+  }
+}
+
+// Render the stored draft immediately; fetch in the background (SWR).
+const seeded = previewFromDraft()
+const { data: preview, error } = await useAsyncData(
+  `preview-${token}`,
+  () => getPreview(token),
+  {
+    lazy: !!seeded,
+    default: () => seeded,
+  },
+)
 if (preview.value) {
   intake.rememberPreview(preview.value)
 }
-
-const draft = computed(() => intake.getDraft(token))
 
 const form = reactive({
   title: draft.value?.title ?? preview.value?.title ?? '',

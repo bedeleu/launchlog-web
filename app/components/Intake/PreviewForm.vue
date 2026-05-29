@@ -30,14 +30,17 @@ const { handleSubmit, defineField, errors } = useForm({
 })
 const [url, urlAttrs] = defineField('url')
 
+const known = computed(() => intake.previewForUrl((url.value as string) || ''))
+
 const onSubmit = handleSubmit(async (values) => {
   submitting.value = true
   serverError.value = null
   intake.rememberSubmittedUrl(values.url)
   try {
-    const reusable = intake.findReusableDraft(values.url)
-    if (reusable) {
-      await navigateTo(`/preview/${reusable.token}`)
+    // Already have a usable preview for this exact URL → jump straight to it.
+    const existing = intake.previewForUrl(values.url)
+    if (existing) {
+      await navigateTo(`/preview/${existing.token}`)
       return
     }
 
@@ -77,7 +80,7 @@ const onSubmit = handleSubmit(async (values) => {
       />
       <Button type="submit" size="lg" class="h-12 px-6" :disabled="submitting">
         <RefreshCw v-if="submitting" class="size-4 animate-spin" />
-        {{ submitting ? 'Generating preview…' : 'Preview my listing' }}
+        {{ submitting ? 'Generating preview…' : (known ? 'View your preview' : 'Preview my listing') }}
       </Button>
     </div>
 
@@ -87,10 +90,10 @@ const onSubmit = handleSubmit(async (values) => {
       hint="Preview your listing for free. Pay only when you publish."
     />
 
-    <p v-if="intake.latestDraft" class="mt-5 text-sm text-brand-muted">
+    <p v-if="known || intake.latestDraft" class="mt-5 text-sm text-brand-muted">
       Already generated a preview?
-      <NuxtLink :to="`/preview/${intake.latestDraft.token}`" class="text-brand-accent underline underline-offset-4">
-        Resume {{ intake.latestDraft.domain }}
+      <NuxtLink :to="`/preview/${(known ?? intake.latestDraft)!.token}`" class="text-brand-accent underline underline-offset-4">
+        Resume {{ (known ?? intake.latestDraft)!.domain }}
       </NuxtLink>
     </p>
   </form>
