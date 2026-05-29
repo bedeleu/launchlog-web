@@ -48,6 +48,7 @@ export default defineNuxtConfig({
       },
       turnstileSiteKey: process.env.NUXT_PUBLIC_TURNSTILE_SITE_KEY,
       plausibleDomain: process.env.NUXT_PUBLIC_PLAUSIBLE_DOMAIN,
+      wordpressBlogUrl: process.env.NUXT_PUBLIC_WORDPRESS_BLOG_URL || 'https://blog.launchlog.ai',
     },
   },
   routeRules: {
@@ -58,6 +59,8 @@ export default defineNuxtConfig({
     '/sponsors': { redirect: '/featured' },
     '/listing/**': { isr: 3600 },
     '/pricing': { isr: 86400 },
+    '/blog': { isr: 3600 },
+    '/blog/**': { isr: 3600 },
     // Private/non-indexable routes are kept out of the sitemap via `sitemap.exclude`
     // below (the canonical @nuxtjs/sitemap API) — no per-route `sitemap: false`
     // rules here, which aren't typed on NitroRouteConfig.
@@ -81,7 +84,6 @@ export default defineNuxtConfig({
       '/login',
       '/checkout',
       '/preview/**',
-      '/blog',
       '/about',
       '/contact',
       '/cookies',
@@ -92,6 +94,9 @@ export default defineNuxtConfig({
       '/terms',
       '/seo-guide',
       '/status',
+    ],
+    sources: [
+      '/api/__sitemap__/blog-urls',
     ],
   },
 })
