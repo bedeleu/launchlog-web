@@ -1,5 +1,62 @@
 <script setup lang="ts">
 const { user } = useAuth()
+const config = useRuntimeConfig()
+const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
+
+useSeoMeta({
+  title: 'LaunchLog — The log of what just shipped',
+  description:
+    'LaunchLog is a curated directory for indie makers, SaaS founders and tech launches, built for discoverability in Google, Bing and AI answer engines.',
+  ogTitle: 'LaunchLog — The log of what just shipped',
+  ogDescription:
+    'Get your SaaS launch listed in a curated directory engineered for search and AI citations.',
+  ogUrl: siteUrl,
+})
+
+useHead({
+  script: [
+    {
+      key: 'launchlog-home-schema',
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@graph': [
+          {
+            '@type': 'Organization',
+            '@id': `${siteUrl}/#organization`,
+            name: 'LaunchLog',
+            url: siteUrl,
+            description:
+              'LaunchLog is a curated paid directory for indie makers, SaaS founders and tech launches.',
+            sameAs: [],
+          },
+          {
+            '@type': 'WebSite',
+            '@id': `${siteUrl}/#website`,
+            name: 'LaunchLog',
+            url: siteUrl,
+            publisher: {
+              '@id': `${siteUrl}/#organization`,
+            },
+            description: 'The log of what just shipped.',
+          },
+          {
+            '@type': 'WebPage',
+            '@id': `${siteUrl}/#webpage`,
+            url: siteUrl,
+            name: 'LaunchLog — The log of what just shipped',
+            isPartOf: {
+              '@id': `${siteUrl}/#website`,
+            },
+            about: {
+              '@id': `${siteUrl}/#organization`,
+            },
+          },
+        ],
+      }),
+    },
+  ],
+})
 </script>
 
 <template>

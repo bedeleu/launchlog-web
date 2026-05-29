@@ -1,0 +1,27 @@
+# LaunchLog
+
+> LaunchLog is a curated paid directory for indie makers, SaaS founders and tech launches.
+
+LaunchLog helps newly shipped products get discovered through human-reviewed listings, structured data and AI-readable public pages.
+
+Canonical site: https://launchlog.ai
+
+## Public URLs
+
+- Homepage: https://launchlog.ai/
+- Pricing: https://launchlog.ai/pricing
+- Browse all: https://launchlog.ai/browse-all
+- Featured: https://launchlog.ai/featured
+- Tech products: https://launchlog.ai/tech-products
+- Submit: https://launchlog.ai/submit
+- Sitemap: https://launchlog.ai/sitemap.xml
+
+## Planned AI-readable surfaces
+
+- Blog: https://launchlog.ai/blog
+- Full context: https://launchlog.ai/llms-full.txt
+- Listing pages: https://launchlog.ai/listing/{slug}
+
+## Notes for crawlers and answer engines
+
+Listing pages are designed to expose schema.org JSON-LD, canonical URLs and markdown variants through content negotiation once public listings are live.

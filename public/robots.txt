@@ -1,2 +1,10 @@
-User-Agent: *
-Disallow:
+User-agent: *
+Allow: /
+
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /login
+Disallow: /checkout
+Disallow: /preview
+
+Sitemap: https://launchlog.ai/sitemap.xml

@@ -58,8 +58,11 @@ export default defineNuxtConfig({
     '/sponsors': { redirect: '/featured' },
     '/listing/**': { isr: 3600 },
     '/pricing': { isr: 86400 },
-    // '/admin/**': robots opt-out lands when a Nuxt SEO/robots module is wired in Phase 3.
-    // The Tailwind v4 stack swap dropped @nuxtjs/seo, so for now we omit the directive.
+    '/admin': { sitemap: false },
+    '/dashboard': { sitemap: false },
+    '/login': { sitemap: false },
+    '/checkout': { sitemap: false },
+    '/preview/**': { sitemap: false },
   },
   components: {
     // Exclude shadcn-vue barrel files (app/components/ui/<name>/index.ts) from auto-import.
@@ -74,6 +77,23 @@ export default defineNuxtConfig({
     name: 'LaunchLog',
   },
   sitemap: {
-    sources: ['/api/__sitemap__/listings'],
+    exclude: [
+      '/admin',
+      '/dashboard',
+      '/login',
+      '/checkout',
+      '/preview/**',
+      '/blog',
+      '/about',
+      '/contact',
+      '/cookies',
+      '/dmca',
+      '/help',
+      '/api-docs',
+      '/privacy',
+      '/terms',
+      '/seo-guide',
+      '/status',
+    ],
   },
 })
