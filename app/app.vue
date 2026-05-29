@@ -3,6 +3,11 @@ const route = useRoute()
 const config = useRuntimeConfig()
 
 const siteUrl = computed(() => `https://${config.public.domain || 'launchlog.ai'}`)
+const siteName = 'LaunchLog'
+const defaultTitle = 'LaunchLog — The log of what just shipped'
+const defaultDescription = 'LaunchLog is a curated directory for indie makers, SaaS founders and tech launches, built for discoverability in Google, Bing and AI answer engines.'
+const defaultKeywords = 'LaunchLog, SaaS directory, startup launch directory, indie maker directory, AI search visibility, llms.txt, schema.org, product launch'
+const ogImageUrl = computed(() => `${siteUrl.value}/og-image.jpg`)
 const normalizedPath = computed(() => {
   if (route.path === '/') return '/'
 
@@ -37,15 +42,30 @@ const shouldNoindex = computed(() => {
 })
 
 useSeoMeta({
-  title: 'LaunchLog — The log of what just shipped',
-  description:
-    'A curated directory for indie makers, SaaS founders, and tech launches. Engineered for Google, Bing, Perplexity and AI answer engines.',
-  ogTitle: 'LaunchLog — The log of what just shipped',
-  ogDescription:
-    'A curated directory for indie makers, SaaS founders, and tech launches.',
+  title: defaultTitle,
+  description: defaultDescription,
+  keywords: defaultKeywords,
+  applicationName: siteName,
+  author: 'LaunchLog',
+  creator: 'LaunchLog',
+  publisher: 'LaunchLog',
+  ogTitle: defaultTitle,
+  ogDescription: defaultDescription,
   ogType: 'website',
   ogUrl: canonicalUrl,
+  ogSiteName: siteName,
+  ogLocale: 'en_US',
+  ogImage: ogImageUrl,
+  ogImageSecureUrl: ogImageUrl,
+  ogImageType: 'image/jpeg',
+  ogImageWidth: 1200,
+  ogImageHeight: 630,
+  ogImageAlt: 'LaunchLog — The log of what just shipped',
   twitterCard: 'summary_large_image',
+  twitterTitle: defaultTitle,
+  twitterDescription: defaultDescription,
+  twitterImage: ogImageUrl,
+  twitterImageAlt: 'LaunchLog — The log of what just shipped',
   robots: computed(() =>
     shouldNoindex.value
       ? 'noindex, nofollow'
@@ -54,17 +74,48 @@ useSeoMeta({
 })
 
 useHead({
+  htmlAttrs: {
+    lang: 'en',
+  },
   link: [
     {
       rel: 'canonical',
       href: canonicalUrl,
     },
+    {
+      rel: 'alternate',
+      hreflang: 'en',
+      href: canonicalUrl,
+    },
+    {
+      rel: 'alternate',
+      hreflang: 'x-default',
+      href: canonicalUrl,
+    },
+    {
+      rel: 'image_src',
+      href: ogImageUrl,
+    },
+  ],
+  meta: [
+    { name: 'language', content: 'English' },
+    { name: 'content-language', content: 'en' },
+    { name: 'theme-color', content: '#0A0E1A' },
+    { name: 'referrer', content: 'strict-origin-when-cross-origin' },
+    { name: 'format-detection', content: 'telephone=no' },
+    { name: 'apple-mobile-web-app-title', content: siteName },
+    { name: 'msapplication-TileColor', content: '#0A0E1A' },
+    { name: 'classification', content: 'SaaS directory and product launch directory' },
+    { name: 'category', content: 'Technology' },
+    { name: 'coverage', content: 'Worldwide' },
+    { name: 'distribution', content: 'Global' },
+    { name: 'rating', content: 'General' },
   ],
 })
 </script>
 
 <template>
-  <Html class="dark">
+  <Html lang="en" class="dark">
     <Body>
       <NuxtRouteAnnouncer />
       <NuxtLayout>

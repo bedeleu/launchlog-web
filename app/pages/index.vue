@@ -2,15 +2,23 @@
 const { user } = useAuth()
 const config = useRuntimeConfig()
 const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
+const homeUrl = `${siteUrl}/`
+const ogImageUrl = `${siteUrl}/og-image.jpg`
+const homeDescription = 'LaunchLog is a curated directory for indie makers, SaaS founders and tech launches, built for discoverability in Google, Bing and AI answer engines.'
 
 useSeoMeta({
   title: 'LaunchLog — The log of what just shipped',
-  description:
-    'LaunchLog is a curated directory for indie makers, SaaS founders and tech launches, built for discoverability in Google, Bing and AI answer engines.',
+  description: homeDescription,
   ogTitle: 'LaunchLog — The log of what just shipped',
-  ogDescription:
-    'Get your SaaS launch listed in a curated directory engineered for search and AI citations.',
-  ogUrl: siteUrl,
+  ogDescription: homeDescription,
+  ogUrl: homeUrl,
+  ogImage: ogImageUrl,
+  ogImageSecureUrl: ogImageUrl,
+  ogImageAlt: 'LaunchLog — The log of what just shipped',
+  twitterTitle: 'LaunchLog — The log of what just shipped',
+  twitterDescription: homeDescription,
+  twitterImage: ogImageUrl,
+  twitterImageAlt: 'LaunchLog — The log of what just shipped',
 })
 
 useHead({
@@ -25,26 +33,59 @@ useHead({
             '@type': 'Organization',
             '@id': `${siteUrl}/#organization`,
             name: 'LaunchLog',
-            url: siteUrl,
+            url: homeUrl,
             description:
               'LaunchLog is a curated paid directory for indie makers, SaaS founders and tech launches.',
+            slogan: 'The log of what just shipped.',
+            foundingDate: '2026',
+            areaServed: 'Worldwide',
+            knowsAbout: [
+              'SaaS launches',
+              'indie maker products',
+              'AI search visibility',
+              'schema.org',
+              'llms.txt',
+              'product directories',
+            ],
+            logo: {
+              '@type': 'ImageObject',
+              url: ogImageUrl,
+              width: 1200,
+              height: 630,
+            },
+            image: ogImageUrl,
             sameAs: [],
           },
           {
             '@type': 'WebSite',
             '@id': `${siteUrl}/#website`,
             name: 'LaunchLog',
-            url: siteUrl,
+            url: homeUrl,
             publisher: {
               '@id': `${siteUrl}/#organization`,
             },
-            description: 'The log of what just shipped.',
+            description: homeDescription,
+            inLanguage: 'en-US',
+            availableLanguage: ['English'],
+            potentialAction: {
+              '@type': 'SearchAction',
+              target: `${siteUrl}/browse-all?q={search_term_string}`,
+              'query-input': 'required name=search_term_string',
+            },
           },
           {
             '@type': 'WebPage',
             '@id': `${siteUrl}/#webpage`,
-            url: siteUrl,
+            url: homeUrl,
             name: 'LaunchLog — The log of what just shipped',
+            description: homeDescription,
+            inLanguage: 'en-US',
+            primaryImageOfPage: {
+              '@type': 'ImageObject',
+              url: ogImageUrl,
+              width: 1200,
+              height: 630,
+            },
             isPartOf: {
               '@id': `${siteUrl}/#website`,
             },
