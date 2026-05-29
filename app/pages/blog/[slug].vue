@@ -83,7 +83,7 @@ function truncateDescription(value: string): string {
       Back to blog
     </NuxtLink>
 
-    <article class="mt-8">
+    <article v-if="post" class="mt-8">
       <header>
         <time class="text-brand-muted text-sm" :datetime="post.date">
           {{ new Date(post.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) }}
