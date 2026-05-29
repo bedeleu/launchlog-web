@@ -45,8 +45,10 @@ const samples = ['/images/samples/1.png', '/images/samples/2.png']
       </div>
 
       <div class="p-5">
+        <!-- All three tiers stay mounted (v-show), so switching plans never destroys
+             and re-loads the screenshot — the swap is instant. -->
         <!-- ============ FEATURED: one large unified card dominating the page ============ -->
-        <div v-if="isFeatured" class="space-y-3">
+        <div v-show="isFeatured" class="space-y-3">
           <article class="relative grid min-w-0 grid-cols-1 overflow-hidden rounded-2xl border-2 border-brand-accent/60 bg-brand-accent/[0.06] shadow-[0_24px_60px_-12px_rgba(0,0,0,0.6)] ring-1 ring-brand-accent/20 sm:grid-cols-[1.45fr_1fr]">
             <div class="min-h-[200px] bg-muted sm:min-h-[280px]">
               <img v-if="hasShot" :src="preview.screenshot_url!" :alt="`Screenshot of ${preview.domain}`" class="h-full w-full object-cover object-top">
@@ -87,12 +89,63 @@ const samples = ['/images/samples/1.png', '/images/samples/2.png']
           </div>
         </div>
 
-        <!-- ============ PREMIUM / BASIC: your card inside the directory grid ============ -->
-        <div v-else class="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <article
-            class="min-w-0 overflow-hidden rounded-xl border bg-white/[0.03]"
-            :class="isPremium ? 'col-span-2 border-brand-accent/40 shadow-[0_12px_28px_-12px_rgba(0,0,0,0.5)]' : 'col-span-1 border-brand-accent/40'"
-          >
+        <!-- ============ PREMIUM: priority placement, two neighbors stacked + a row below ============ -->
+        <div v-show="isPremium" class="space-y-3">
+          <div class="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+            <article
+              class="min-w-0 overflow-hidden rounded-xl border border-brand-accent/40 bg-white/[0.03] shadow-[0_12px_28px_-12px_rgba(0,0,0,0.5)]"
+            >
+              <div class="aspect-video w-full overflow-hidden border-b border-brand-border bg-muted">
+                <img v-if="hasShot" :src="preview.screenshot_url!" :alt="`Screenshot of ${preview.domain}`" class="h-full w-full object-cover object-top">
+                <div v-else class="flex h-full items-center justify-center">
+                  <RefreshCw v-if="generating" class="size-5 animate-spin text-brand-accent" />
+                  <ImageOff v-else class="size-5 text-brand-muted" />
+                </div>
+              </div>
+              <div class="p-3.5">
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <span class="rounded bg-white/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-brand-fg/80">Premium</span>
+                  <span class="text-[10px] font-medium text-brand-fg/70">Priority placement</span>
+                </div>
+                <h3 class="mt-1.5 truncate text-base font-semibold text-brand-fg">{{ displayTitle }}</h3>
+                <p class="mt-0.5 line-clamp-2 text-[11px] text-brand-muted">{{ displayTagline }}</p>
+              </div>
+            </article>
+
+            <div class="grid grid-rows-2 gap-3">
+              <div
+                v-for="n in 2"
+                :key="n"
+                class="select-none overflow-hidden rounded-xl border border-brand-border bg-white/[0.02] opacity-60 blur-[1.5px]"
+              >
+                <div class="aspect-video w-full overflow-hidden bg-muted">
+                  <img :src="samples[(n - 1) % samples.length]" alt="" class="h-full w-full object-cover object-top">
+                </div>
+                <div class="space-y-1.5 p-3">
+                  <div class="h-1.5 w-2/3 rounded bg-white/10" />
+                  <div class="h-1.5 w-full rounded bg-white/[0.06]" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Competitors below, so Premium reads as lifted above the crowd. -->
+          <div class="grid select-none grid-cols-3 gap-3 opacity-50 blur-[2px]">
+            <div v-for="n in 3" :key="n" class="overflow-hidden rounded-xl border border-brand-border bg-white/[0.02]">
+              <div class="aspect-video w-full overflow-hidden bg-muted">
+                <img :src="samples[n % samples.length]" alt="" class="h-full w-full object-cover object-top">
+              </div>
+              <div class="space-y-1.5 p-2.5">
+                <div class="h-1.5 w-2/3 rounded bg-white/10" />
+                <div class="h-1.5 w-full rounded bg-white/[0.06]" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============ BASIC: your card inside the standard directory grid ============ -->
+        <div v-show="!isFeatured && !isPremium" class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <article class="min-w-0 overflow-hidden rounded-xl border border-brand-accent/40 bg-white/[0.03]">
             <div class="aspect-video w-full overflow-hidden border-b border-brand-border bg-muted">
               <img v-if="hasShot" :src="preview.screenshot_url!" :alt="`Screenshot of ${preview.domain}`" class="h-full w-full object-cover object-top">
               <div v-else class="flex h-full items-center justify-center">
@@ -102,19 +155,18 @@ const samples = ['/images/samples/1.png', '/images/samples/2.png']
             </div>
             <div class="p-3.5">
               <div class="flex flex-wrap items-center gap-1.5">
-                <span class="rounded bg-white/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-brand-fg/80">{{ isPremium ? 'Premium' : 'Basic' }}</span>
-                <span class="text-[10px] font-medium" :class="isPremium ? 'text-brand-fg/70' : 'text-brand-accent'">{{ isPremium ? 'Priority placement' : 'Your listing' }}</span>
+                <span class="rounded bg-white/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-brand-fg/80">Basic</span>
+                <span class="text-[10px] font-medium text-brand-accent">Your listing</span>
               </div>
-              <h3 class="mt-1.5 truncate font-semibold text-brand-fg" :class="isPremium ? 'text-base' : 'text-sm'">{{ displayTitle }}</h3>
+              <h3 class="mt-1.5 truncate text-sm font-semibold text-brand-fg">{{ displayTitle }}</h3>
               <p class="mt-0.5 line-clamp-2 text-[11px] text-brand-muted">{{ displayTagline }}</p>
             </div>
           </article>
 
           <div
-            v-for="n in (isPremium ? 4 : 5)"
+            v-for="n in 5"
             :key="n"
-            class="select-none overflow-hidden rounded-xl border border-brand-border bg-white/[0.02]"
-            :class="isPremium ? 'opacity-60 blur-[1.5px]' : 'opacity-70 blur-[1px]'"
+            class="select-none overflow-hidden rounded-xl border border-brand-border bg-white/[0.02] opacity-70 blur-[1px]"
           >
             <div class="aspect-video w-full overflow-hidden bg-muted">
               <img :src="samples[(n - 1) % samples.length]" alt="" class="h-full w-full object-cover object-top">

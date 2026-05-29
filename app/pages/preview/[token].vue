@@ -17,77 +17,51 @@ useSeoMeta({
   robots: 'noindex, nofollow',
 })
 
-const draft = computed(() => intake.getDraft(token))
-
-// Map a persisted draft to a Preview shape so back-nav paints instantly,
-// before (or instead of) blocking on the network. Declared BEFORE useAsyncData.
-const previewFromDraft = (): Preview | null => {
-  const d = intake.getDraft(token)
-  if (!d) return null
-  return {
-    token: d.token,
-    status: d.status as Preview['status'],
-    source_url: d.sourceUrl,
-    url: d.url,
-    domain: d.domain,
-    title: d.title || null,
-    tagline: d.tagline || null,
-    description: d.description || null,
-    primary_category_id: null,
-    email: d.email || null,
-    tier: d.tier,
-    screenshot_url: d.screenshotUrl,
-    crawl: null,
-    error_code: null,
-    error_message: null,
-    expires_at: d.expiresAt,
-  }
-}
-
-// Render the stored draft immediately; fetch in the background (SWR).
-const seeded = previewFromDraft()
-const { data: preview, error } = await useAsyncData(
-  `preview-${token}`,
-  () => getPreview(token),
-  {
-    lazy: !!seeded,
-    default: () => seeded,
-  },
-)
+const { data: preview, error } = await useAsyncData(`preview-${token}`, () => getPreview(token))
 if (preview.value) {
   intake.rememberPreview(preview.value)
 }
 
+const draft = computed(() => intake.getDraft(token))
+
+// Listing text (defaults from the crawl). Edited via a discreet inline panel,
+// not a primary step — buying shouldn't feel like an editor.
 const form = reactive({
   title: draft.value?.title ?? preview.value?.title ?? '',
   tagline: draft.value?.tagline ?? preview.value?.tagline ?? '',
   description: draft.value?.description ?? preview.value?.description ?? '',
-  email: draft.value?.email ?? preview.value?.email ?? '',
 })
+const showEdit = ref(false)
 
-// Featured is the default selection — it's the most valuable placement (D-058).
+// Account (02) — email + password, like BacklinkLog. Auto-generate is the default.
+const account = reactive({
+  email: draft.value?.email ?? preview.value?.email ?? '',
+  password: '',
+  autoGenerate: true,
+})
+const coupon = ref('')
+
+// Featured is the default selection — the most valuable placement (D-058).
 const selectedTier = ref(draft.value?.tier ?? 'featured')
 const selectedPlan = computed(() => findPlan(selectedTier.value))
 
-// Intake returns immediately with status=generating; crawl + screenshot run in a
-// background job (D-057). Poll until the preview settles into ready/failed.
-const isGenerating = computed(() => preview.value?.status === 'generating')
+const status = computed(() => preview.value?.status)
+const isGenerating = computed(() => status.value === 'generating')
+const isReady = computed(() => status.value === 'ready' && !!preview.value?.screenshot_url)
 const screenshotFailed = computed(() =>
-  preview.value?.status === 'failed' && preview.value?.error_code === 'screenshot_failed',
+  status.value === 'failed' && preview.value?.error_code === 'screenshot_failed',
 )
-// Publishing requires a captured screenshot (D-034).
-const canPublish = computed(() =>
-  preview.value?.status === 'ready' && !!preview.value?.screenshot_url,
-)
+const isFailed = computed(() => status.value === 'failed')
 
-// Merge a freshly polled preview, filling editor fields the user hasn't touched.
+// Intake returns immediately with status=generating; crawl + screenshot run in a
+// background job (D-057). Poll until ready/failed, filling untouched fields.
 const applyPreview = (next: Preview) => {
   preview.value = next
   intake.rememberPreview(next)
   if (!form.title && next.title) form.title = next.title
   if (!form.tagline && next.tagline) form.tagline = next.tagline
   if (!form.description && next.description) form.description = next.description
-  if (!form.email && next.email) form.email = next.email
+  if (!account.email && next.email) account.email = next.email
 }
 
 const { pause: stopPolling, resume: startPolling } = useIntervalFn(async () => {
@@ -105,38 +79,81 @@ const { pause: stopPolling, resume: startPolling } = useIntervalFn(async () => {
   }
 }, 1800, { immediate: false })
 
+// Generate a secure password up-front (client-only) so the field is pre-filled
+// and visible, like BacklinkLog. Toggling auto-generate regenerates / clears it.
+const generatePassword = (): string => {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%&*'
+  const pick = (typeof window !== 'undefined' && window.crypto?.getRandomValues)
+    ? () => {
+        const a = new Uint32Array(1)
+        window.crypto.getRandomValues(a)
+        return a[0]!
+      }
+    : () => Math.floor(Math.random() * 0xFFFFFFFF)
+  let out = ''
+  for (let i = 0; i < 16; i++) out += chars[pick() % chars.length]
+  return out
+}
+
+watch(() => account.autoGenerate, (on) => {
+  account.password = on ? generatePassword() : ''
+})
+
 onMounted(() => {
+  if (account.autoGenerate && !account.password) account.password = generatePassword()
   if (isGenerating.value) startPolling()
 })
 
-// Optimistic: persist edits in the background and navigate instantly — no blocking save.
-const continueToCheckout = () => {
-  if (!canPublish.value) return
-  intake.updateDraft(token, {
-    title: form.title,
-    tagline: form.tagline,
-    description: form.description,
-    email: form.email,
-    tier: selectedTier.value,
-  })
+// Stripe checkout is Phase 2 — publishing is stubbed (D-057 conversion happens
+// server-side on checkout.session.completed). Persist the draft so it's ready.
+const emailValue = computed(() => account.email.trim())
+const emailLooksValid = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue.value))
+const attemptedPublish = ref(false)
+const emailShowsInvalid = computed(() => attemptedPublish.value && !emailLooksValid.value)
+const emailHelpText = computed(() => {
+  if (!emailValue.value) return attemptedPublish.value ? 'Enter your email to activate checkout.' : 'Required for checkout.'
+  if (!emailLooksValid.value) return attemptedPublish.value ? 'Enter a valid email address.' : 'We will validate this before checkout.'
+  return 'We will create your account with this email after checkout.'
+})
+const passwordValue = computed(() => account.password.trim())
+const passwordLooksValid = computed(() => account.autoGenerate || passwordValue.value.length >= 8)
+const passwordShowsInvalid = computed(() => attemptedPublish.value && !passwordLooksValid.value)
+const passwordHelpText = computed(() =>
+  account.autoGenerate
+    ? 'We generated a secure password — copy it, or uncheck to set your own.'
+    : passwordLooksValid.value
+      ? 'Custom password ready.'
+      : 'Use at least 8 characters, or turn auto-generate back on.',
+)
+const invalidFieldClass = 'border-brand-warning/70 shadow-[0_0_0_1px_rgba(245,158,11,0.32),0_0_18px_rgba(245,158,11,0.14)] focus-visible:ring-brand-warning/25'
+const canPay = computed(() =>
+  isReady.value
+  && emailLooksValid.value
+  && passwordLooksValid.value
+)
+const publishRequested = ref(false)
+const publish = () => {
+  attemptedPublish.value = true
+  if (!canPay.value) return
   updatePreview(token, {
     title: form.title || null,
     tagline: form.tagline || null,
     description: form.description || null,
-    email: form.email || null,
+    email: account.email || null,
     tier: selectedTier.value,
   }).catch(() => {})
-  navigateTo(`/checkout?preview=${token}&tier=${selectedTier.value}`)
+  publishRequested.value = true
 }
 
+// Persist to the store as the user types, for resume after refresh/tab close.
 watch(
-  [() => form.title, () => form.tagline, () => form.description, () => form.email, selectedTier],
+  [() => form.title, () => form.tagline, () => form.description, () => account.email, selectedTier],
   () => {
     intake.updateDraft(token, {
       title: form.title,
       tagline: form.tagline,
       description: form.description,
-      email: form.email,
+      email: account.email,
       tier: selectedTier.value,
     })
   },
@@ -145,6 +162,7 @@ watch(
 
 <template>
   <main class="mx-auto max-w-6xl px-6 py-12 lg:py-16">
+    <!-- Not found / expired -->
     <div v-if="error || !preview" class="py-16 text-center">
       <h1 class="text-3xl font-bold text-brand-fg">
         Preview not found
@@ -160,14 +178,11 @@ watch(
     <template v-else>
       <header class="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
         <div class="max-w-2xl">
-          <NuxtLink to="/" class="text-xs uppercase tracking-[0.2em] text-brand-muted hover:text-brand-fg">
-            ← Back to website URL
-          </NuxtLink>
-          <h1 class="mt-4 text-3xl font-bold text-brand-fg lg:text-4xl">
-            Review your listing
+          <h1 class="text-3xl font-bold text-brand-fg lg:text-4xl">
+            Review &amp; publish your listing
           </h1>
           <p class="mt-2 text-brand-muted">
-            See how your product can appear before checkout. Preview is private. Pay only when you publish.
+            See how your product will appear, pick a package, and publish. Pay only when you publish.
           </p>
         </div>
         <NuxtLink
@@ -178,80 +193,175 @@ watch(
         </NuxtLink>
       </header>
 
-      <div class="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
-        <!-- WOW placement preview (first on mobile) -->
-        <IntakePlacementPreview
-          class="min-w-0"
-          :preview="preview"
-          :tier="selectedTier"
-          :title="form.title"
-          :tagline="form.tagline"
-          :generating="isGenerating"
-        />
+      <!-- GENERATING: keep it light; the order page appears only after the real screenshot exists. -->
+      <section v-if="isGenerating" class="mt-10 flex items-center gap-3 rounded-xl border border-brand-border bg-white/[0.02] px-5 py-4 text-sm text-brand-muted">
+        <span class="size-4 shrink-0 animate-spin rounded-full border-2 border-brand-accent border-t-transparent" />
+        <p>
+          Generating your private preview. The order page appears when the screenshot is ready.
+        </p>
+      </section>
 
-        <!-- Editor + plan + CTA (fixed sticky rail) -->
-        <div class="min-w-0 space-y-7 lg:sticky lg:top-8">
-          <section class="space-y-4">
-            <h2 class="text-sm font-semibold uppercase tracking-[0.2em] text-brand-muted">
-              Your details
-            </h2>
-            <div class="space-y-1.5">
-              <Label for="f-title">Title</Label>
-              <Input id="f-title" v-model="form.title" placeholder="Your product name" />
-            </div>
-            <div class="space-y-1.5">
-              <Label for="f-tagline">Tagline</Label>
-              <Input id="f-tagline" v-model="form.tagline" placeholder="One line about what you do" />
-            </div>
-            <div class="space-y-1.5">
-              <Label for="f-description">Description</Label>
-              <textarea
-                id="f-description"
-                v-model="form.description"
-                rows="4"
-                placeholder="A short description of your product"
-                style="field-sizing: content"
-                class="max-h-60 min-h-20 w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-              />
-            </div>
-            <div class="space-y-1.5">
-              <Label for="f-email">Email</Label>
-              <Input id="f-email" v-model="form.email" type="email" placeholder="you@yourproduct.com" />
-              <p class="text-xs text-brand-muted">
-                We'll create your account with this email after checkout.
-              </p>
-            </div>
-          </section>
+      <!-- FAILED: couldn't build the preview -->
+      <section v-else-if="isFailed" class="mt-10 rounded-2xl border border-brand-border bg-white/[0.02] p-10 text-center">
+        <h2 class="text-xl font-semibold text-brand-fg">
+          We couldn't build this preview
+        </h2>
+        <p class="mx-auto mt-2 max-w-md text-sm text-brand-muted">
+          <template v-if="screenshotFailed">
+            We couldn't capture a screenshot for this site. Try a different URL, or check that the site is publicly reachable.
+          </template>
+          <template v-else>
+            Something went wrong while building your preview. Try a different URL or contact support.
+          </template>
+        </p>
+        <NuxtLink to="/" class="mt-6 inline-block text-brand-accent underline underline-offset-4">
+          Try another URL
+        </NuxtLink>
+      </section>
 
+      <!-- READY: BacklinkLog-style order page — live preview left, order form right -->
+      <div v-else-if="isReady" class="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start">
+        <!-- LEFT: the WOW live preview, sticky; plan switches are instant (v-show in the component) -->
+        <div class="min-w-0 lg:sticky lg:top-8">
+          <IntakePlacementPreview
+            class="min-w-0"
+            :preview="preview"
+            :tier="selectedTier"
+            :title="form.title"
+            :tagline="form.tagline"
+          />
+
+          <!-- Discreet listing-text editor — not a step; defaults come from the crawl -->
+          <div class="mt-4">
+            <button
+              type="button"
+              class="text-xs font-medium text-brand-accent underline underline-offset-4"
+              @click="showEdit = !showEdit"
+            >
+              {{ showEdit ? 'Done editing text' : 'Edit listing text' }}
+            </button>
+            <div v-show="showEdit" class="mt-3 space-y-3 rounded-xl border border-brand-border bg-white/[0.02] p-4">
+              <div class="space-y-1.5">
+                <Label for="f-title">Title</Label>
+                <Input id="f-title" v-model="form.title" placeholder="Your product name" />
+              </div>
+              <div class="space-y-1.5">
+                <Label for="f-tagline">Tagline</Label>
+                <Input id="f-tagline" v-model="form.tagline" placeholder="One line about what you do" />
+              </div>
+              <div class="space-y-1.5">
+                <Label for="f-description">Description</Label>
+                <textarea
+                  id="f-description"
+                  v-model="form.description"
+                  rows="4"
+                  placeholder="A short description of your product"
+                  style="field-sizing: content"
+                  class="max-h-60 min-h-20 w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: order form (package + account) -->
+        <div class="min-w-0 space-y-8">
+          <!-- 01 — Select package -->
           <section>
             <h2 class="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-brand-muted">
-              Choose your plan
+              01 — Select package
             </h2>
             <IntakePlanSelector v-model="selectedTier" />
           </section>
 
+          <!-- 02 — Account -->
+          <section class="space-y-4">
+            <h2 class="text-sm font-semibold uppercase tracking-[0.2em] text-brand-muted">
+              02 — Account
+            </h2>
+            <div class="space-y-1.5">
+              <div class="flex min-h-5 items-center justify-between gap-3">
+                <Label for="a-email">Email address</Label>
+                <span
+                  class="text-right text-[11px] font-medium"
+                  :class="emailShowsInvalid ? 'text-brand-warning' : 'text-brand-muted'"
+                >
+                  {{ emailShowsInvalid ? 'Invalid email' : 'Required' }}
+                </span>
+              </div>
+              <Input
+                id="a-email"
+                v-model="account.email"
+                type="email"
+                placeholder="you@yourproduct.com"
+                :aria-invalid="emailShowsInvalid"
+                :class="emailShowsInvalid ? invalidFieldClass : ''"
+              />
+              <p
+                class="min-h-4 text-xs"
+                :class="emailShowsInvalid ? 'text-brand-warning' : 'text-brand-muted'"
+                aria-live="polite"
+              >
+                {{ emailHelpText }}
+              </p>
+            </div>
+
+            <label class="flex items-center gap-2.5 text-sm text-brand-fg">
+              <input
+                v-model="account.autoGenerate"
+                type="checkbox"
+                class="size-4 rounded border-brand-border bg-background accent-brand-accent"
+              >
+              Auto-generate a secure password
+            </label>
+
+            <!-- Always visible — no conditional mount, no layout shift. -->
+            <div class="space-y-1.5">
+              <div class="flex min-h-5 items-center justify-between gap-3">
+                <Label for="a-password">Password</Label>
+                <span
+                  class="text-right text-[11px] font-medium"
+                  :class="passwordShowsInvalid ? 'text-brand-warning' : 'text-brand-muted'"
+                >
+                  {{ passwordShowsInvalid ? 'Too short' : account.autoGenerate ? 'Generated' : 'Custom' }}
+                </span>
+              </div>
+              <Input
+                id="a-password"
+                v-model="account.password"
+                :type="account.autoGenerate ? 'text' : 'password'"
+                :readonly="account.autoGenerate"
+                :aria-invalid="passwordShowsInvalid"
+                :class="[account.autoGenerate ? 'font-mono' : '', passwordShowsInvalid ? invalidFieldClass : '']"
+                placeholder="Choose a password"
+                autocomplete="new-password"
+              />
+              <p
+                class="min-h-4 text-xs"
+                :class="passwordShowsInvalid ? 'text-brand-warning' : 'text-brand-muted'"
+                aria-live="polite"
+              >
+                {{ passwordHelpText }}
+              </p>
+            </div>
+
+            <div class="space-y-1.5">
+              <Label for="a-coupon">Coupon <span class="text-brand-muted">(optional)</span></Label>
+              <Input id="a-coupon" v-model="coupon" placeholder="Have a code?" />
+            </div>
+          </section>
+
+          <!-- CTA -->
           <section>
-            <Button
-              size="lg"
-              class="w-full"
-              :disabled="!canPublish"
-              @click="continueToCheckout"
-            >
-              <template v-if="isGenerating">Generating your preview…</template>
-              <template v-else>Continue with {{ selectedPlan.name }} — {{ selectedPlan.priceLabel }}/year</template>
+            <Button size="lg" class="w-full" :disabled="!canPay || publishRequested" @click="publish">
+              Pay &amp; publish — {{ selectedPlan.priceLabel }}/year
             </Button>
             <div class="mt-3 min-h-5 text-center text-xs" aria-live="polite">
-              <p v-if="screenshotFailed" class="text-brand-warning" role="alert">
-                Screenshot is required before publishing. Try again shortly or contact support.
-              </p>
-              <p v-else-if="isGenerating" class="text-brand-muted">
-                Building your preview — this takes a few seconds.
-              </p>
-              <p v-else-if="!canPublish" class="text-brand-warning" role="alert">
-                We couldn't finish this preview. Try a different URL or contact support.
+              <p v-if="publishRequested" class="text-brand-accent">
+                Secure checkout (Stripe) lands in the next phase — your details are saved.
               </p>
               <p v-else class="text-brand-muted">
-                Preview is private. Pay only when you publish · 7-day money-back guarantee.
+                That's just {{ selectedPlan.monthlyLabel }}/mo · pay only when you publish · 7-day money-back guarantee.
               </p>
             </div>
           </section>
