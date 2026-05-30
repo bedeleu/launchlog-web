@@ -193,13 +193,41 @@ watch(
         </NuxtLink>
       </header>
 
-      <!-- GENERATING: keep it light; the order page appears only after the real screenshot exists. -->
-      <section v-if="isGenerating" class="mt-10 flex items-center gap-3 rounded-xl border border-brand-border bg-white/[0.02] px-5 py-4 text-sm text-brand-muted">
-        <span class="size-4 shrink-0 animate-spin rounded-full border-2 border-brand-accent border-t-transparent" />
-        <p>
-          Generating your private preview. The order page appears when the screenshot is ready.
-        </p>
-      </section>
+      <!-- GENERATING: a skeleton of the order-page layout (no half-empty content,
+           no spinner stuck on a screenshot). Replaced seamlessly when ready. -->
+      <div v-if="isGenerating" class="mt-8">
+        <div class="mb-6 flex items-center gap-2.5 text-sm text-brand-muted">
+          <span class="size-4 shrink-0 animate-spin rounded-full border-2 border-brand-accent border-t-transparent" />
+          <p>Generating your preview — capturing the screenshot and details…</p>
+        </div>
+        <div class="grid gap-10 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start">
+          <!-- left: browser-framed screenshot skeleton -->
+          <div class="min-w-0">
+            <div class="overflow-hidden rounded-2xl border border-brand-border bg-[#0c1120]">
+              <div class="flex items-center gap-2 border-b border-brand-border bg-white/[0.03] px-4 py-2.5">
+                <span class="size-2.5 rounded-full bg-white/10" />
+                <span class="size-2.5 rounded-full bg-white/10" />
+                <span class="size-2.5 rounded-full bg-white/10" />
+              </div>
+              <div class="aspect-[16/10] w-full animate-pulse bg-white/[0.04]" />
+            </div>
+          </div>
+          <!-- right: order-form skeleton -->
+          <div class="min-w-0 space-y-8">
+            <div class="space-y-3">
+              <div class="h-3 w-28 animate-pulse rounded bg-white/[0.06]" />
+              <div class="h-20 animate-pulse rounded-xl bg-white/[0.04]" />
+              <div class="h-20 animate-pulse rounded-xl bg-white/[0.04]" />
+            </div>
+            <div class="space-y-3">
+              <div class="h-3 w-24 animate-pulse rounded bg-white/[0.06]" />
+              <div class="h-10 animate-pulse rounded-md bg-white/[0.04]" />
+              <div class="h-10 animate-pulse rounded-md bg-white/[0.04]" />
+            </div>
+            <div class="h-11 animate-pulse rounded-md bg-white/[0.05]" />
+          </div>
+        </div>
+      </div>
 
       <!-- FAILED: couldn't build the preview -->
       <section v-else-if="isFailed" class="mt-10 rounded-2xl border border-brand-border bg-white/[0.02] p-10 text-center">
