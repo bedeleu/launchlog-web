@@ -197,7 +197,7 @@ watch(
            no spinner stuck on a screenshot). Replaced seamlessly when ready. -->
       <div v-if="isGenerating" class="mt-8">
         <div class="mb-6 flex items-center gap-2.5 text-sm text-brand-muted">
-          <span class="size-4 shrink-0 animate-spin rounded-full border-2 border-brand-accent border-t-transparent" />
+          <AppSpinner class="size-4 shrink-0" />
           <p>Generating your preview — capturing the screenshot and details…</p>
         </div>
         <div class="grid gap-10 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start">
