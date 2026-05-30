@@ -1,4 +1,4 @@
-export type ListingTier = 'free' | 'basic' | 'premium' | 'featured'
+export type ListingTier = 'basic' | 'premium' | 'featured'
 
 export interface ListingCategory {
   slug: string

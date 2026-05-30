@@ -10,12 +10,6 @@ useSeoMeta({
 const { plans } = usePlans()
 
 const planMeta = {
-  free: {
-    eyebrow: 'Founding Listing',
-    summary: 'A free manually reviewed listing for early directory seeding. Limited availability while LaunchLog grows.',
-    cta: 'Request Free listing',
-    accent: 'border-brand-success/40 bg-brand-success/[0.035]',
-  },
   basic: {
     eyebrow: 'Start here',
     summary: 'A polished listing page with real screenshot, structured data, and a direct website link.',
@@ -67,21 +61,21 @@ const discoveryItems = [
 ]
 
 const featureRows = [
-  { label: 'Public directory listing', free: true, basic: true, premium: true, featured: true },
-  { label: 'Direct website link', free: true, basic: true, premium: true, featured: true },
-  { label: 'Real website screenshot', free: 'Manual', basic: true, premium: true, featured: true },
-  { label: 'Curated title, tagline, and description', free: 'Basic', basic: true, premium: true, featured: true },
-  { label: 'Schema.org @graph', free: 'Basic', basic: true, premium: true, featured: true },
-  { label: 'Markdown listing endpoint', free: false, basic: true, premium: true, featured: true },
-  { label: 'Included in /llms.txt surfaces', free: false, basic: true, premium: true, featured: true },
-  { label: 'Sitemap + IndexNow submission', free: 'Sitemap', basic: true, premium: true, featured: true },
-  { label: 'Browse directory placement', free: 'Standard', basic: 'Standard', premium: 'Priority', featured: 'Top' },
-  { label: 'Category / tech visibility', free: 'Standard', basic: 'Standard', premium: 'Boosted', featured: 'Top slot' },
-  { label: 'Homepage visibility', free: false, basic: false, premium: 'Rotation', featured: 'Featured block' },
-  { label: 'Featured badge', free: 'Founding', basic: false, premium: false, featured: true },
-  { label: 'Large featured screenshot placement', free: false, basic: false, premium: false, featured: true },
-  { label: 'Screenshot / metadata refresh', free: false, basic: 'Initial', premium: 'Priority refresh', featured: 'Priority refresh' },
-  { label: 'Launch/social mention', free: false, basic: false, premium: false, featured: true },
+  { label: 'Public directory listing', basic: true, premium: true, featured: true },
+  { label: 'Direct website link', basic: true, premium: true, featured: true },
+  { label: 'Real website screenshot', basic: true, premium: true, featured: true },
+  { label: 'Curated title, tagline, and description', basic: true, premium: true, featured: true },
+  { label: 'Schema.org @graph', basic: true, premium: true, featured: true },
+  { label: 'Markdown listing endpoint', basic: true, premium: true, featured: true },
+  { label: 'Included in /llms.txt surfaces', basic: true, premium: true, featured: true },
+  { label: 'Sitemap + IndexNow submission', basic: true, premium: true, featured: true },
+  { label: 'Browse directory placement', basic: 'Standard', premium: 'Priority', featured: 'Top' },
+  { label: 'Category / tech visibility', basic: 'Standard', premium: 'Boosted', featured: 'Top slot' },
+  { label: 'Homepage visibility', basic: false, premium: 'Rotation', featured: 'Featured block' },
+  { label: 'Featured badge', basic: false, premium: false, featured: true },
+  { label: 'Large featured screenshot placement', basic: false, premium: false, featured: true },
+  { label: 'Screenshot / metadata refresh', basic: 'Initial', premium: 'Priority refresh', featured: 'Priority refresh' },
+  { label: 'Launch/social mention', basic: false, premium: false, featured: true },
 ]
 
 const faqs = [
@@ -183,12 +177,7 @@ const faqs = [
             <span class="pb-1 text-sm text-brand-muted">/ year</span>
           </div>
           <p class="mt-1 text-sm text-brand-muted">
-            <template v-if="plan.tier === 'free'">
-              Manual review, limited founding spots.
-            </template>
-            <template v-else>
-              That's {{ plan.monthlyLabel }}/month, billed annually.
-            </template>
+            That's {{ plan.monthlyLabel }}/month, billed annually.
           </p>
 
           <ul class="mt-7 space-y-3 text-sm text-brand-muted">

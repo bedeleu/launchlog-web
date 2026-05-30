@@ -72,10 +72,6 @@ const descriptionParagraphs = computed<string[]>(() =>
 )
 
 const tierMeta: Record<ListingTier, { label: string, classes: string }> = {
-  free: {
-    label: 'Founding Listing',
-    classes: 'border-brand-success/40 bg-brand-success/10 text-brand-success',
-  },
   featured: {
     label: 'Featured',
     classes: 'border-brand-accent/50 bg-brand-accent/10 text-brand-accent shadow-[0_0_24px_rgba(99,102,241,0.25)]',
@@ -89,7 +85,7 @@ const tierMeta: Record<ListingTier, { label: string, classes: string }> = {
     classes: 'border-brand-border bg-transparent text-brand-muted',
   },
 }
-const tier = computed(() => tierMeta[(listing.value?.tier ?? 'free') as ListingTier] ?? tierMeta.free)
+const tier = computed(() => tierMeta[(listing.value?.tier ?? 'basic') as ListingTier] ?? tierMeta.basic)
 
 // AI Discovery — D-009 invisible tech edge. Reflects the real per-listing booleans
 // alongside always-on platform surfaces.
@@ -206,9 +202,9 @@ useHead({
 })
 
 const tierBadgeClass = (t?: ListingTier): string =>
-  (tierMeta[(t ?? 'free') as ListingTier] ?? tierMeta.free).classes
+  (tierMeta[(t ?? 'basic') as ListingTier] ?? tierMeta.basic).classes
 const tierLabel = (t?: ListingTier): string =>
-  (tierMeta[(t ?? 'free') as ListingTier] ?? tierMeta.free).label
+  (tierMeta[(t ?? 'basic') as ListingTier] ?? tierMeta.basic).label
 </script>
 
 <template>
@@ -249,7 +245,7 @@ const tierLabel = (t?: ListingTier): string =>
           class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wider"
           :class="tier.classes"
         >
-          <Sparkles v-if="listing.tier === 'featured' || listing.tier === 'free'" class="size-3.5" />
+          <Sparkles v-if="listing.tier === 'featured'" class="size-3.5" />
           {{ tier.label }}
         </span>
 

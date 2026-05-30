@@ -20,7 +20,7 @@ type PreviewDraft = {
 }
 
 const isPlanTier = (value: string | null | undefined): value is PlanTier =>
-  value === 'free' || value === 'basic' || value === 'premium' || value === 'featured'
+  value === 'basic' || value === 'premium' || value === 'featured'
 
 const normalizeUrlKey = (value: string | null | undefined): string | null => {
   if (!value) return null
