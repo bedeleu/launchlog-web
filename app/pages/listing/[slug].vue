@@ -241,13 +241,22 @@ const tierLabel = (t?: ListingTier): string =>
 
       <!-- HERO -->
       <header class="max-w-3xl">
-        <span
-          class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wider"
-          :class="tier.classes"
-        >
-          <Sparkles v-if="listing.tier === 'featured'" class="size-3.5" />
-          {{ tier.label }}
-        </span>
+        <div class="flex flex-wrap items-center gap-2">
+          <span
+            class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wider"
+            :class="tier.classes"
+          >
+            <Sparkles v-if="listing.tier === 'featured'" class="size-3.5" />
+            {{ tier.label }}
+          </span>
+          <!-- Founding listing marker (D-060) — origin, independent of billing tier -->
+          <span
+            v-if="listing.source === 'founding'"
+            class="inline-flex items-center rounded-full border border-brand-border bg-white/[0.04] px-3 py-1 text-xs font-semibold uppercase tracking-wider text-brand-fg/85"
+          >
+            Founding
+          </span>
+        </div>
 
         <h1 class="mt-4 text-4xl font-bold tracking-tight text-brand-fg lg:text-5xl">
           {{ listing.name }}

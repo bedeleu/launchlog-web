@@ -1,5 +1,8 @@
 export type ListingTier = 'basic' | 'premium' | 'featured'
 
+/** Origin of a listing (D-060) — independent of billing tier. */
+export type ListingSource = 'seed' | 'founding' | 'customer' | 'admin'
+
 export interface ListingCategory {
   slug: string
   name: string
@@ -27,6 +30,7 @@ export interface ListingCard {
   url: string
   screenshot_url: string | null
   tier: ListingTier
+  source: ListingSource
   category: ListingCategory | null
   tags: ListingTag[]
   tech_stack: string[]

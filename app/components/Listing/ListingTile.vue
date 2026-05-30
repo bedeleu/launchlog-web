@@ -38,7 +38,14 @@ const cardClass = computed(() => {
     :class="cardClass"
   >
     <!-- Screenshot thumb: fixed 16:10 aspect to avoid layout shift -->
-    <div class="aspect-[16/10] w-full overflow-hidden bg-white/[0.03]">
+    <div class="relative aspect-[16/10] w-full overflow-hidden bg-white/[0.03]">
+      <!-- Founding listing marker (D-060) — origin, independent of billing tier -->
+      <span
+        v-if="listing.source === 'founding'"
+        class="absolute left-2 top-2 z-10 inline-flex items-center rounded-full border border-brand-border bg-brand-bg/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand-fg/85 backdrop-blur"
+      >
+        Founding
+      </span>
       <img
         v-if="listing.screenshot_url"
         :src="listing.screenshot_url"
