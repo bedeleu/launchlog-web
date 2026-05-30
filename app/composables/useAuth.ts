@@ -51,6 +51,14 @@ export const useAuth = () => {
     await signOut($firebase.auth)
   }
 
+  // Resolves once Firebase has restored persisted auth state, so guards/admin
+  // checks on a hard reload don't run before currentUser is hydrated.
+  const waitForAuthReady = async (): Promise<void> => {
+    if (!import.meta.client) return
+    const { $firebase } = useNuxtApp() as any
+    await $firebase?.auth?.authStateReady?.()
+  }
+
   const getIdToken = async (forceRefresh = false): Promise<string | null> => {
     if (!import.meta.client) return null
     const { $firebase } = useNuxtApp() as any
@@ -88,6 +96,7 @@ export const useAuth = () => {
     sendMagicLink,
     completeMagicLink,
     logout,
+    waitForAuthReady,
     getIdToken,
     getClaims,
     refreshTokenClaims,

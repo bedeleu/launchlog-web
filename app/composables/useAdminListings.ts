@@ -1,0 +1,102 @@
+import type { ListingSource, ListingTier } from '~/composables/useListings'
+
+export type ListingStatus = 'draft' | 'pending_review' | 'published' | 'rejected' | 'archived' | 'spam'
+
+export interface AdminListing {
+  id: string
+  slug: string
+  name: string
+  tagline: string | null
+  description: string | null
+  link_text: string | null
+  url: string
+  screenshot_url: string | null
+  status: ListingStatus
+  tier: ListingTier | null
+  source: ListingSource
+  primary_category_id: string | null
+  category: { id: string, slug: string, name: string } | null
+  tags: { slug: string, name: string }[]
+  tech_stack: string[]
+  country: string | null
+  pricing: { low: number | null, high: number | null, currency: string | null }
+  published_at: string | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+export interface AdminListingFilters {
+  status?: string
+  tier?: string
+  source?: string
+  q?: string
+}
+
+/**
+ * Admin moderation API client. Sends the Firebase ID token as a Bearer header;
+ * the backend `admin` middleware is the real authority (D-055) — these calls 403
+ * for non-admins regardless of any client gate.
+ */
+export const useAdminListings = () => {
+  const config = useRuntimeConfig()
+  const base = `${config.public.apiUrl}/api/v1/admin`
+  const { getIdToken } = useAuth()
+
+  const authHeaders = async (): Promise<Record<string, string>> => {
+    const token = await getIdToken()
+    if (!token) throw new Error('Not authenticated')
+    return { Authorization: `Bearer ${token}` }
+  }
+
+  const list = async (filters: AdminListingFilters = {}): Promise<AdminListing[]> => {
+    const query = Object.fromEntries(Object.entries(filters).filter(([, v]) => v))
+    const { data } = await $fetch<{ data: AdminListing[] }>(`${base}/listings`, {
+      headers: await authHeaders(),
+      query,
+    })
+    return data
+  }
+
+  const get = async (id: string): Promise<AdminListing> => {
+    const { data } = await $fetch<{ data: AdminListing }>(`${base}/listings/${id}`, {
+      headers: await authHeaders(),
+    })
+    return data
+  }
+
+  const create = async (payload: Partial<AdminListing>): Promise<AdminListing> => {
+    const { data } = await $fetch<{ data: AdminListing }>(`${base}/listings`, {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: payload,
+    })
+    return data
+  }
+
+  const update = async (id: string, payload: Partial<AdminListing>): Promise<AdminListing> => {
+    const { data } = await $fetch<{ data: AdminListing }>(`${base}/listings/${id}`, {
+      method: 'PATCH',
+      headers: await authHeaders(),
+      body: payload,
+    })
+    return data
+  }
+
+  const action = async (id: string, verb: 'publish' | 'unpublish' | 'reject'): Promise<AdminListing> => {
+    const { data } = await $fetch<{ data: AdminListing }>(`${base}/listings/${id}/${verb}`, {
+      method: 'POST',
+      headers: await authHeaders(),
+    })
+    return data
+  }
+
+  return {
+    list,
+    get,
+    create,
+    update,
+    publish: (id: string) => action(id, 'publish'),
+    unpublish: (id: string) => action(id, 'unpublish'),
+    reject: (id: string) => action(id, 'reject'),
+  }
+}
