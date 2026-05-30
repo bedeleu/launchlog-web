@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ImageOff, RefreshCw, Search, Sparkles } from '@lucide/vue'
+import { ImageOff, Search, Sparkles } from '@lucide/vue'
 import type { Preview } from '~/composables/usePreviews'
 
 const props = defineProps<{
@@ -60,7 +60,7 @@ const samples = [
               <img v-if="hasShot" :src="preview.screenshot_url!" :alt="`Screenshot of ${preview.domain}`" class="h-full w-full object-cover object-top">
               <div v-else class="flex h-full flex-col items-center justify-center gap-1.5 text-center">
                 <template v-if="generating">
-                  <RefreshCw class="size-6 animate-spin text-brand-accent" />
+                  <AppSpinner size="size-6" label="Generating screenshot" />
                   <span class="text-xs text-brand-muted">Generating screenshot…</span>
                 </template>
                 <template v-else>
@@ -104,7 +104,7 @@ const samples = [
               <div class="aspect-video w-full overflow-hidden border-b border-brand-border bg-muted">
                 <img v-if="hasShot" :src="preview.screenshot_url!" :alt="`Screenshot of ${preview.domain}`" class="h-full w-full object-cover object-top">
                 <div v-else class="flex h-full items-center justify-center">
-                  <RefreshCw v-if="generating" class="size-5 animate-spin text-brand-accent" />
+                  <AppSpinner v-if="generating" size="size-5" label="Generating screenshot" />
                   <ImageOff v-else class="size-5 text-brand-muted" />
                 </div>
               </div>
@@ -155,7 +155,7 @@ const samples = [
             <div class="aspect-video w-full overflow-hidden border-b border-brand-border bg-muted">
               <img v-if="hasShot" :src="preview.screenshot_url!" :alt="`Screenshot of ${preview.domain}`" class="h-full w-full object-cover object-top">
               <div v-else class="flex h-full items-center justify-center">
-                <RefreshCw v-if="generating" class="size-5 animate-spin text-brand-accent" />
+                <AppSpinner v-if="generating" size="size-5" label="Generating screenshot" />
                 <ImageOff v-else class="size-5 text-brand-muted" />
               </div>
             </div>

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { toTypedSchema } from '@vee-validate/zod'
-import { RefreshCw } from '@lucide/vue'
 import { useForm } from 'vee-validate'
 import * as z from 'zod'
 import { Button } from '@/components/ui/button'
@@ -79,7 +78,7 @@ const onSubmit = handleSubmit(async (values) => {
         class="h-12 flex-1 text-base"
       />
       <Button type="submit" size="lg" class="h-12 px-6" :disabled="submitting">
-        <RefreshCw v-if="submitting" class="size-4 animate-spin" />
+        <AppSpinner v-if="submitting" color="text-current" />
         {{ submitting ? 'Generating preview…' : (known ? 'View your preview' : 'Preview my listing') }}
       </Button>
     </div>
