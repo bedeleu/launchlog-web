@@ -6,6 +6,7 @@ const route = useRoute()
 const open = ref(false)
 const { user, isAdmin, logout, waitForAuthReady } = useAuth()
 const admin = ref(false)
+const authReady = ref(false)
 
 const nav = [
   { label: 'Home', to: '/' },
@@ -27,6 +28,7 @@ const signOut = async () => {
 onMounted(async () => {
   await waitForAuthReady()
   admin.value = await isAdmin()
+  authReady.value = true
 })
 
 // Close the mobile drawer on navigation.
@@ -70,18 +72,20 @@ watch(user, async () => {
         <NuxtLink to="/browse-all" aria-label="Search products" class="rounded-md p-2 text-brand-muted transition-colors hover:text-brand-fg">
           <Search class="size-5" />
         </NuxtLink>
-        <NuxtLink v-if="admin" to="/admin/listings" class="px-3 py-2 text-sm font-medium text-emerald-300 transition-colors hover:text-brand-fg">
-          Admin
-        </NuxtLink>
-        <NuxtLink v-if="user && !admin" to="/dashboard" class="px-3 py-2 text-sm font-medium text-brand-muted transition-colors hover:text-brand-fg">
-          Dashboard
-        </NuxtLink>
-        <button v-if="user" type="button" class="px-3 py-2 text-sm font-medium text-brand-muted transition-colors hover:text-brand-fg" @click="signOut">
-          Sign out
-        </button>
-        <NuxtLink v-else to="/login" class="px-3 py-2 text-sm font-medium text-brand-muted transition-colors hover:text-brand-fg">
-          Login
-        </NuxtLink>
+        <template v-if="authReady">
+          <NuxtLink v-if="admin" to="/admin/listings" class="px-3 py-2 text-sm font-medium text-emerald-300 transition-colors hover:text-brand-fg">
+            Admin
+          </NuxtLink>
+          <NuxtLink v-if="user && !admin" to="/dashboard" class="px-3 py-2 text-sm font-medium text-brand-muted transition-colors hover:text-brand-fg">
+            Dashboard
+          </NuxtLink>
+          <button v-if="user" type="button" class="px-3 py-2 text-sm font-medium text-brand-muted transition-colors hover:text-brand-fg" @click="signOut">
+            Sign out
+          </button>
+          <NuxtLink v-else to="/login" class="px-3 py-2 text-sm font-medium text-brand-muted transition-colors hover:text-brand-fg">
+            Login
+          </NuxtLink>
+        </template>
         <Button as-child>
           <NuxtLink to="/submit">Get started</NuxtLink>
         </Button>
@@ -117,18 +121,20 @@ watch(user, async () => {
             {{ item.label }}
           </NuxtLink>
           <div class="mt-2 flex items-center gap-2 border-t border-brand-border pt-3">
-            <NuxtLink v-if="admin" to="/admin/listings" class="flex-1 rounded-md px-3 py-2.5 text-center text-sm font-medium text-emerald-300 hover:text-brand-fg">
-              Admin
-            </NuxtLink>
-            <NuxtLink v-else-if="user" to="/dashboard" class="flex-1 rounded-md px-3 py-2.5 text-center text-sm font-medium text-brand-muted hover:text-brand-fg">
-              Dashboard
-            </NuxtLink>
-            <NuxtLink v-else to="/login" class="flex-1 rounded-md px-3 py-2.5 text-center text-sm font-medium text-brand-muted hover:text-brand-fg">
-              Login
-            </NuxtLink>
-            <button v-if="user" type="button" class="flex-1 rounded-md px-3 py-2.5 text-center text-sm font-medium text-brand-muted hover:text-brand-fg" @click="signOut">
-              Sign out
-            </button>
+            <template v-if="authReady">
+              <NuxtLink v-if="admin" to="/admin/listings" class="flex-1 rounded-md px-3 py-2.5 text-center text-sm font-medium text-emerald-300 hover:text-brand-fg">
+                Admin
+              </NuxtLink>
+              <NuxtLink v-else-if="user" to="/dashboard" class="flex-1 rounded-md px-3 py-2.5 text-center text-sm font-medium text-brand-muted hover:text-brand-fg">
+                Dashboard
+              </NuxtLink>
+              <NuxtLink v-else to="/login" class="flex-1 rounded-md px-3 py-2.5 text-center text-sm font-medium text-brand-muted hover:text-brand-fg">
+                Login
+              </NuxtLink>
+              <button v-if="user" type="button" class="flex-1 rounded-md px-3 py-2.5 text-center text-sm font-medium text-brand-muted hover:text-brand-fg" @click="signOut">
+                Sign out
+              </button>
+            </template>
             <Button as-child class="flex-1">
               <NuxtLink to="/submit">Get started</NuxtLink>
             </Button>
