@@ -32,6 +32,20 @@ export interface AdminListingFilters {
   q?: string
 }
 
+export interface FounderScreenshotRun {
+  status: 'started'
+  limit: number
+  dry_run: boolean
+  pid: string
+  log_file: string
+}
+
+export interface FounderScreenshotStatus {
+  log_file: string | null
+  modified_at: string | null
+  tail: string[]
+}
+
 /**
  * Admin moderation API client. Sends the Firebase ID token as a Bearer header;
  * the backend `admin` middleware is the real authority (D-055) — these calls 403
@@ -90,6 +104,22 @@ export const useAdminListings = () => {
     return data
   }
 
+  const runFounderScreenshots = async (limit = 50, dryRun = false): Promise<FounderScreenshotRun> => {
+    const { data } = await $fetch<{ data: FounderScreenshotRun }>(`${base}/founding-screenshots/run`, {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: { limit, dry_run: dryRun },
+    })
+    return data
+  }
+
+  const founderScreenshotStatus = async (): Promise<FounderScreenshotStatus> => {
+    const { data } = await $fetch<{ data: FounderScreenshotStatus }>(`${base}/founding-screenshots/status`, {
+      headers: await authHeaders(),
+    })
+    return data
+  }
+
   return {
     list,
     get,
@@ -98,5 +128,7 @@ export const useAdminListings = () => {
     publish: (id: string) => action(id, 'publish'),
     unpublish: (id: string) => action(id, 'unpublish'),
     reject: (id: string) => action(id, 'reject'),
+    runFounderScreenshots,
+    founderScreenshotStatus,
   }
 }
