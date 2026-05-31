@@ -43,6 +43,13 @@ const badges: Badge[] = [
     width: 200,
     height: 54,
   },
+  {
+    href: 'https://dofollow.tools',
+    src: 'https://dofollow.tools/badge/badge_dark.svg',
+    alt: 'Featured on Dofollow.Tools',
+    width: 200,
+    height: 54,
+  },
 ]
 
 // Repeat the base set enough times to overflow the container width, then
