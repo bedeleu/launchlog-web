@@ -21,6 +21,15 @@ const tierMeta: Record<ListingTier, { label: string, classes: string }> = {
 
 const tier = computed(() => tierMeta[listing.tier] ?? tierMeta.basic)
 
+// Some founding listings carry a screenshot_url whose file isn't on the CDN yet
+// (capture pending or a stale snapshot). Fall back to the clean placeholder on
+// load error instead of showing the browser's broken-image glyph + alt text.
+const imageFailed = ref(false)
+watch(() => listing.screenshot_url, () => {
+  imageFailed.value = false
+})
+const showImage = computed(() => Boolean(listing.screenshot_url) && !imageFailed.value)
+
 // Premium/Featured get a subtly stronger card border treatment.
 const cardClass = computed(() => {
   if (listing.tier === 'featured')
@@ -47,13 +56,14 @@ const cardClass = computed(() => {
         Founding
       </span>
       <img
-        v-if="listing.screenshot_url"
-        :src="listing.screenshot_url"
+        v-if="showImage"
+        :src="listing.screenshot_url ?? undefined"
         :alt="`${listing.name} screenshot`"
         loading="lazy"
         width="640"
         height="400"
         class="size-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.03]"
+        @error="imageFailed = true"
       >
       <div v-else class="flex size-full items-center justify-center text-brand-muted">
         <ImageOff class="size-6" />

@@ -64,6 +64,11 @@ const formatDate = (iso?: string | null): string => {
 
 const isSecure = computed(() => (listing.value?.url ?? '').startsWith('https'))
 
+// Gracefully fall back to the placeholder when a screenshot_url 404s (file not
+// on the CDN yet / stale snapshot) instead of rendering a broken-image glyph.
+const heroShotFailed = ref(false)
+const failedShots = ref(new Set<string>())
+
 const descriptionParagraphs = computed<string[]>(() =>
   (listing.value?.description ?? '')
     .split(/\n{2,}/)
@@ -301,12 +306,13 @@ const tierLabel = (t?: ListingTier): string =>
         </div>
         <div class="aspect-[16/10] w-full bg-white/[0.02]">
           <img
-            v-if="listing.screenshot_url"
+            v-if="listing.screenshot_url && !heroShotFailed"
             :src="listing.screenshot_url"
             :alt="`${listing.name} screenshot`"
             class="size-full object-cover object-top"
             width="1280"
             height="800"
+            @error="heroShotFailed = true"
           >
           <div
             v-else
@@ -523,13 +529,14 @@ const tierLabel = (t?: ListingTier): string =>
           >
             <div class="aspect-[16/10] w-full overflow-hidden bg-white/[0.03]">
               <img
-                v-if="item.screenshot_url"
+                v-if="item.screenshot_url && !failedShots.has(item.slug)"
                 :src="item.screenshot_url"
                 :alt="`${item.name} screenshot`"
                 loading="lazy"
                 class="size-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.03]"
                 width="640"
                 height="400"
+                @error="failedShots.add(item.slug)"
               >
               <div v-else class="flex size-full items-center justify-center text-brand-muted">
                 <ImageOff class="size-6" />
