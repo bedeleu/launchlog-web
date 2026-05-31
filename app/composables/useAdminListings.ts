@@ -46,6 +46,28 @@ export interface FounderScreenshotStatus {
   tail: string[]
 }
 
+export interface AdminDashboard {
+  totals: {
+    listings: number
+    published: number
+    pending_review: number
+    draft: number
+    rejected: number
+    with_screenshots: number
+    missing_screenshots: number
+    founding_missing_screenshots: number
+  }
+  status_counts: Record<string, number>
+  tier_counts: Record<string, number>
+  source_counts: Record<string, number>
+  coverage: {
+    published_percent: number
+    screenshot_percent: number
+  }
+  recent_listings: AdminListing[]
+  generated_at: string
+}
+
 /**
  * Admin moderation API client. Sends the Firebase ID token as a Bearer header;
  * the backend `admin` middleware is the real authority (D-055) — these calls 403
@@ -67,6 +89,13 @@ export const useAdminListings = () => {
     const { data } = await $fetch<{ data: AdminListing[] }>(`${base}/listings`, {
       headers: await authHeaders(),
       query,
+    })
+    return data
+  }
+
+  const dashboard = async (): Promise<AdminDashboard> => {
+    const { data } = await $fetch<{ data: AdminDashboard }>(`${base}/dashboard`, {
+      headers: await authHeaders(),
     })
     return data
   }
@@ -121,6 +150,7 @@ export const useAdminListings = () => {
   }
 
   return {
+    dashboard,
     list,
     get,
     create,
