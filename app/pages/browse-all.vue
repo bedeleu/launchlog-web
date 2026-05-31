@@ -24,7 +24,7 @@ const filters = computed<Record<string, string | number>>(() => {
   return f
 })
 
-const hasFilters = computed(() => Object.keys(filters.value).length > 0)
+const hasFilters = computed(() => Boolean(activeCategory.value || activeTag.value || activeQuery.value))
 
 const { data: pageData } = await useAsyncData<ListingPage>(
   () => `browse-${JSON.stringify(filters.value)}`,
