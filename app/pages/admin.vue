@@ -137,6 +137,20 @@ const lastBatchSummary = computed(() => {
   }
 })
 
+const screenshotLimitNotice = computed(() => {
+  const line = [...(screenshotStatus.value?.tail ?? [])]
+    .reverse()
+    .find(line => line.includes('Microlink daily limit reached'))
+
+  if (!line) return null
+
+  const retryMatch = line.match(/Try again in ~([^.]+)\./)
+
+  return retryMatch
+    ? `Microlink daily limit reached. Try again in about ${retryMatch[1]}.`
+    : 'Microlink daily limit reached. Try again tomorrow.'
+})
+
 function listingStatusClass(listing: AdminListing) {
   if (listing.status === 'published') return 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300'
   if (listing.status === 'pending_review') return 'border-amber-400/30 bg-amber-400/10 text-amber-300'
@@ -289,6 +303,9 @@ onMounted(async () => {
           </div>
           <p v-if="lastBatchSummary" class="mt-2 text-xs leading-5 text-brand-muted">
             Captured = new screenshot written now. Reused = an existing R2 snapshot was attached to the listing. Failed does not count as ready.
+          </p>
+          <p v-if="screenshotLimitNotice" class="mt-3 rounded-md border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-sm text-amber-200">
+            {{ screenshotLimitNotice }}
           </p>
 
           <div v-if="screenshotMessage || screenshotStatus?.log_file" class="mt-5 rounded-md border border-white/10 bg-black/25 p-3">
