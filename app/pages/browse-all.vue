@@ -55,15 +55,16 @@ const meta = computed(() => pageData.value?.meta ?? {
   total: 0,
 })
 
-// Category chips: derived from the listings actually returned, so the
-// affordance never offers an empty filter. Featured-first ordering preserved.
-const categories = computed(() => {
-  const seen = new Map<string, string>()
-  for (const l of listings.value ?? []) {
-    if (l.category && !seen.has(l.category.slug)) seen.set(l.category.slug, l.category.name)
-  }
-  return [...seen.entries()].map(([slug, name]) => ({ slug, name }))
-})
+const categories = [
+  { slug: 'saas', name: 'SaaS' },
+  { slug: 'marketing', name: 'Marketing' },
+  { slug: 'ai-ml', name: 'AI & ML' },
+  { slug: 'developer-tools', name: 'Developer Tools' },
+  { slug: 'productivity', name: 'Productivity' },
+  { slug: 'design', name: 'Design' },
+  { slug: 'analytics', name: 'Analytics' },
+  { slug: 'fintech', name: 'Fintech' },
+]
 
 const setCategory = (slug: string) => {
   const query: Record<string, string> = { ...route.query as Record<string, string> }
@@ -139,13 +140,13 @@ useSeoMeta({
         </Button>
       </form>
 
-      <div v-if="categories.length" class="flex flex-wrap items-center gap-2">
+      <div class="flex flex-wrap items-center gap-2">
         <button
           type="button"
           class="rounded-full border px-3 py-1 text-sm transition-colors"
           :class="!activeCategory
-            ? 'border-brand-accent/50 bg-brand-accent/10 text-brand-accent'
-            : 'border-brand-border text-brand-muted hover:text-brand-fg'"
+            ? 'border-emerald-400/45 bg-emerald-400/10 text-emerald-300'
+            : 'border-brand-border text-brand-muted hover:border-white/20 hover:text-brand-fg'"
           @click="setCategory('')"
         >
           All
@@ -156,8 +157,8 @@ useSeoMeta({
           type="button"
           class="rounded-full border px-3 py-1 text-sm transition-colors"
           :class="activeCategory === cat.slug
-            ? 'border-brand-accent/50 bg-brand-accent/10 text-brand-accent'
-            : 'border-brand-border text-brand-muted hover:text-brand-fg'"
+            ? 'border-emerald-400/45 bg-emerald-400/10 text-emerald-300'
+            : 'border-brand-border text-brand-muted hover:border-white/20 hover:text-brand-fg'"
           @click="setCategory(cat.slug)"
         >
           {{ cat.name }}
@@ -168,7 +169,7 @@ useSeoMeta({
         <button
           v-if="hasFilters"
           type="button"
-          class="ml-1 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-sm text-brand-accent transition-colors hover:text-brand-fg"
+          class="ml-1 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-sm text-emerald-300 transition-colors hover:text-brand-fg"
           @click="clearFilters"
         >
           <X class="size-3.5" /> Clear filters
@@ -219,8 +220,8 @@ useSeoMeta({
             type="button"
             class="flex size-10 items-center justify-center rounded-md border text-sm font-medium transition-colors"
             :class="page === meta.current_page
-              ? 'border-brand-accent bg-brand-accent text-white'
-              : 'border-brand-border text-brand-muted hover:border-brand-accent/50 hover:text-brand-fg'"
+              ? 'border-emerald-400 bg-emerald-400 text-slate-950'
+              : 'border-brand-border text-brand-muted hover:border-white/20 hover:text-brand-fg'"
             :aria-current="page === meta.current_page ? 'page' : undefined"
             @click="setPage(page)"
           >
@@ -248,7 +249,7 @@ useSeoMeta({
       <button
         v-if="hasFilters"
         type="button"
-        class="mt-6 inline-flex items-center gap-1.5 text-sm font-medium text-brand-accent transition-colors hover:text-brand-fg"
+        class="mt-6 inline-flex items-center gap-1.5 text-sm font-medium text-emerald-300 transition-colors hover:text-brand-fg"
         @click="clearFilters"
       >
         <X class="size-4" /> Clear filters

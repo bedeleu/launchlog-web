@@ -1,14 +1,23 @@
 <script setup lang="ts">
 const { user, loginWithGoogle, sendMagicLink, completeMagicLink, logout } = useAuth()
+const route = useRoute()
 
 const email = ref('')
 const status = ref<string | null>(null)
 const error = ref<string | null>(null)
+const redirectTo = computed(() => typeof route.query.redirect === 'string' ? route.query.redirect : '/admin/listings')
+
+const finishLogin = async () => {
+  await navigateTo(redirectTo.value)
+}
 
 onMounted(async () => {
   try {
     const r = await completeMagicLink()
-    if (r) status.value = `Magic link consumed — signed in as ${r.user.email}`
+    if (r) {
+      status.value = `Magic link consumed — signed in as ${r.user.email}`
+      await finishLogin()
+    }
   } catch (e: any) {
     error.value = e?.message ?? 'Magic link verification failed'
   }
@@ -18,7 +27,10 @@ const onGoogle = async () => {
   error.value = null
   try {
     const r = await loginWithGoogle()
-    if (r) status.value = `Signed in as ${r.user.email}`
+    if (r) {
+      status.value = `Signed in as ${r.user.email}`
+      await finishLogin()
+    }
   } catch (e: any) {
     error.value = e?.message ?? 'Google sign-in failed'
   }
@@ -47,6 +59,12 @@ useSeoMeta({ title: 'Sign in | LaunchLog' })
       <p>
         Signed in as <strong>{{ user.email }}</strong>
       </p>
+      <NuxtLink
+        :to="redirectTo"
+        class="inline-flex rounded border border-white/10 px-4 py-2 hover:bg-white/5"
+      >
+        Continue
+      </NuxtLink>
       <button class="rounded border border-white/10 px-4 py-2 hover:bg-white/5" @click="logout">
         Sign out
       </button>
