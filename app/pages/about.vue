@@ -124,12 +124,6 @@ useHead({
             makesOffer: [
               {
                 '@type': 'Offer',
-                name: 'Free LaunchLog founding listing',
-                price: '0',
-                priceCurrency: 'USD',
-              },
-              {
-                '@type': 'Offer',
                 name: 'Basic LaunchLog listing',
                 price: '24.99',
                 priceCurrency: 'USD',
