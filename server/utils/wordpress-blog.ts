@@ -67,6 +67,9 @@ export async function fetchWordPressPosts(limit = 24): Promise<BlogPost[]> {
     headers: {
       'User-Agent': 'LaunchLogBot/1.0 (+https://launchlog.ai)',
     },
+    // Fail fast if the WordPress host is cold/slow so SSR pages and /llms-full.txt
+    // don't hang on the platform's default TCP timeout.
+    timeout: 8000,
   })
 
   return posts.map((post) => mapWordPressPost(post, baseUrl))
@@ -84,6 +87,7 @@ export async function fetchWordPressPostBySlug(slug: string): Promise<BlogPost |
     headers: {
       'User-Agent': 'LaunchLogBot/1.0 (+https://launchlog.ai)',
     },
+    timeout: 8000,
   })
 
   const post = posts[0]

@@ -4,6 +4,8 @@ export default defineEventHandler((event) => {
   setHeader(event, 'Content-Type', 'text/plain; charset=utf-8')
   setHeader(event, 'Cache-Control', 'public, max-age=86400')
   const site = getSiteUrl()
+  // Prefix matches: `/preview` also covers `/preview/<token>`. Intentional — keep
+  // private preview tokens out of crawlers. Avoid adding a PUBLIC `/preview*` route.
   const disallow = ['/admin', '/dashboard', '/login', '/checkout', '/preview']
   const aiBots = [
     'GPTBot',

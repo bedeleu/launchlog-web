@@ -48,7 +48,10 @@ export default defineEventHandler(async (event) => {
     lines.push('(No public listings indexed yet.)')
   } else {
     for (const l of listings) {
-      lines.push(`- ${l.name} — ${l.tagline}`)
+      // Strip newlines so a stray newline in an API-sourced field can't break the line-based format.
+      const name = (l.name ?? '').replace(/[\r\n]+/g, ' ').trim()
+      const tagline = (l.tagline ?? '').replace(/[\r\n]+/g, ' ').trim()
+      lines.push(`- ${name} — ${tagline}`)
       lines.push(`  ${site}/listing/${l.slug}`)
     }
   }
