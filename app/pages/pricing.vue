@@ -2,10 +2,25 @@
 import { ArrowRight, Bot, Check, FileJson2, Image, Minus, Search, ShieldCheck, Sparkles, Zap } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 
+const config = useRuntimeConfig()
+const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
+const ogImageUrl = `${siteUrl}/og-image.jpg`
+
 useSeoMeta({
   title: 'Pricing | LaunchLog',
   description: 'Simple annual pricing for LaunchLog listings, built for SEO, AI discovery, and launch visibility.',
+  ogTitle: 'LaunchLog Pricing — Basic $24.99, Premium $59.99, Featured $99/year',
+  ogDescription: 'Annual LaunchLog listing packages. Pay only when you publish. Every plan ships schema.org structured data and AI-readable pages.',
+  ogUrl: `${siteUrl}/pricing`,
+  ogImage: ogImageUrl,
+  twitterCard: 'summary_large_image',
+  twitterImage: ogImageUrl,
 })
+
+useBreadcrumbs([
+  { name: 'Home', path: '/' },
+  { name: 'Pricing', path: '/pricing' },
+])
 
 const { plans } = usePlans()
 
@@ -104,6 +119,9 @@ const faqs = [
     answer: 'Yes. LaunchLog includes a 7-day money-back guarantee for paid listings.',
   },
 ]
+
+// Expose the same visible FAQ as FAQPage structured data (answer-first, citable by search + AI).
+useFaqSchema(faqs.map(f => ({ q: f.question, a: f.answer })))
 </script>
 
 <template>
