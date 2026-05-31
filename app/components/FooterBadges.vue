@@ -26,8 +26,13 @@ const badges: Badge[] = [
   },
 ]
 
-// Duplicate the list so the marquee loops seamlessly.
-const track = computed(() => [...badges, ...badges])
+// Repeat the base set enough times to overflow the container width, then
+// duplicate that whole half so translateX(-50%) loops seamlessly. With only
+// a couple of badges this is what keeps the strip flowing full-width instead
+// of clumping on the left with empty space to the right.
+const REPEAT = 6
+const half = Array.from({ length: REPEAT }, () => badges).flat()
+const track = computed(() => [...half, ...half])
 </script>
 
 <template>
@@ -46,7 +51,7 @@ const track = computed(() => [...badges, ...badges])
         <div class="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-brand-bg to-transparent" />
         <div class="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-brand-bg to-transparent" />
 
-        <ul class="marquee flex w-max items-center gap-10">
+        <ul class="marquee flex w-max items-center gap-6">
           <li
             v-for="(badge, i) in track"
             :key="`${badge.href}-${i}`"
@@ -78,7 +83,7 @@ const track = computed(() => [...badges, ...badges])
 
 <style scoped>
 .marquee {
-  animation: scroll-x 30s linear infinite;
+  animation: scroll-x 45s linear infinite;
 }
 
 /* Pause when the user hovers the strip. */
