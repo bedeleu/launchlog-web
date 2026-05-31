@@ -48,6 +48,20 @@ export interface Listing extends ListingCard {
   enriched_at: string | null
 }
 
+export interface ListingPaginationMeta {
+  current_page: number
+  from: number | null
+  last_page: number
+  per_page: number
+  to: number | null
+  total: number
+}
+
+export interface ListingPage {
+  data: ListingCard[]
+  meta: ListingPaginationMeta
+}
+
 /**
  * Public listings API. Published listings only — getListing throws (404) for
  * anything not live. Responses are Laravel JsonResource envelopes ({ data }).
@@ -71,5 +85,13 @@ export const useListings = () => {
     return data
   }
 
-  return { getListing, listListings }
+  const listListingPage = async (
+    params?: Record<string, string | number>,
+  ): Promise<ListingPage> => {
+    return await $fetch<ListingPage>(`${base}/listings`, {
+      query: params,
+    })
+  }
+
+  return { getListing, listListings, listListingPage }
 }

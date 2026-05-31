@@ -1,19 +1,23 @@
 <script setup lang="ts">
 import { Search, X } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
-import type { ListingCard } from '~/composables/useListings'
+import type { ListingPage } from '~/composables/useListings'
 
 const route = useRoute()
-const { listListings } = useListings()
+const { listListingPage } = useListings()
 
 // Active filters derived from the route query so deep links
 // (/browse-all?category=x, ?tag=y, ?q=z) work and are SSR-safe.
 const activeCategory = computed(() => (route.query.category as string) || '')
 const activeTag = computed(() => (route.query.tag as string) || '')
 const activeQuery = computed(() => (route.query.q as string) || '')
+const activePage = computed(() => {
+  const page = Number(route.query.page || 1)
+  return Number.isInteger(page) && page > 0 ? page : 1
+})
 
-const filters = computed<Record<string, string>>(() => {
-  const f: Record<string, string> = {}
+const filters = computed<Record<string, string | number>>(() => {
+  const f: Record<string, string | number> = { page: activePage.value }
   if (activeCategory.value) f.category = activeCategory.value
   if (activeTag.value) f.tag = activeTag.value
   if (activeQuery.value) f.q = activeQuery.value
@@ -22,11 +26,34 @@ const filters = computed<Record<string, string>>(() => {
 
 const hasFilters = computed(() => Object.keys(filters.value).length > 0)
 
-const { data: listings } = await useAsyncData<ListingCard[]>(
+const { data: pageData } = await useAsyncData<ListingPage>(
   () => `browse-${JSON.stringify(filters.value)}`,
-  () => listListings(filters.value),
-  { default: () => [], watch: [filters] },
+  () => listListingPage(filters.value),
+  {
+    default: () => ({
+      data: [],
+      meta: {
+        current_page: 1,
+        from: null,
+        last_page: 1,
+        per_page: 24,
+        to: null,
+        total: 0,
+      },
+    }),
+    watch: [filters],
+  },
 )
+
+const listings = computed(() => pageData.value?.data ?? [])
+const meta = computed(() => pageData.value?.meta ?? {
+  current_page: 1,
+  from: null,
+  last_page: 1,
+  per_page: 24,
+  to: null,
+  total: 0,
+})
 
 // Category chips: derived from the listings actually returned, so the
 // affordance never offers an empty filter. Featured-first ordering preserved.
@@ -42,6 +69,7 @@ const setCategory = (slug: string) => {
   const query: Record<string, string> = { ...route.query as Record<string, string> }
   if (slug && slug !== activeCategory.value) query.category = slug
   else delete query.category
+  delete query.page
   navigateTo({ path: '/browse-all', query })
 }
 
@@ -53,10 +81,29 @@ const submitSearch = () => {
   const q = search.value.trim()
   if (q) query.q = q
   else delete query.q
+  delete query.page
   navigateTo({ path: '/browse-all', query })
 }
 
 const clearFilters = () => navigateTo({ path: '/browse-all', query: {} })
+
+const setPage = (page: number) => {
+  const target = Math.max(1, Math.min(meta.value.last_page, page))
+  const query: Record<string, string> = { ...route.query as Record<string, string> }
+  if (target > 1) query.page = String(target)
+  else delete query.page
+  navigateTo({ path: '/browse-all', query })
+}
+
+const pageNumbers = computed(() => {
+  const last = meta.value.last_page
+  const current = meta.value.current_page
+  const start = Math.max(1, current - 2)
+  const end = Math.min(last, current + 2)
+  const pages = new Set<number>([1, last])
+  for (let page = start; page <= end; page++) pages.add(page)
+  return [...pages].sort((a, b) => a - b)
+})
 
 useSeoMeta({
   title: 'Browse all — LaunchLog',
@@ -130,16 +177,65 @@ useSeoMeta({
     </div>
 
     <!-- Grid -->
-    <div
-      v-if="listings && listings.length"
-      class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
-    >
-      <ListingTile
-        v-for="listing in listings"
-        :key="listing.slug"
-        :listing="listing"
-      />
-    </div>
+    <template v-if="listings.length">
+      <div class="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-brand-muted">
+        <span>
+          Showing {{ meta.from }}–{{ meta.to }} of {{ meta.total }} products
+        </span>
+        <span>
+          Page {{ meta.current_page }} of {{ meta.last_page }}
+        </span>
+      </div>
+
+      <div class="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <ListingTile
+          v-for="listing in listings"
+          :key="listing.slug"
+          :listing="listing"
+        />
+      </div>
+
+      <nav
+        v-if="meta.last_page > 1"
+        class="mt-10 flex flex-wrap items-center justify-center gap-2"
+        aria-label="Browse pagination"
+      >
+        <Button
+          variant="outline"
+          :disabled="meta.current_page <= 1"
+          @click="setPage(meta.current_page - 1)"
+        >
+          Previous
+        </Button>
+        <template v-for="(page, index) in pageNumbers" :key="page">
+          <span
+            v-if="index > 0 && pageNumbers[index - 1] !== page - 1"
+            class="px-1 text-sm text-brand-muted"
+            aria-hidden="true"
+          >
+            …
+          </span>
+          <button
+            type="button"
+            class="flex size-10 items-center justify-center rounded-md border text-sm font-medium transition-colors"
+            :class="page === meta.current_page
+              ? 'border-brand-accent bg-brand-accent text-white'
+              : 'border-brand-border text-brand-muted hover:border-brand-accent/50 hover:text-brand-fg'"
+            :aria-current="page === meta.current_page ? 'page' : undefined"
+            @click="setPage(page)"
+          >
+            {{ page }}
+          </button>
+        </template>
+        <Button
+          variant="outline"
+          :disabled="meta.current_page >= meta.last_page"
+          @click="setPage(meta.current_page + 1)"
+        >
+          Next
+        </Button>
+      </nav>
+    </template>
 
     <!-- Empty state -->
     <div v-else class="mt-16 rounded-2xl border border-brand-border bg-white/[0.02] py-20 text-center">
