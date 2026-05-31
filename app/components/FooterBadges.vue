@@ -36,6 +36,13 @@ const badges: Badge[] = [
     src: 'https://sellwithboost.com/badge/listing-dark.svg',
     alt: 'Listed on Sell With Boost',
   },
+  {
+    href: 'https://wired.business',
+    src: 'https://wired.business/badge0-dark.svg',
+    alt: 'Featured on Wired Business',
+    width: 200,
+    height: 54,
+  },
 ]
 
 // Repeat the base set enough times to overflow the container width, then
