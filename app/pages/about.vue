@@ -60,9 +60,18 @@ useSeoMeta({
   ogDescription: aboutDescription,
   ogUrl: aboutUrl,
   ogType: 'website',
+  ogImage: `${siteUrl}/og-image.jpg`,
+  ogImageSecureUrl: `${siteUrl}/og-image.jpg`,
+  twitterCard: 'summary_large_image',
   twitterTitle: 'About LaunchLog',
   twitterDescription: aboutDescription,
+  twitterImage: `${siteUrl}/og-image.jpg`,
 })
+
+useBreadcrumbs([
+  { name: 'Home', path: '/' },
+  { name: 'About', path: '/about' },
+])
 
 useHead({
   link: [

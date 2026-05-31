@@ -10,10 +10,23 @@ const { data: listings } = await useAsyncData<ListingCard[]>(
   { default: () => [] },
 )
 
+const config = useRuntimeConfig()
+const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
+const ogImageUrl = `${siteUrl}/og-image.jpg`
+
 useSeoMeta({
   title: 'Featured products — LaunchLog',
   description: 'Featured products on LaunchLog — premium placement for standout launches.',
+  ogUrl: `${siteUrl}/featured`,
+  ogImage: ogImageUrl,
+  twitterCard: 'summary_large_image',
+  twitterImage: ogImageUrl,
 })
+
+useBreadcrumbs([
+  { name: 'Home', path: '/' },
+  { name: 'Featured', path: '/featured' },
+])
 </script>
 
 <template>

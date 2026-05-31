@@ -26,10 +26,23 @@ const listings = computed(() =>
   (all.value ?? []).filter(l => l.category && TECH_CATEGORIES.has(l.category.slug)),
 )
 
+const config = useRuntimeConfig()
+const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
+const ogImageUrl = `${siteUrl}/og-image.jpg`
+
 useSeoMeta({
   title: 'Tech products — LaunchLog',
   description: 'Developer tools, DevOps, AI/ML, APIs, no-code, and open-source launches on LaunchLog.',
+  ogUrl: `${siteUrl}/tech-products`,
+  ogImage: ogImageUrl,
+  twitterCard: 'summary_large_image',
+  twitterImage: ogImageUrl,
 })
+
+useBreadcrumbs([
+  { name: 'Home', path: '/' },
+  { name: 'Tech products', path: '/tech-products' },
+])
 </script>
 
 <template>

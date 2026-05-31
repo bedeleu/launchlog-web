@@ -76,9 +76,18 @@ useSeoMeta({
   ogDescription: description,
   ogUrl: pageUrl,
   ogType: 'article',
+  ogImage: `${siteUrl}/og-image.jpg`,
+  ogImageSecureUrl: `${siteUrl}/og-image.jpg`,
+  twitterCard: 'summary_large_image',
   twitterTitle: 'The 2026 SEO & AI Discovery Guide',
   twitterDescription: description,
+  twitterImage: `${siteUrl}/og-image.jpg`,
 })
+
+useBreadcrumbs([
+  { name: 'Home', path: '/' },
+  { name: 'SEO Guide', path: '/seo-guide' },
+])
 
 useHead({
   link: [{ rel: 'canonical', href: pageUrl }],

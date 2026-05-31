@@ -106,10 +106,23 @@ const pageNumbers = computed(() => {
   return [...pages].sort((a, b) => a - b)
 })
 
+const config = useRuntimeConfig()
+const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
+const ogImageUrl = `${siteUrl}/og-image.jpg`
+
 useSeoMeta({
   title: 'Browse all — LaunchLog',
   description: 'Browse every product on LaunchLog — the log of what just shipped.',
+  ogUrl: `${siteUrl}/browse-all`,
+  ogImage: ogImageUrl,
+  twitterCard: 'summary_large_image',
+  twitterImage: ogImageUrl,
 })
+
+useBreadcrumbs([
+  { name: 'Home', path: '/' },
+  { name: 'Browse all', path: '/browse-all' },
+])
 </script>
 
 <template>
