@@ -1,16 +1,19 @@
 <script setup lang="ts">
 import { ArrowRight, Camera, CheckCircle2, Clock3, FilePlus2, Gauge, ListChecks, ShieldCheck, Sparkles } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
-import type { AdminDashboard, AdminListing } from '~/composables/useAdminListings'
+import type { AdminDashboard, AdminListing, FounderScreenshotStatus } from '~/composables/useAdminListings'
 
 definePageMeta({ middleware: 'admin' })
 useHead({ title: 'Admin · LaunchLog' })
 
-const { dashboard } = useAdminListings()
+const { dashboard, runFounderScreenshots, founderScreenshotStatus } = useAdminListings()
 
 const data = ref<AdminDashboard | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
+const screenshotStatus = ref<FounderScreenshotStatus | null>(null)
+const screenshotBusy = ref(false)
+const screenshotMessage = ref<string | null>(null)
 
 async function loadDashboard() {
   loading.value = true
@@ -24,6 +27,29 @@ async function loadDashboard() {
   }
   finally {
     loading.value = false
+  }
+}
+
+async function refreshScreenshotStatus() {
+  screenshotStatus.value = await founderScreenshotStatus()
+}
+
+async function startScreenshotBatch(dryRun = false) {
+  screenshotBusy.value = true
+  screenshotMessage.value = null
+  error.value = null
+
+  try {
+    const run = await runFounderScreenshots(50, dryRun)
+    screenshotMessage.value = `${dryRun ? 'Dry run' : 'Screenshot batch'} started in Railway. PID ${run.pid}.`
+    await refreshScreenshotStatus()
+    await loadDashboard()
+  }
+  catch (e: any) {
+    error.value = e?.data?.message ?? e?.data?.error ?? e?.message ?? 'Could not start screenshot batch'
+  }
+  finally {
+    screenshotBusy.value = false
   }
 }
 
@@ -100,7 +126,15 @@ function listingStatusClass(listing: AdminListing) {
   return 'border-white/10 bg-white/[0.04] text-slate-400'
 }
 
-onMounted(loadDashboard)
+onMounted(async () => {
+  await loadDashboard()
+  try {
+    await refreshScreenshotStatus()
+  }
+  catch {
+    screenshotStatus.value = null
+  }
+})
 </script>
 
 <template>
@@ -202,17 +236,34 @@ onMounted(loadDashboard)
           </div>
 
           <div class="mt-5 flex flex-wrap gap-2">
-            <Button as-child>
-              <NuxtLink to="/admin/listings">
-                Run screenshot batch
-                <ArrowRight class="ml-2 size-4" />
-              </NuxtLink>
+            <Button :disabled="screenshotBusy || data.totals.founding_missing_screenshots === 0" @click="startScreenshotBatch(false)">
+              <AppSpinner v-if="screenshotBusy" class="mr-2" color="text-current" label="Starting screenshot batch" />
+              Run 50 screenshots
+              <ArrowRight v-if="!screenshotBusy" class="ml-2 size-4" />
+            </Button>
+            <Button variant="outline" :disabled="screenshotBusy" @click="startScreenshotBatch(true)">
+              Dry run
             </Button>
             <Button as-child variant="outline">
               <NuxtLink to="/browse-all" target="_blank">
                 View public directory
               </NuxtLink>
             </Button>
+          </div>
+
+          <div v-if="screenshotMessage || screenshotStatus?.log_file" class="mt-5 rounded-md border border-white/10 bg-black/25 p-3">
+            <p v-if="screenshotMessage" class="text-sm text-emerald-300">
+              {{ screenshotMessage }}
+            </p>
+            <div v-if="screenshotStatus?.log_file" class="mt-3">
+              <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-brand-muted">
+                <span>{{ screenshotStatus.log_file }}</span>
+                <button type="button" class="text-emerald-300 hover:text-emerald-200" @click="refreshScreenshotStatus">
+                  Refresh log
+                </button>
+              </div>
+              <pre class="mt-3 max-h-40 overflow-auto whitespace-pre-wrap text-xs leading-relaxed text-brand-muted">{{ screenshotStatus.tail.join('\n') }}</pre>
+            </div>
           </div>
         </article>
 
