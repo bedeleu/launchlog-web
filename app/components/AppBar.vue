@@ -29,7 +29,7 @@ watch(() => route.path, () => { open.value = false })
     <div class="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4">
       <!-- Brand -->
       <NuxtLink to="/" class="flex shrink-0 items-center gap-2.5">
-        <img src="/images/logo.webp" alt="LaunchLog" width="32" height="32" class="size-8 rounded-md">
+        <img src="/images/logo.webp" alt="LaunchLog" width="32" height="32" class="size-8">
         <span class="text-lg font-bold tracking-tight text-brand-fg">
           LaunchLog<span class="text-brand-muted">.ai</span>
         </span>

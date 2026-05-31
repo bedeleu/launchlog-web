@@ -115,13 +115,13 @@ useSeoMeta({
         >
           {{ cat.name }}
         </button>
-      </div>
 
-      <div v-if="hasFilters" class="flex flex-wrap items-center gap-2 text-sm text-brand-muted">
-        <span v-if="activeTag">Tag: <span class="text-brand-fg">{{ activeTag }}</span></span>
+        <!-- Clear filters sits inline with the pills so toggling a filter never
+             pushes a new row in and grows the layout. -->
         <button
+          v-if="hasFilters"
           type="button"
-          class="inline-flex items-center gap-1 text-brand-accent transition-colors hover:text-brand-fg"
+          class="ml-1 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-sm text-brand-accent transition-colors hover:text-brand-fg"
           @click="clearFilters"
         >
           <X class="size-3.5" /> Clear filters

@@ -48,7 +48,7 @@ const columns = [
       <div class="grid gap-10 md:grid-cols-2 lg:grid-cols-[1.4fr_repeat(4,1fr)]">
         <div class="max-w-xs">
           <NuxtLink to="/" class="flex items-center gap-2.5">
-            <img src="/images/logo.webp" alt="LaunchLog" width="32" height="32" class="size-8 rounded-md">
+            <img src="/images/logo.webp" alt="LaunchLog" width="32" height="32" class="size-8">
             <span class="text-lg font-bold tracking-tight text-brand-fg">
               LaunchLog<span class="text-brand-muted">.ai</span>
             </span>
