@@ -93,6 +93,23 @@ useHead({
               '@id': `${siteUrl}/#organization`,
             },
           },
+          {
+            '@type': 'WebApplication',
+            '@id': `${siteUrl}/#software`,
+            name: 'LaunchLog',
+            url: homeUrl,
+            applicationCategory: 'BusinessApplication',
+            operatingSystem: 'Web',
+            description:
+              'A curated paid directory for indie makers, SaaS founders and tech launches, with schema.org structured data and AI-readable pages on every listing.',
+            provider: { '@id': `${siteUrl}/#organization` },
+            image: ogImageUrl,
+            offers: [
+              { '@type': 'Offer', name: 'Basic', price: '24.99', priceCurrency: 'USD' },
+              { '@type': 'Offer', name: 'Premium', price: '59.99', priceCurrency: 'USD' },
+              { '@type': 'Offer', name: 'Featured', price: '99.00', priceCurrency: 'USD' },
+            ],
+          },
         ],
       }),
     },

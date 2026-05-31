@@ -70,6 +70,12 @@ useHead({
   ],
 })
 
+useBreadcrumbs([
+  { name: 'Home', path: '/' },
+  { name: 'Blog', path: '/blog' },
+  { name: post.value?.title ?? 'Article', path: `/blog/${post.value?.slug}` },
+])
+
 function truncateDescription(value: string): string {
   if (value.length <= 155) return value
 
@@ -104,6 +110,30 @@ function truncateDescription(value: string): string {
       >
 
       <div class="blog-content mt-10" v-html="post.content" />
+
+      <aside class="border-brand-border mt-14 rounded-xl border bg-white/[0.025] p-6">
+        <p class="text-brand-fg font-semibold">
+          Get your product listed on LaunchLog
+        </p>
+        <p class="text-brand-muted mt-2 text-sm leading-6">
+          LaunchLog publishes human-reviewed listings with schema.org structured data and AI-readable
+          pages — engineered to be cited by ChatGPT, Perplexity, Claude and Gemini.
+        </p>
+        <div class="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold">
+          <NuxtLink to="/submit" class="text-brand-accent hover:underline">
+            Submit your product
+          </NuxtLink>
+          <NuxtLink to="/pricing" class="text-brand-accent hover:underline">
+            See pricing
+          </NuxtLink>
+          <NuxtLink to="/browse-all" class="text-brand-accent hover:underline">
+            Browse all listings
+          </NuxtLink>
+          <NuxtLink to="/featured" class="text-brand-accent hover:underline">
+            Featured launches
+          </NuxtLink>
+        </div>
+      </aside>
     </article>
   </main>
 </template>
