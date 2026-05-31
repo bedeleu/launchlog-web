@@ -6,7 +6,7 @@ interface Badge {
   href: string
   src: string
   alt: string
-  width: number
+  width?: number
   height?: number
 }
 
@@ -30,6 +30,11 @@ const badges: Badge[] = [
     alt: 'LaunchLog — The log of what just shipped, engineered for AI citations | Product Hunt',
     width: 250,
     height: 54,
+  },
+  {
+    href: 'https://sellwithboost.com',
+    src: 'https://sellwithboost.com/badge/listing-dark.svg',
+    alt: 'Listed on Sell With Boost',
   },
 ]
 
