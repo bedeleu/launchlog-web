@@ -24,6 +24,13 @@ const badges: Badge[] = [
     alt: 'Featured on ufind.best',
     width: 150,
   },
+  {
+    href: 'https://www.producthunt.com/products/launchlog-2?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-launchlog-2',
+    src: 'https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1159923&theme=dark',
+    alt: 'LaunchLog — The log of what just shipped, engineered for AI citations | Product Hunt',
+    width: 250,
+    height: 54,
+  },
 ]
 
 // Repeat the base set enough times to overflow the container width, then
