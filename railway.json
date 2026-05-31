@@ -2,7 +2,7 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "RAILPACK",
-    "buildCommand": "bun install --frozen-lockfile && bun run build"
+    "buildCommand": "rm -rf node_modules/.cache/nuxt .nuxt && bun install --frozen-lockfile && bun run build"
   },
   "deploy": {
     "startCommand": "node .output/server/index.mjs",
