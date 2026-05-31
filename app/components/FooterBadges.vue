@@ -66,7 +66,7 @@ const track = computed(() => [...badges, ...badges])
                 :height="badge.height"
                 loading="lazy"
                 decoding="async"
-                style="height: auto"
+                class="h-10 w-auto"
               >
             </a>
           </li>
