@@ -74,9 +74,9 @@ const kpis = computed(() => {
       accent: 'text-amber-300',
     },
     {
-      label: 'Screenshots ready',
+      label: 'R2 screenshots ready',
       value: totals?.with_screenshots ?? 0,
-      detail: `${data.value?.coverage.screenshot_percent ?? 0}% coverage`,
+      detail: `${data.value?.coverage.screenshot_percent ?? 0}% CDN coverage`,
       icon: Camera,
       accent: 'text-cyan-300',
     },
@@ -117,6 +117,24 @@ const sourceRows = computed<Array<[string, number]>>(() => {
     ['Admin', counts.admin ?? 0],
     ['Seed', counts.seed ?? 0],
   ]
+})
+
+const lastBatchSummary = computed(() => {
+  const doneLine = [...(screenshotStatus.value?.tail ?? [])]
+    .reverse()
+    .find(line => line.includes('Done. captured='))
+
+  if (!doneLine) return null
+
+  const match = doneLine.match(/captured=(\d+)\s+reused=(\d+)\s+skipped=(\d+)\s+failed=(\d+)/)
+  if (!match) return null
+
+  return {
+    captured: Number(match[1]),
+    reused: Number(match[2]),
+    skipped: Number(match[3]),
+    failed: Number(match[4]),
+  }
 })
 
 function listingStatusClass(listing: AdminListing) {
@@ -216,7 +234,7 @@ onMounted(async () => {
 
           <div class="mt-6 grid gap-3 sm:grid-cols-3">
             <div class="rounded-md border border-white/10 bg-black/20 p-3">
-              <p class="text-xs text-brand-muted">Missing screenshots</p>
+              <p class="text-xs text-brand-muted">Missing R2 screenshots</p>
               <p class="mt-2 text-2xl font-semibold text-brand-fg">
                 {{ numberFormat.format(data.totals.missing_screenshots) }}
               </p>
@@ -228,7 +246,7 @@ onMounted(async () => {
               </p>
             </div>
             <div class="rounded-md border border-white/10 bg-black/20 p-3">
-              <p class="text-xs text-brand-muted">Screenshot coverage</p>
+              <p class="text-xs text-brand-muted">CDN screenshot coverage</p>
               <p class="mt-2 text-2xl font-semibold text-brand-fg">
                 {{ data.coverage.screenshot_percent }}%
               </p>
@@ -250,6 +268,28 @@ onMounted(async () => {
               </NuxtLink>
             </Button>
           </div>
+
+          <div v-if="lastBatchSummary" class="mt-5 grid gap-2 sm:grid-cols-4">
+            <div class="rounded-md border border-emerald-400/20 bg-emerald-400/10 p-2">
+              <p class="text-[11px] uppercase tracking-[0.16em] text-emerald-300">Captured</p>
+              <p class="mt-1 text-lg font-semibold text-brand-fg">{{ lastBatchSummary.captured }}</p>
+            </div>
+            <div class="rounded-md border border-cyan-400/20 bg-cyan-400/10 p-2">
+              <p class="text-[11px] uppercase tracking-[0.16em] text-cyan-300">Reused</p>
+              <p class="mt-1 text-lg font-semibold text-brand-fg">{{ lastBatchSummary.reused }}</p>
+            </div>
+            <div class="rounded-md border border-white/10 bg-black/20 p-2">
+              <p class="text-[11px] uppercase tracking-[0.16em] text-brand-muted">Skipped</p>
+              <p class="mt-1 text-lg font-semibold text-brand-fg">{{ lastBatchSummary.skipped }}</p>
+            </div>
+            <div class="rounded-md border p-2" :class="lastBatchSummary.failed > 0 ? 'border-amber-400/30 bg-amber-400/10' : 'border-white/10 bg-black/20'">
+              <p class="text-[11px] uppercase tracking-[0.16em]" :class="lastBatchSummary.failed > 0 ? 'text-amber-300' : 'text-brand-muted'">Failed</p>
+              <p class="mt-1 text-lg font-semibold text-brand-fg">{{ lastBatchSummary.failed }}</p>
+            </div>
+          </div>
+          <p v-if="lastBatchSummary" class="mt-2 text-xs leading-5 text-brand-muted">
+            Captured = new screenshot written now. Reused = an existing R2 snapshot was attached to the listing. Failed does not count as ready.
+          </p>
 
           <div v-if="screenshotMessage || screenshotStatus?.log_file" class="mt-5 rounded-md border border-white/10 bg-black/25 p-3">
             <p v-if="screenshotMessage" class="text-sm text-emerald-300">
