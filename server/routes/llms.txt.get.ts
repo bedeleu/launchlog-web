@@ -3,7 +3,7 @@
 export default defineEventHandler((event) => {
   setHeader(event, 'Content-Type', 'text/plain; charset=utf-8')
   setHeader(event, 'Cache-Control', 'public, max-age=3600')
-  const site = 'https://launchlog.ai'
+  const site = getSiteUrl()
   return `# LaunchLog
 
 > LaunchLog is a curated paid directory for indie makers, SaaS founders and tech launches. Tagline: "The log of what just shipped."

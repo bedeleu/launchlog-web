@@ -12,13 +12,14 @@ interface PublicListing {
 export default defineEventHandler(async (event) => {
   setHeader(event, 'Content-Type', 'text/plain; charset=utf-8')
   setHeader(event, 'Cache-Control', 'public, max-age=3600')
-  const site = 'https://launchlog.ai'
+  const site = getSiteUrl()
   const apiUrl = useRuntimeConfig().public.apiUrl
 
   let listings: PublicListing[] = []
   try {
     const res = await $fetch<{ data: PublicListing[] }>(`${apiUrl}/api/v1/listings`, {
       query: { per_page: 200 },
+      timeout: 5000,
     })
     listings = res?.data ?? []
   } catch {

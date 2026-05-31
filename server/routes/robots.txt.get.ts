@@ -2,7 +2,8 @@
 // Dynamic robots.txt — explicitly allows AI crawlers while blocking private routes.
 export default defineEventHandler((event) => {
   setHeader(event, 'Content-Type', 'text/plain; charset=utf-8')
-  const site = 'https://launchlog.ai'
+  setHeader(event, 'Cache-Control', 'public, max-age=86400')
+  const site = getSiteUrl()
   const disallow = ['/admin', '/dashboard', '/login', '/checkout', '/preview']
   const aiBots = [
     'GPTBot',
