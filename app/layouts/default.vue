@@ -1,5 +1,9 @@
 <template>
-  <div class="min-h-screen bg-brand-bg text-brand-fg font-sans antialiased">
-    <slot />
+  <div class="flex min-h-screen flex-col bg-brand-bg text-brand-fg font-sans antialiased">
+    <AppBar />
+    <main class="flex-1">
+      <slot />
+    </main>
+    <Footer />
   </div>
 </template>
