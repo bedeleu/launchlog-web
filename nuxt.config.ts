@@ -14,7 +14,7 @@ export default defineNuxtConfig({
     '@nuxtjs/sitemap',
     '@vueuse/nuxt',
     '@pinia/nuxt',
-    '@nuxtjs/turnstile',
+    '@nuxt/eslint',
   ],
   app: {
     head: {
@@ -46,7 +46,6 @@ export default defineNuxtConfig({
         messagingSenderId: process.env.NUXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
         appId: process.env.NUXT_PUBLIC_FIREBASE_APP_ID,
       },
-      turnstileSiteKey: process.env.NUXT_PUBLIC_TURNSTILE_SITE_KEY,
       plausibleDomain: process.env.NUXT_PUBLIC_PLAUSIBLE_DOMAIN,
       wordpressBlogUrl: process.env.NUXT_PUBLIC_WORDPRESS_BLOG_URL || 'https://blog.launchlog.ai',
     },
