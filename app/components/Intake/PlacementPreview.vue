@@ -55,8 +55,10 @@ const samples = [
              and re-loads the screenshot — the swap is instant. -->
         <!-- ============ FEATURED: one large unified card dominating the page ============ -->
         <div v-show="isFeatured" class="space-y-3">
-          <article class="relative grid min-w-0 grid-cols-1 overflow-hidden rounded-2xl border-2 border-brand-accent/60 bg-brand-accent/[0.06] shadow-[0_24px_60px_-12px_rgba(0,0,0,0.6)] ring-1 ring-brand-accent/20 sm:grid-cols-[1.45fr_1fr]">
-            <div class="min-h-[200px] bg-muted sm:min-h-[280px]">
+          <article class="relative min-w-0 overflow-hidden rounded-2xl border-2 border-brand-accent/60 bg-brand-accent/[0.06] shadow-[0_24px_60px_-12px_rgba(0,0,0,0.6)] ring-1 ring-brand-accent/20">
+            <!-- Screenshots are normalized to exactly 16:10 (ScreenshotVariantGenerator),
+                 so aspect-[16/10] + object-cover fills with no crop and no letterbox bands. -->
+            <div class="aspect-[16/10] w-full overflow-hidden bg-muted">
               <img v-if="hasShot" :src="preview.screenshot_url!" :alt="`Screenshot of ${preview.domain}`" class="h-full w-full object-cover object-top">
               <div v-else class="flex h-full flex-col items-center justify-center gap-1.5 text-center">
                 <template v-if="generating">
@@ -69,7 +71,7 @@ const samples = [
                 </template>
               </div>
             </div>
-            <div class="flex min-w-0 flex-col justify-center gap-2.5 p-6">
+            <div class="flex min-w-0 flex-col gap-2.5 p-6">
               <div class="flex flex-wrap items-center gap-2">
                 <span class="rounded-full bg-brand-accent/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-accent ring-1 ring-brand-accent/40">Featured</span>
                 <span class="inline-flex items-center gap-1 text-[11px] font-medium text-brand-accent"><Sparkles class="size-3" /> Best visibility</span>
