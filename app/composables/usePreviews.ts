@@ -59,5 +59,12 @@ export const usePreviews = () => {
     return data
   }
 
-  return { createPreview, getPreview, updatePreview }
+  const recapturePreview = async (token: string): Promise<Preview> => {
+    const { data } = await $fetch<{ data: Preview }>(`${base}/previews/${token}/recapture`, {
+      method: 'POST',
+    })
+    return data
+  }
+
+  return { createPreview, getPreview, updatePreview, recapturePreview }
 }

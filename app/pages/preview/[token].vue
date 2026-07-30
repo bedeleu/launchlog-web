@@ -7,7 +7,7 @@ import type { Preview } from '~/composables/usePreviews'
 
 const route = useRoute()
 const token = route.params.token as string
-const { getPreview, updatePreview } = usePreviews()
+const { getPreview, updatePreview, recapturePreview } = usePreviews()
 const { findPlan } = usePlans()
 const intake = useIntakeStore()
 
@@ -78,6 +78,26 @@ const { pause: stopPolling, resume: startPolling } = useIntervalFn(async () => {
     // Transient failure — keep polling on the next tick.
   }
 }, 1800, { immediate: false })
+
+const recapturing = ref(false)
+const recaptureError = ref<string | null>(null)
+const recapture = async () => {
+  if (recapturing.value) return
+
+  recapturing.value = true
+  recaptureError.value = null
+
+  try {
+    applyPreview(await recapturePreview(token))
+    startPolling()
+  }
+  catch {
+    recaptureError.value = 'Could not start a new capture. Please try again.'
+  }
+  finally {
+    recapturing.value = false
+  }
+}
 
 // Generate a secure password up-front (client-only) so the field is pre-filled
 // and visible, like BacklinkLog. Toggling auto-generate regenerates / clears it.
@@ -242,9 +262,18 @@ watch(
             Something went wrong while building your preview. Try a different URL or contact support.
           </template>
         </p>
-        <NuxtLink to="/" class="mt-6 inline-block text-brand-accent underline underline-offset-4">
-          Try another URL
-        </NuxtLink>
+        <div class="mt-6 flex flex-wrap items-center justify-center gap-4">
+          <Button type="button" variant="outline" :disabled="recapturing" @click="recapture">
+            <AppSpinner v-if="recapturing" class="mr-2" size="sm" color="text-current" label="Starting a new capture" />
+            {{ recapturing ? 'Starting…' : 'Capture again' }}
+          </Button>
+          <NuxtLink to="/" class="text-sm text-brand-accent underline underline-offset-4">
+            Try another URL
+          </NuxtLink>
+        </div>
+        <p v-if="recaptureError" class="mt-3 text-sm text-brand-warning" role="alert">
+          {{ recaptureError }}
+        </p>
       </section>
 
       <!-- READY: BacklinkLog-style order page — live preview left, order form right -->
@@ -261,13 +290,26 @@ watch(
 
           <!-- Discreet listing-text editor — not a step; defaults come from the crawl -->
           <div class="mt-4">
-            <button
-              type="button"
-              class="text-xs font-medium text-brand-accent underline underline-offset-4"
-              @click="showEdit = !showEdit"
-            >
-              {{ showEdit ? 'Done editing text' : 'Edit listing text' }}
-            </button>
+            <div class="flex flex-wrap items-center gap-x-5 gap-y-2">
+              <button
+                type="button"
+                class="text-xs font-medium text-brand-accent underline underline-offset-4"
+                @click="showEdit = !showEdit"
+              >
+                {{ showEdit ? 'Done editing text' : 'Edit listing text' }}
+              </button>
+              <button
+                type="button"
+                class="text-xs font-medium text-brand-muted underline decoration-white/20 underline-offset-4 transition-colors hover:text-brand-fg disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="recapturing"
+                @click="recapture"
+              >
+                {{ recapturing ? 'Starting new capture…' : 'Screenshot not right? Capture again' }}
+              </button>
+            </div>
+            <p v-if="recaptureError" class="mt-2 text-xs text-brand-warning" role="alert">
+              {{ recaptureError }}
+            </p>
             <div v-show="showEdit" class="mt-3 space-y-3 rounded-xl border border-brand-border bg-white/[0.02] p-4">
               <div class="space-y-1.5">
                 <Label for="f-title">Title</Label>
