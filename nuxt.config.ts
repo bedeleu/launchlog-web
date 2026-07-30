@@ -9,6 +9,13 @@ export default defineNuxtConfig({
   vite: {
     plugins: [tailwindcss()],
   },
+  nitro: {
+    // Railpack excludes Nitro's hidden dependency store from the runtime image.
+    // Bundle runtime dependencies instead of exposing links into that store.
+    externals: {
+      inline: [() => true],
+    },
+  },
   css: ['~/assets/css/tailwind.css'],
   modules: [
     '@nuxtjs/sitemap',
