@@ -2,6 +2,7 @@
 import { ArrowRight, Camera, CheckCircle2, Clock3, FilePlus2, Gauge, ListChecks, ShieldCheck, Sparkles } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import type { AdminDashboard, AdminListing, FounderScreenshotStatus } from '~/composables/useAdminListings'
+import { toErrorLike } from '~/utils/error-like'
 
 definePageMeta({ middleware: 'admin' })
 useHead({ title: 'Admin · LaunchLog' })
@@ -22,8 +23,9 @@ async function loadDashboard() {
   try {
     data.value = await dashboard()
   }
-  catch (e: any) {
-    error.value = e?.data?.message ?? e?.data?.error ?? e?.message ?? 'Could not load admin dashboard'
+  catch (e: unknown) {
+    const err = toErrorLike(e)
+    error.value = err.data?.message ?? err.data?.error ?? err.message ?? 'Could not load admin dashboard'
   }
   finally {
     loading.value = false
@@ -45,8 +47,9 @@ async function startScreenshotBatch(dryRun = false) {
     await refreshScreenshotStatus()
     await loadDashboard()
   }
-  catch (e: any) {
-    error.value = e?.data?.message ?? e?.data?.error ?? e?.message ?? 'Could not start screenshot batch'
+  catch (e: unknown) {
+    const err = toErrorLike(e)
+    error.value = err.data?.message ?? err.data?.error ?? err.message ?? 'Could not start screenshot batch'
   }
   finally {
     screenshotBusy.value = false

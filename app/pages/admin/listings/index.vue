@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button'
 import type { AdminListing, AdminListingFilters, FounderScreenshotStatus, ListingStatus } from '~/composables/useAdminListings'
+import { toErrorLike } from '~/utils/error-like'
 
 definePageMeta({ middleware: 'admin' })
 useHead({ title: 'Admin · Listings', meta: [{ name: 'robots', content: 'noindex,nofollow' }] })
@@ -30,8 +31,9 @@ async function load() {
   try {
     listings.value = await list(filters)
   }
-  catch (e: any) {
-    error.value = e?.data?.error ?? e?.message ?? 'Failed to load listings'
+  catch (e: unknown) {
+    const err = toErrorLike(e)
+    error.value = err.data?.error ?? err.message ?? 'Failed to load listings'
   }
   finally {
     loading.value = false
@@ -58,8 +60,9 @@ async function startScreenshotBatch(dryRun = false) {
     screenshotMessage.value = `${dryRun ? 'Dry run' : 'Batch'} started in Railway (PID ${run.pid}).`
     await refreshScreenshotStatus()
   }
-  catch (e: any) {
-    error.value = e?.data?.message ?? e?.data?.error ?? e?.message ?? 'Failed to start screenshot batch'
+  catch (e: unknown) {
+    const err = toErrorLike(e)
+    error.value = err.data?.message ?? err.data?.error ?? err.message ?? 'Failed to start screenshot batch'
   }
   finally {
     screenshotBusy.value = false

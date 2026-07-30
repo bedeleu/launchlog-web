@@ -9,6 +9,25 @@
  * at that point this middleware will fetch the listing from the API, render it as markdown,
  * and set the proper Vary / Content-Signal / Cache-Control headers.
  */
+// Only the fields renderListingAsMarkdown actually reads — deliberately narrow,
+// so the markdown contract stays independent of the full API resource shape.
+interface MarkdownListing {
+  name: string
+  slug: string
+  url: string
+  tagline?: string | null
+  description?: string | null
+  published_at?: string | null
+  tech_stack?: string[] | null
+  category?: { name?: string | null } | null
+  tags?: Array<{ name: string }> | null
+}
+
+// The API wraps the resource in a JsonResource envelope.
+interface ListingEnvelope {
+  data?: MarkdownListing | null
+}
+
 export default defineEventHandler(async (event) => {
   const accept = getRequestHeader(event, 'accept') ?? ''
   if (!accept.includes('text/markdown')) return
@@ -26,7 +45,7 @@ export default defineEventHandler(async (event) => {
     // The Laravel routes/api.php is mounted under apiPrefix: 'api' (bootstrap/app.php), so callers must
     // include /api/v1/... in the path. See D-051 / plan v5 Resolved upfront point 5.
     // The API wraps the resource in a JsonResource envelope ({ data: {...} }).
-    const envelope: any = await $fetch(`${config.public.apiUrl}/api/v1/listings/${slug}`).catch(() => null)
+    const envelope = await $fetch<ListingEnvelope>(`${config.public.apiUrl}/api/v1/listings/${slug}`).catch(() => null)
     const listing = envelope?.data ?? null
     if (!listing) {
       setResponseStatus(event, 404)
@@ -51,7 +70,7 @@ export default defineEventHandler(async (event) => {
   }
 })
 
-function renderListingAsMarkdown(listing: any, domain: string): string {
+function renderListingAsMarkdown(listing: MarkdownListing, domain: string): string {
   return `# ${listing.name}
 
 > ${listing.tagline ?? ''}

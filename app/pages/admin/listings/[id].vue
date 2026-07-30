@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button'
 import type { AdminListing } from '~/composables/useAdminListings'
+import { toErrorLike } from '~/utils/error-like'
 
 definePageMeta({ middleware: 'admin' })
 useHead({ title: 'Admin · Edit listing', meta: [{ name: 'robots', content: 'noindex,nofollow' }] })
@@ -20,8 +21,8 @@ async function load() {
   try {
     listing.value = await get(id)
   }
-  catch (e: any) {
-    error.value = e?.data?.error ?? 'Listing not found'
+  catch (e: unknown) {
+    error.value = toErrorLike(e).data?.error ?? 'Listing not found'
   }
   finally {
     loading.value = false
@@ -36,8 +37,9 @@ async function onSubmit(payload: Record<string, unknown>) {
     listing.value = await update(id, payload)
     saved.value = true
   }
-  catch (e: any) {
-    error.value = e?.data?.message ?? e?.data?.error ?? 'Failed to save'
+  catch (e: unknown) {
+    const err = toErrorLike(e)
+    error.value = err.data?.message ?? err.data?.error ?? 'Failed to save'
   }
   finally {
     submitting.value = false

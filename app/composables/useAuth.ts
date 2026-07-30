@@ -8,21 +8,21 @@ export const useAuth = () => {
   const loginWithGoogle = async () => {
     if (!import.meta.client) return null
     const { signInWithPopup } = await import('firebase/auth')
-    const { $firebase } = useNuxtApp() as any
+    const { $firebase } = useNuxtApp()
     return signInWithPopup($firebase.auth, $firebase.googleProvider)
   }
 
   const loginWithPassword = async (email: string, password: string) => {
     if (!import.meta.client) return null
     const { signInWithEmailAndPassword } = await import('firebase/auth')
-    const { $firebase } = useNuxtApp() as any
+    const { $firebase } = useNuxtApp()
     return signInWithEmailAndPassword($firebase.auth, email, password)
   }
 
   const sendMagicLink = async (email: string): Promise<void> => {
     if (!import.meta.client) return
     const { sendSignInLinkToEmail } = await import('firebase/auth')
-    const { $firebase } = useNuxtApp() as any
+    const { $firebase } = useNuxtApp()
     // window.location.origin keeps the magic link valid on localhost / Railway preview / production
     // without any env-aware logic. D-009 invisible-tech-edge says the auth flow must "just work" in
     // every environment without hand-editing redirect URLs.
@@ -34,7 +34,7 @@ export const useAuth = () => {
   const completeMagicLink = async () => {
     if (!import.meta.client) return null
     const { isSignInWithEmailLink, signInWithEmailLink } = await import('firebase/auth')
-    const { $firebase } = useNuxtApp() as any
+    const { $firebase } = useNuxtApp()
     if (!isSignInWithEmailLink($firebase.auth, window.location.href)) return null
     let email = window.localStorage.getItem('launchlog:magic-link-email')
     if (!email) email = window.prompt('Please confirm your email') ?? ''
@@ -47,7 +47,7 @@ export const useAuth = () => {
   const logout = async (): Promise<void> => {
     if (!import.meta.client) return
     const { signOut } = await import('firebase/auth')
-    const { $firebase } = useNuxtApp() as any
+    const { $firebase } = useNuxtApp()
     await signOut($firebase.auth)
   }
 
@@ -55,13 +55,13 @@ export const useAuth = () => {
   // checks on a hard reload don't run before currentUser is hydrated.
   const waitForAuthReady = async (): Promise<void> => {
     if (!import.meta.client) return
-    const { $firebase } = useNuxtApp() as any
+    const { $firebase } = useNuxtApp()
     await $firebase?.auth?.authStateReady?.()
   }
 
   const getIdToken = async (forceRefresh = false): Promise<string | null> => {
     if (!import.meta.client) return null
-    const { $firebase } = useNuxtApp() as any
+    const { $firebase } = useNuxtApp()
     const u = $firebase?.auth?.currentUser
     return u ? u.getIdToken(forceRefresh) : null
   }
@@ -71,7 +71,7 @@ export const useAuth = () => {
   // but the backend remains the final authority on every protected request.
   const getClaims = async (forceRefresh = false): Promise<Record<string, unknown> | null> => {
     if (!import.meta.client) return null
-    const { $firebase } = useNuxtApp() as any
+    const { $firebase } = useNuxtApp()
     const u = $firebase?.auth?.currentUser
     if (!u) return null
     const result = await u.getIdTokenResult(forceRefresh)

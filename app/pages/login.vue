@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { toErrorLike } from '~/utils/error-like'
+
 const { user, loginWithGoogle, sendMagicLink, completeMagicLink, logout } = useAuth()
 const route = useRoute()
 
@@ -18,8 +20,8 @@ onMounted(async () => {
       status.value = `Magic link consumed — signed in as ${r.user.email}`
       await finishLogin()
     }
-  } catch (e: any) {
-    error.value = e?.message ?? 'Magic link verification failed'
+  } catch (e: unknown) {
+    error.value = toErrorLike(e).message ?? 'Magic link verification failed'
   }
 })
 
@@ -31,8 +33,8 @@ const onGoogle = async () => {
       status.value = `Signed in as ${r.user.email}`
       await finishLogin()
     }
-  } catch (e: any) {
-    error.value = e?.message ?? 'Google sign-in failed'
+  } catch (e: unknown) {
+    error.value = toErrorLike(e).message ?? 'Google sign-in failed'
   }
 }
 
@@ -41,8 +43,8 @@ const onMagic = async () => {
   try {
     await sendMagicLink(email.value)
     status.value = `Magic link sent to ${email.value}`
-  } catch (e: any) {
-    error.value = e?.message ?? 'Could not send magic link'
+  } catch (e: unknown) {
+    error.value = toErrorLike(e).message ?? 'Could not send magic link'
   }
 }
 

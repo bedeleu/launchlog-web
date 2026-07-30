@@ -15,7 +15,7 @@ export default defineEventHandler(async (event) => {
   const site = getSiteUrl()
   const apiUrl = useRuntimeConfig().public.apiUrl
 
-  let listings: PublicListing[] = []
+  let listings: PublicListing[]
   try {
     const res = await $fetch<{ data: PublicListing[] }>(`${apiUrl}/api/v1/listings`, {
       query: { per_page: 200 },
@@ -26,7 +26,7 @@ export default defineEventHandler(async (event) => {
     listings = []
   }
 
-  let posts: Array<{ slug: string; title: string; excerpt: string }> = []
+  let posts: Array<{ slug: string; title: string; excerpt: string }>
   try {
     const blog = await fetchWordPressPosts(20)
     posts = (blog ?? []).map((p) => ({ slug: p.slug, title: p.title, excerpt: p.excerpt }))

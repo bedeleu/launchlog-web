@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { toErrorLike } from '~/utils/error-like'
+
 definePageMeta({ middleware: 'admin' })
 useHead({ title: 'Admin · New listing', meta: [{ name: 'robots', content: 'noindex,nofollow' }] })
 
@@ -13,8 +15,9 @@ async function onSubmit(payload: Record<string, unknown>) {
     const created = await create(payload)
     await navigateTo(`/admin/listings/${created.id}`)
   }
-  catch (e: any) {
-    error.value = e?.data?.message ?? e?.data?.error ?? 'Failed to create listing'
+  catch (e: unknown) {
+    const err = toErrorLike(e)
+    error.value = err.data?.message ?? err.data?.error ?? 'Failed to create listing'
     submitting.value = false
   }
 }
