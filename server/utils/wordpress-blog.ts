@@ -1,3 +1,5 @@
+import { sanitizeWordPressHtml } from './sanitize-wordpress-html'
+
 interface WordPressRendered {
   rendered?: string
 }
@@ -103,7 +105,7 @@ function mapWordPressPost(post: WordPressPost, baseUrl: string): BlogPost {
     slug: post.slug,
     title: cleanText(post.title?.rendered ?? 'Untitled'),
     excerpt: cleanText(post.excerpt?.rendered ?? ''),
-    content: sanitizeWordPressHtml(absolutizeUrls(post.content?.rendered ?? '', baseUrl)),
+    content: sanitizeWordPressHtml(post.content?.rendered ?? '', baseUrl),
     date: post.date,
     modified: post.modified,
     sourceUrl: post.link,
@@ -136,20 +138,4 @@ function decodeHtml(value: string): string {
     .replace(/&apos;/g, "'")
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
-}
-
-function absolutizeUrls(html: string, baseUrl: string): string {
-  return html.replace(/\s(src|href)=["']\/([^"']*)["']/gi, (_match, attribute: string, path: string) => {
-    return ` ${attribute}="${baseUrl}/${path}"`
-  })
-}
-
-function sanitizeWordPressHtml(html: string): string {
-  return html
-    .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/<style[\s\S]*?<\/style>/gi, '')
-    .replace(/<object[\s\S]*?<\/object>/gi, '')
-    .replace(/<embed[\s\S]*?<\/embed>/gi, '')
-    .replace(/\son[a-z]+=["'][^"']*["']/gi, '')
-    .replace(/\s(href|src)=["']javascript:[^"']*["']/gi, '')
 }
