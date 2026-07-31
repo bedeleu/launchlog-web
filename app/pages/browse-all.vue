@@ -145,7 +145,7 @@ useBreadcrumbs([
             v-model="search"
             type="search"
             placeholder="Search products…"
-            class="h-10 w-full rounded-md border border-brand-border bg-white/[0.02] pl-9 pr-3 text-sm text-brand-fg outline-none transition-colors placeholder:text-brand-muted focus:border-brand-accent/50"
+            class="h-11 w-full rounded-md border border-brand-border bg-white/[0.02] pl-9 pr-3 text-sm text-brand-fg outline-none transition-colors placeholder:text-brand-muted focus:border-brand-accent/50"
           >
         </div>
         <Button type="submit" variant="outline" size="lg">

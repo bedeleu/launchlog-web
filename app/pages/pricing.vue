@@ -165,11 +165,18 @@ useFaqSchema(faqs.map(f => ({ q: f.question, a: f.answer })))
     </section>
 
     <section class="mx-auto max-w-6xl px-6 py-14">
-      <div class="grid gap-5 lg:grid-cols-4">
+      <!--
+        Subgrid: each card spans the same seven parent rows (eyebrow, name,
+        summary, price, monthly, features, CTA), so every band shares one
+        baseline across all three cards no matter how the copy wraps. The
+        features row is 1fr, so it absorbs the slack and the CTA always sits on
+        the bottom edge.
+      -->
+      <div class="grid gap-5 lg:grid-cols-3 lg:grid-rows-[auto_auto_auto_auto_auto_1fr_auto]">
         <article
           v-for="plan in planCards"
           :key="plan.tier"
-          class="relative flex min-h-[430px] flex-col rounded-xl border p-6"
+          class="relative flex flex-col rounded-xl border p-6 lg:row-span-7 lg:grid lg:grid-rows-subgrid"
           :class="plan.accent"
         >
           <div
@@ -185,7 +192,7 @@ useFaqSchema(faqs.map(f => ({ q: f.question, a: f.answer })))
           <h2 class="mt-5 text-2xl font-bold text-brand-fg">
             {{ plan.name }}
           </h2>
-          <p class="mt-3 min-h-14 text-sm leading-6 text-brand-muted">
+          <p class="mt-3 text-sm leading-6 text-brand-muted">
             {{ plan.summary }}
           </p>
 
@@ -205,7 +212,7 @@ useFaqSchema(faqs.map(f => ({ q: f.question, a: f.answer })))
             </li>
           </ul>
 
-          <Button as-child size="lg" class="mt-auto w-full">
+          <Button as-child size="lg" class="mt-auto w-full lg:mt-7">
             <NuxtLink :to="`/submit?tier=${plan.tier}`" class="group">
               {{ plan.cta }}
               <ArrowRight class="ml-1 size-4 transition-transform group-hover:translate-x-0.5" />
