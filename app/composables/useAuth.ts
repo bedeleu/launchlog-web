@@ -12,13 +12,6 @@ export const useAuth = () => {
     return signInWithPopup($firebase.auth, $firebase.googleProvider)
   }
 
-  const loginWithPassword = async (email: string, password: string) => {
-    if (!import.meta.client) return null
-    const { signInWithEmailAndPassword } = await import('firebase/auth')
-    const { $firebase } = useNuxtApp()
-    return signInWithEmailAndPassword($firebase.auth, email, password)
-  }
-
   const sendMagicLink = async (email: string): Promise<void> => {
     if (!import.meta.client) return
     const { sendSignInLinkToEmail } = await import('firebase/auth')
@@ -92,7 +85,6 @@ export const useAuth = () => {
   return {
     user,
     loginWithGoogle,
-    loginWithPassword,
     sendMagicLink,
     completeMagicLink,
     logout,

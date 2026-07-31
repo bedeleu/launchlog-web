@@ -68,6 +68,10 @@ export const useIntakeStore = defineStore('intake', () => {
   // Normalized-URL → token index, so ANY previously-previewed URL (not just the
   // last) resolves to its saved token in O(1).
   const previewByUrlKey = useLocalStorage<Record<string, string>>('launchlog:intake:url-index', {})
+  // One-shot handoff of the tier chosen on /pricing → /submit. Consumed when a
+  // preview is created or resumed; after that the draft is the source of truth,
+  // so polling and refreshes never reset the user's choice.
+  const preferredTier = useLocalStorage<PlanTier | null>('launchlog:intake:preferred-tier', null)
 
   const latestDraft = computed(() =>
     latestToken.value ? drafts.value[latestToken.value] ?? null : null,
@@ -109,6 +113,19 @@ export const useIntakeStore = defineStore('intake', () => {
 
   const getDraft = (token: string) => drafts.value[token] ?? null
 
+  const setPreferredTier = (tier: PlanTier) => {
+    preferredTier.value = tier
+  }
+
+  /** Applies the pending choice to this preview's draft, then clears it. */
+  const applyPreferredTier = (token: string) => {
+    const tier = preferredTier.value
+    preferredTier.value = null
+    if (!tier || !isPlanTier(tier)) return
+
+    updateDraft(token, { tier })
+  }
+
   const previewForUrl = (url: string): PreviewDraft | null => {
     const key = normalizeUrlKey(url)
     if (!key) return null
@@ -127,10 +144,13 @@ export const useIntakeStore = defineStore('intake', () => {
     latestToken,
     latestDraft,
     previewByUrlKey,
+    preferredTier,
     rememberSubmittedUrl,
     rememberPreview,
     updateDraft,
     getDraft,
+    setPreferredTier,
+    applyPreferredTier,
     previewForUrl,
   }
 })

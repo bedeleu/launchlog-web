@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { Check } from '@lucide/vue'
+import type { PlanTier } from '~/composables/usePlans'
 
-defineProps<{ modelValue: string }>()
-const emit = defineEmits<{ 'update:modelValue': [tier: string] }>()
+withDefaults(defineProps<{ modelValue: PlanTier, disabled?: boolean }>(), {
+  disabled: false,
+})
+const emit = defineEmits<{ 'update:modelValue': [tier: PlanTier] }>()
 
 const { plans } = usePlans()
 </script>
@@ -14,7 +17,8 @@ const { plans } = usePlans()
       :key="plan.tier"
       type="button"
       :aria-pressed="modelValue === plan.tier"
-      class="block w-full rounded-xl border p-4 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/70"
+      :disabled="disabled"
+      class="block w-full rounded-xl border p-4 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/70 disabled:cursor-not-allowed disabled:opacity-60"
       :class="modelValue === plan.tier
         ? (plan.highlight ? 'border-brand-accent bg-brand-accent/10' : 'border-brand-accent bg-brand-accent/5')
         : 'border-brand-border hover:border-brand-accent/40'"

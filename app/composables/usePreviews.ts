@@ -29,9 +29,9 @@ export interface PreviewEdit {
 }
 
 /**
- * Preview-first intake (D-057). The preview is the public, pre-payment artifact;
- * it never becomes a public Listing until payment (Phase 2). The opaque token is
- * the only handle a visitor has.
+ * Preview-first intake (D-057). The preview is the private, pre-payment
+ * artifact; it only becomes a public Listing after the payment webhook
+ * converts it server-side. The opaque token is the only handle a visitor has.
  */
 export const usePreviews = () => {
   const config = useRuntimeConfig()

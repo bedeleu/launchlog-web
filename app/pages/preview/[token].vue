@@ -3,11 +3,14 @@ import { useIntervalFn } from '@vueuse/core'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import type { PlanTier } from '~/composables/usePlans'
 import type { Preview } from '~/composables/usePreviews'
+import { toErrorLike } from '~/utils/error-like'
 
 const route = useRoute()
 const token = route.params.token as string
 const { getPreview, updatePreview, recapturePreview } = usePreviews()
+const { createSession } = useBilling()
 const { findPlan } = usePlans()
 const intake = useIntakeStore()
 
@@ -20,6 +23,16 @@ useSeoMeta({
 const { data: preview, error } = await useAsyncData(`preview-${token}`, () => getPreview(token))
 if (preview.value) {
   intake.rememberPreview(preview.value)
+  // Single place where the tier chosen on /pricing is consumed, so every entry
+  // path lands here: new preview, resumed submit, the Resume link, or a direct
+  // URL. One-shot — afterwards the draft is the only source of truth.
+  intake.applyPreferredTier(token)
+}
+
+// Already paid: the success page owns the post-payment surface and resolves
+// the published slug, so never leave the buyer on a dead order form.
+if (preview.value?.status === 'converted') {
+  await navigateTo(`/checkout/success?preview=${token}`, { replace: true })
 }
 
 const draft = computed(() => intake.getDraft(token))
@@ -33,25 +46,23 @@ const form = reactive({
 })
 const showEdit = ref(false)
 
-// Account (02) — email + password, like BacklinkLog. Auto-generate is the default.
+// Account: email only. The account itself is created server-side after the
+// payment webhook (D-057) — no password, no coupon, nothing to fill in twice.
 const account = reactive({
   email: draft.value?.email ?? preview.value?.email ?? '',
-  password: '',
-  autoGenerate: true,
 })
-const coupon = ref('')
 
 // Featured is the default selection — the most valuable placement (D-058).
-const selectedTier = ref(draft.value?.tier ?? 'featured')
+const selectedTier = ref<PlanTier>(draft.value?.tier ?? 'featured')
 const selectedPlan = computed(() => findPlan(selectedTier.value))
 
 const status = computed(() => preview.value?.status)
 const isGenerating = computed(() => status.value === 'generating')
-const isReady = computed(() => status.value === 'ready' && !!preview.value?.screenshot_url)
-const screenshotFailed = computed(() =>
-  status.value === 'failed' && preview.value?.error_code === 'screenshot_failed',
-)
 const isFailed = computed(() => status.value === 'failed')
+const screenshotFailed = computed(() =>
+  isFailed.value && preview.value?.error_code === 'screenshot_failed',
+)
+const hasScreenshot = computed(() => !!preview.value?.screenshot_url)
 
 // Intake returns immediately with status=generating; crawl + screenshot run in a
 // background job (D-057). Poll until ready/failed, filling untouched fields.
@@ -99,70 +110,78 @@ const recapture = async () => {
   }
 }
 
-// Generate a secure password up-front (client-only) so the field is pre-filled
-// and visible, like BacklinkLog. Toggling auto-generate regenerates / clears it.
-const generatePassword = (): string => {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%&*'
-  const pick = (typeof window !== 'undefined' && window.crypto?.getRandomValues)
-    ? () => {
-        const a = new Uint32Array(1)
-        window.crypto.getRandomValues(a)
-        return a[0]!
-      }
-    : () => Math.floor(Math.random() * 0xFFFFFFFF)
-  let out = ''
-  for (let i = 0; i < 16; i++) out += chars[pick() % chars.length]
-  return out
-}
-
-watch(() => account.autoGenerate, (on) => {
-  account.password = on ? generatePassword() : ''
-})
-
 onMounted(() => {
-  if (account.autoGenerate && !account.password) account.password = generatePassword()
   if (isGenerating.value) startPolling()
 })
 
-// Stripe checkout is Phase 2 — publishing is stubbed (D-057 conversion happens
-// server-side on checkout.session.completed). Persist the draft so it's ready.
 const emailValue = computed(() => account.email.trim())
 const emailLooksValid = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue.value))
 const attemptedPublish = ref(false)
 const emailShowsInvalid = computed(() => attemptedPublish.value && !emailLooksValid.value)
 const emailHelpText = computed(() => {
-  if (!emailValue.value) return attemptedPublish.value ? 'Enter your email to activate checkout.' : 'Required for checkout.'
+  if (!emailValue.value) return attemptedPublish.value ? 'Enter your email to continue to checkout.' : 'Required for checkout.'
   if (!emailLooksValid.value) return attemptedPublish.value ? 'Enter a valid email address.' : 'We will validate this before checkout.'
   return 'We will create your account with this email after checkout.'
 })
-const passwordValue = computed(() => account.password.trim())
-const passwordLooksValid = computed(() => account.autoGenerate || passwordValue.value.length >= 8)
-const passwordShowsInvalid = computed(() => attemptedPublish.value && !passwordLooksValid.value)
-const passwordHelpText = computed(() =>
-  account.autoGenerate
-    ? 'We generated a secure password — copy it, or uncheck to set your own.'
-    : passwordLooksValid.value
-      ? 'Custom password ready.'
-      : 'Use at least 8 characters, or turn auto-generate back on.',
-)
 const invalidFieldClass = 'border-brand-warning/70 shadow-[0_0_0_1px_rgba(245,158,11,0.32),0_0_18px_rgba(245,158,11,0.14)] focus-visible:ring-brand-warning/25'
+
+const checkoutPending = ref(false)
+const checkoutError = ref<string | null>(null)
+
+// Payment is blocked only by things that genuinely prevent checkout. A missing
+// or failed screenshot never blocks it — the API decides whether the remaining
+// data can be published, and the screenshot can be recaptured afterwards.
 const canPay = computed(() =>
-  isReady.value
+  !isGenerating.value
   && emailLooksValid.value
-  && passwordLooksValid.value
+  && !checkoutPending.value,
 )
-const publishRequested = ref(false)
-const publish = () => {
+
+const payAndPublish = async () => {
   attemptedPublish.value = true
   if (!canPay.value) return
-  updatePreview(token, {
-    title: form.title || null,
-    tagline: form.tagline || null,
-    description: form.description || null,
-    email: account.email || null,
-    tier: selectedTier.value,
-  }).catch(() => {})
-  publishRequested.value = true
+
+  checkoutPending.value = true
+  checkoutError.value = null
+  // Pinned BEFORE the first await and reused by both calls: the plan and
+  // address that reach Stripe are exactly the ones this click selected, even
+  // if the selector or the field changes while the requests are in flight.
+  const email = emailValue.value
+  const tier = selectedTier.value
+  let redirecting = false
+
+  try {
+    // Save first: if the edits cannot be persisted, no session is created.
+    await updatePreview(token, {
+      title: form.title || null,
+      tagline: form.tagline || null,
+      description: form.description || null,
+      email,
+      tier,
+    })
+
+    const session = await createSession({
+      preview_token: token,
+      tier,
+      email,
+    })
+
+    if (!session.url) {
+      checkoutError.value = 'Checkout could not be opened. Please try again or contact support.'
+      return
+    }
+
+    redirecting = true
+    window.location.href = session.url
+  }
+  catch (e: unknown) {
+    checkoutError.value = toErrorLike(e).data?.message
+      ?? 'We could not start checkout. Please try again.'
+  }
+  finally {
+    // Keep the button locked while the browser is leaving for Stripe.
+    if (!redirecting) checkoutPending.value = false
+  }
 }
 
 // Persist to the store as the user types, for resume after refresh/tab close.
@@ -242,42 +261,15 @@ watch(
             <div class="space-y-3">
               <div class="h-3 w-24 animate-pulse rounded bg-white/[0.06]" />
               <div class="h-10 animate-pulse rounded-md bg-white/[0.04]" />
-              <div class="h-10 animate-pulse rounded-md bg-white/[0.04]" />
             </div>
             <div class="h-11 animate-pulse rounded-md bg-white/[0.05]" />
           </div>
         </div>
       </div>
 
-      <!-- FAILED: couldn't build the preview -->
-      <section v-else-if="isFailed" class="mt-10 rounded-2xl border border-brand-border bg-white/[0.02] p-10 text-center">
-        <h2 class="text-xl font-semibold text-brand-fg">
-          We couldn't build this preview
-        </h2>
-        <p class="mx-auto mt-2 max-w-md text-sm text-brand-muted">
-          <template v-if="screenshotFailed">
-            We couldn't capture a screenshot for this site. Try a different URL, or check that the site is publicly reachable.
-          </template>
-          <template v-else>
-            Something went wrong while building your preview. Try a different URL or contact support.
-          </template>
-        </p>
-        <div class="mt-6 flex flex-wrap items-center justify-center gap-4">
-          <Button type="button" variant="outline" :disabled="recapturing" @click="recapture">
-            <AppSpinner v-if="recapturing" class="mr-2" size="sm" color="text-current" label="Starting a new capture" />
-            {{ recapturing ? 'Starting…' : 'Capture again' }}
-          </Button>
-          <NuxtLink to="/" class="text-sm text-brand-accent underline underline-offset-4">
-            Try another URL
-          </NuxtLink>
-        </div>
-        <p v-if="recaptureError" class="mt-3 text-sm text-brand-warning" role="alert">
-          {{ recaptureError }}
-        </p>
-      </section>
-
-      <!-- READY: BacklinkLog-style order page — live preview left, order form right -->
-      <div v-else-if="isReady" class="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start">
+      <!-- ORDER PAGE — live preview left, order form right. Shown for ready AND
+           failed previews: a missing screenshot never blocks checkout. -->
+      <div v-else class="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start">
         <!-- LEFT: the WOW live preview, sticky; plan switches are instant (v-show in the component) -->
         <div class="min-w-0 lg:sticky lg:top-8">
           <IntakePlacementPreview
@@ -287,6 +279,38 @@ watch(
             :title="form.title"
             :tagline="form.tagline"
           />
+
+          <!-- Compact warning: the capture failed, publishing still works. -->
+          <div
+            v-if="isFailed || !hasScreenshot"
+            class="mt-4 rounded-xl border border-brand-warning/40 bg-brand-warning/[0.07] p-4"
+            role="status"
+          >
+            <p class="text-sm font-medium text-brand-fg">
+              <template v-if="screenshotFailed || !hasScreenshot">
+                We couldn't capture a screenshot for this site.
+              </template>
+              <template v-else>
+                We couldn't finish building this preview.
+              </template>
+            </p>
+            <p class="mt-1 text-sm text-brand-muted">
+              You can still publish your listing now — we'll show the placeholder until a capture succeeds,
+              and you can retry the screenshot at any time.
+            </p>
+            <div class="mt-3 flex flex-wrap items-center gap-4">
+              <Button type="button" variant="outline" size="sm" :disabled="recapturing" @click="recapture">
+                <AppSpinner v-if="recapturing" class="mr-2" color="text-current" label="Starting a new capture" />
+                {{ recapturing ? 'Starting…' : 'Capture again' }}
+              </Button>
+              <NuxtLink to="/" class="text-sm text-brand-accent underline underline-offset-4">
+                Try another URL
+              </NuxtLink>
+            </div>
+            <p v-if="recaptureError" class="mt-3 text-sm text-brand-warning" role="alert">
+              {{ recaptureError }}
+            </p>
+          </div>
 
           <!-- Discreet listing-text editor — not a step; defaults come from the crawl -->
           <div class="mt-4">
@@ -299,6 +323,7 @@ watch(
                 {{ showEdit ? 'Done editing text' : 'Edit listing text' }}
               </button>
               <button
+                v-if="hasScreenshot"
                 type="button"
                 class="text-xs font-medium text-brand-muted underline decoration-white/20 underline-offset-4 transition-colors hover:text-brand-fg disabled:cursor-not-allowed disabled:opacity-60"
                 :disabled="recapturing"
@@ -307,7 +332,7 @@ watch(
                 {{ recapturing ? 'Starting new capture…' : 'Screenshot not right? Capture again' }}
               </button>
             </div>
-            <p v-if="recaptureError" class="mt-2 text-xs text-brand-warning" role="alert">
+            <p v-if="recaptureError && hasScreenshot" class="mt-2 text-xs text-brand-warning" role="alert">
               {{ recaptureError }}
             </p>
             <div v-show="showEdit" class="mt-3 space-y-3 rounded-xl border border-brand-border bg-white/[0.02] p-4">
@@ -334,20 +359,20 @@ watch(
           </div>
         </div>
 
-        <!-- RIGHT: order form (package + account) -->
+        <!-- RIGHT: order form (package + email) -->
         <div class="min-w-0 space-y-8">
           <!-- 01 — Select package -->
           <section>
             <h2 class="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-brand-muted">
               01 — Select package
             </h2>
-            <IntakePlanSelector v-model="selectedTier" />
+            <IntakePlanSelector v-model="selectedTier" :disabled="checkoutPending" />
           </section>
 
-          <!-- 02 — Account -->
+          <!-- 02 — Email -->
           <section class="space-y-4">
             <h2 class="text-sm font-semibold uppercase tracking-[0.2em] text-brand-muted">
-              02 — Account
+              02 — Where should we send your listing?
             </h2>
             <div class="space-y-1.5">
               <div class="flex min-h-5 items-center justify-between gap-3">
@@ -375,60 +400,17 @@ watch(
                 {{ emailHelpText }}
               </p>
             </div>
-
-            <label class="flex items-center gap-2.5 text-sm text-brand-fg">
-              <input
-                v-model="account.autoGenerate"
-                type="checkbox"
-                class="size-4 rounded border-brand-border bg-background accent-brand-accent"
-              >
-              Auto-generate a secure password
-            </label>
-
-            <!-- Always visible — no conditional mount, no layout shift. -->
-            <div class="space-y-1.5">
-              <div class="flex min-h-5 items-center justify-between gap-3">
-                <Label for="a-password">Password</Label>
-                <span
-                  class="text-right text-[11px] font-medium"
-                  :class="passwordShowsInvalid ? 'text-brand-warning' : 'text-brand-muted'"
-                >
-                  {{ passwordShowsInvalid ? 'Too short' : account.autoGenerate ? 'Generated' : 'Custom' }}
-                </span>
-              </div>
-              <Input
-                id="a-password"
-                v-model="account.password"
-                :type="account.autoGenerate ? 'text' : 'password'"
-                :readonly="account.autoGenerate"
-                :aria-invalid="passwordShowsInvalid"
-                :class="[account.autoGenerate ? 'font-mono' : '', passwordShowsInvalid ? invalidFieldClass : '']"
-                placeholder="Choose a password"
-                autocomplete="new-password"
-              />
-              <p
-                class="min-h-4 text-xs"
-                :class="passwordShowsInvalid ? 'text-brand-warning' : 'text-brand-muted'"
-                aria-live="polite"
-              >
-                {{ passwordHelpText }}
-              </p>
-            </div>
-
-            <div class="space-y-1.5">
-              <Label for="a-coupon">Coupon <span class="text-brand-muted">(optional)</span></Label>
-              <Input id="a-coupon" v-model="coupon" placeholder="Have a code?" />
-            </div>
           </section>
 
           <!-- CTA -->
           <section>
-            <Button size="lg" class="w-full" :disabled="!canPay || publishRequested" @click="publish">
-              Pay &amp; publish — {{ selectedPlan.priceLabel }}/year
+            <Button size="lg" class="w-full" :disabled="!canPay" @click="payAndPublish">
+              <AppSpinner v-if="checkoutPending" class="mr-2" color="text-current" label="Opening secure checkout" />
+              {{ checkoutPending ? 'Opening secure checkout…' : `Pay & publish — ${selectedPlan.priceLabel}/year` }}
             </Button>
             <div class="mt-3 min-h-5 text-center text-xs" aria-live="polite">
-              <p v-if="publishRequested" class="text-brand-accent">
-                Secure checkout (Stripe) lands in the next phase — your details are saved.
+              <p v-if="checkoutError" class="text-brand-warning" role="alert">
+                {{ checkoutError }}
               </p>
               <p v-else class="text-brand-muted">
                 That's just {{ selectedPlan.monthlyLabel }}/mo · pay only when you publish · 7-day money-back guarantee.

@@ -37,6 +37,8 @@ const onSubmit = handleSubmit(async (values) => {
   intake.rememberSubmittedUrl(values.url)
   try {
     // Already have a usable preview for this exact URL → jump straight to it.
+    // The preview page consumes the tier chosen on /pricing, so every entry
+    // path (this one, the Resume link, a direct URL) behaves identically.
     const existing = intake.previewForUrl(values.url)
     if (existing) {
       await navigateTo(`/preview/${existing.token}`)

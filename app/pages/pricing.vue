@@ -206,7 +206,7 @@ useFaqSchema(faqs.map(f => ({ q: f.question, a: f.answer })))
           </ul>
 
           <Button as-child size="lg" class="mt-auto w-full">
-            <NuxtLink to="/" class="group">
+            <NuxtLink :to="`/submit?tier=${plan.tier}`" class="group">
               {{ plan.cta }}
               <ArrowRight class="ml-1 size-4 transition-transform group-hover:translate-x-0.5" />
             </NuxtLink>

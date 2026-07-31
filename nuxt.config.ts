@@ -89,7 +89,7 @@ export default defineNuxtConfig({
       '/admin',
       '/dashboard',
       '/login',
-      '/checkout',
+      '/checkout/**',
       '/preview/**',
       '/contact',
       '/cookies',
