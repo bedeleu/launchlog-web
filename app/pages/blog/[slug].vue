@@ -117,7 +117,7 @@ function truncateDescription(value: string): string {
         </p>
         <p class="text-brand-muted mt-2 text-sm leading-6">
           LaunchLog publishes human-reviewed listings with schema.org structured data and AI-readable
-          pages — engineered to be cited by ChatGPT, Perplexity, Claude and Gemini.
+          pages built for search and machine-readable discovery.
         </p>
         <div class="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold">
           <NuxtLink to="/submit" class="text-brand-accent hover:underline">

@@ -107,29 +107,29 @@ const tierMeta: Record<ListingTier, { label: string, classes: string }> = {
 }
 const tier = computed(() => tierMeta[(listing.value?.tier ?? 'basic') as ListingTier] ?? tierMeta.basic)
 
-// AI Discovery — D-009 invisible tech edge. Reflects the real per-listing booleans
-// alongside always-on platform surfaces.
+// These surfaces are provided by the public route for every published listing.
+// Legacy per-row flags are intentionally not used: founding imports predate the
+// platform-wide Markdown, schema and discovery feeds.
 const aiDiscovery = computed(() => {
-  const l = listing.value
   return [
     {
       label: 'schema.org @graph',
       detail: 'Structured data emitted on this page',
-      enabled: l?.has_schema_org ?? true,
+      enabled: true,
     },
     {
       label: 'Markdown endpoint',
       detail: 'GET /listing/{slug} with Accept: text/markdown',
-      enabled: l?.has_markdown_negotiation ?? true,
+      enabled: true,
     },
     {
       label: 'Included in llms.txt surfaces',
-      detail: 'Discoverable by ChatGPT, Perplexity, Claude, Gemini',
-      enabled: l?.has_llms_txt ?? true,
+      detail: 'Included in LaunchLog machine-readable discovery feeds',
+      enabled: true,
     },
     {
-      label: 'Sitemap + IndexNow submission',
-      detail: 'Submitted to search engines on publish',
+      label: 'Sitemap discovery',
+      detail: 'Included in the LaunchLog listing sitemap',
       enabled: true,
     },
   ]
@@ -369,13 +369,6 @@ const tierLabel = (t?: ListingTier): string =>
             </ul>
           </section>
 
-          <!--
-            Key Features / Use Cases intentionally omitted: the data model has no
-            structured fields for these yet. Rendered only if present (they aren't),
-            never fabricated.
-            TODO: features/use_cases come from Phase 2 AI enrichment.
-          -->
-
           <!-- AI Discovery (D-009 differentiator) -->
           <section>
             <h2 class="flex items-center gap-2 text-xl font-semibold text-brand-fg">
@@ -383,7 +376,7 @@ const tierLabel = (t?: ListingTier): string =>
               AI Discovery
             </h2>
             <p class="mt-2 text-sm text-brand-muted">
-              Engineered to be read, indexed, and cited by search engines and AI assistants.
+              Published across search-friendly and machine-readable LaunchLog surfaces.
             </p>
             <ul class="mt-5 grid gap-3 sm:grid-cols-2">
               <li

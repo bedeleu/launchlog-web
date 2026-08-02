@@ -3,7 +3,7 @@ const config = useRuntimeConfig()
 const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
 const pageUrl = `${siteUrl}/help`
 const description
-  = 'Answers to common questions about LaunchLog — getting listed, free previews, pricing and billing, the AI-citation tech edge, moderation and your account.'
+  = 'Answers to common questions about LaunchLog — getting listed, free previews, pricing, machine-readable discovery, moderation and your account.'
 
 interface Faq { q: string, a: string }
 interface Category { id: string, title: string, summary: string, faqs: Faq[] }

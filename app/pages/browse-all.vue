@@ -17,7 +17,11 @@ const activePage = computed(() => {
 })
 
 const filters = computed<Record<string, string | number>>(() => {
-  const f: Record<string, string | number> = { page: activePage.value }
+  const f: Record<string, string | number> = {
+    page: activePage.value,
+    per_page: 24,
+    sort: 'priority',
+  }
   if (activeCategory.value) f.category = activeCategory.value
   if (activeTag.value) f.tag = activeTag.value
   if (activeQuery.value) f.q = activeQuery.value
@@ -26,7 +30,7 @@ const filters = computed<Record<string, string | number>>(() => {
 
 const hasFilters = computed(() => Boolean(activeCategory.value || activeTag.value || activeQuery.value))
 
-const { data: pageData } = await useAsyncData<ListingPage>(
+const { data: pageData, error: pageError, refresh: refreshPage } = await useAsyncData<ListingPage>(
   () => `browse-${JSON.stringify(filters.value)}`,
   () => listListingPage(filters.value),
   {
@@ -113,9 +117,13 @@ const ogImageUrl = `${siteUrl}/og-image.jpg`
 useSeoMeta({
   title: 'Browse all — LaunchLog',
   description: 'Browse every product on LaunchLog — the log of what just shipped.',
+  ogTitle: 'Browse all — LaunchLog',
+  ogDescription: 'Browse every product on LaunchLog — the log of what just shipped.',
   ogUrl: `${siteUrl}/browse-all`,
   ogImage: ogImageUrl,
   twitterCard: 'summary_large_image',
+  twitterTitle: 'Browse all — LaunchLog',
+  twitterDescription: 'Browse every product on LaunchLog — the log of what just shipped.',
   twitterImage: ogImageUrl,
 })
 
@@ -191,7 +199,19 @@ useBreadcrumbs([
     </div>
 
     <!-- Grid -->
-    <template v-if="listings.length">
+    <div v-if="pageError" class="mt-16 rounded-2xl border border-red-400/20 bg-red-400/[0.05] py-16 text-center">
+      <p class="text-lg font-medium text-brand-fg">
+        Listings are temporarily unavailable
+      </p>
+      <p class="mx-auto mt-2 max-w-sm text-brand-muted">
+        The directory could not be loaded. Please try again.
+      </p>
+      <Button class="mt-6" variant="outline" @click="() => refreshPage()">
+        Try again
+      </Button>
+    </div>
+
+    <template v-else-if="listings.length">
       <div class="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-brand-muted">
         <span>
           Showing {{ meta.from }}–{{ meta.to }} of {{ meta.total }} products

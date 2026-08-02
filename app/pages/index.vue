@@ -1,5 +1,21 @@
 <script setup lang="ts">
+import type { ListingCard } from '~/composables/useListings'
+
 const { user } = useAuth()
+const { listListings } = useListings()
+
+const { data: featuredListings } = await useAsyncData<ListingCard[]>(
+  'home-featured-listings',
+  () => listListings({ tier: 'featured', sort: 'priority', per_page: 3 }),
+  { default: () => [] },
+)
+
+const { data: recentListings } = await useAsyncData<ListingCard[]>(
+  'home-recent-listings',
+  () => listListings({ sort: 'recent', per_page: 6 }),
+  { default: () => [] },
+)
+
 const config = useRuntimeConfig()
 const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
 const homeUrl = `${siteUrl}/`
@@ -118,36 +134,88 @@ useHead({
 </script>
 
 <template>
-  <main class="mx-auto flex min-h-screen max-w-6xl flex-col justify-center px-6 py-16">
-    <p class="text-sm font-semibold uppercase tracking-[0.2em] text-gray-500">
-      Curated directory for indie tech
-    </p>
-    <h1 class="mt-6 max-w-3xl text-5xl font-bold tracking-normal text-white md:text-7xl">
-      Get Listed.
-      <span class="block text-gray-600">Get Found.</span>
-    </h1>
-    <p class="mt-6 max-w-2xl text-lg text-gray-300">
-      LaunchLog is the log of what just shipped, engineered to be cited by
-      ChatGPT, Perplexity, Claude, and Gemini.
-    </p>
+  <main class="min-h-screen">
+    <section class="mx-auto flex min-h-[76vh] max-w-6xl flex-col justify-center px-6 py-16">
+      <p class="text-sm font-semibold uppercase tracking-[0.2em] text-gray-500">
+        Curated directory for indie tech
+      </p>
+      <h1 class="mt-6 max-w-3xl text-5xl font-bold tracking-normal text-white md:text-7xl">
+        Get Listed.
+        <span class="block text-gray-600">Get Found.</span>
+      </h1>
+      <p class="mt-6 max-w-2xl text-lg text-gray-300">
+        LaunchLog is the log of what just shipped, with structured and machine-readable
+        product pages built for search and AI discovery.
+      </p>
 
-    <div class="mt-10">
-      <IntakePreviewForm />
-    </div>
+      <div class="mt-10">
+        <IntakePreviewForm />
+      </div>
 
-    <p class="text-brand-muted mt-8 text-sm">
-      <template v-if="user">
-        Signed in as <strong class="text-white">{{ user.email }}</strong> —
-        <NuxtLink to="/dashboard" class="text-brand-accent underline">
-          Dashboard
-        </NuxtLink>
-      </template>
-      <template v-else>
-        Already listed?
-        <NuxtLink to="/login" class="text-brand-accent underline">
-          Sign in
-        </NuxtLink>
-      </template>
-    </p>
+      <p class="mt-8 text-sm text-brand-muted">
+        <template v-if="user">
+          Signed in as <strong class="text-white">{{ user.email }}</strong> —
+          <NuxtLink to="/dashboard" class="text-brand-accent underline">
+            Dashboard
+          </NuxtLink>
+        </template>
+        <template v-else>
+          Already listed?
+          <NuxtLink to="/login" class="text-brand-accent underline">
+            Sign in
+          </NuxtLink>
+        </template>
+      </p>
+    </section>
+
+    <section v-if="featuredListings.length" class="border-t border-brand-border">
+      <div class="mx-auto max-w-6xl px-6 py-14">
+        <div class="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-brand-accent">
+              Featured
+            </p>
+            <h2 class="mt-2 text-3xl font-bold text-brand-fg">
+              Featured launches
+            </h2>
+          </div>
+          <NuxtLink to="/featured" class="text-sm font-medium text-brand-accent transition-colors hover:text-brand-fg">
+            View all featured
+          </NuxtLink>
+        </div>
+        <div class="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <ListingTile
+            v-for="listing in featuredListings"
+            :key="listing.slug"
+            :listing="listing"
+          />
+        </div>
+      </div>
+    </section>
+
+    <section v-if="recentListings.length" class="border-t border-brand-border">
+      <div class="mx-auto max-w-6xl px-6 py-14">
+        <div class="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-brand-muted">
+              Recently added
+            </p>
+            <h2 class="mt-2 text-3xl font-bold text-brand-fg">
+              What just shipped
+            </h2>
+          </div>
+          <NuxtLink to="/browse-all" class="text-sm font-medium text-brand-accent transition-colors hover:text-brand-fg">
+            Browse all launches
+          </NuxtLink>
+        </div>
+        <div class="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <ListingTile
+            v-for="listing in recentListings"
+            :key="listing.slug"
+            :listing="listing"
+          />
+        </div>
+      </div>
+    </section>
   </main>
 </template>

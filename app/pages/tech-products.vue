@@ -1,30 +1,46 @@
 <script setup lang="ts">
 import { Code2 } from '@lucide/vue'
-import type { ListingCard } from '~/composables/useListings'
+import { Button } from '@/components/ui/button'
+import type { ListingPage } from '~/composables/useListings'
 
-const { listListings } = useListings()
+const route = useRoute()
+const { listListingPage } = useListings()
+const activePage = computed(() => {
+  const page = Number(route.query.page || 1)
+  return Number.isInteger(page) && page > 0 ? page : 1
+})
 
-// "Tech products" = listings in tech-leaning categories. The list API has no
-// multi-category param, so we fetch the (featured-first) published list once
-// and filter client-side. Order is preserved → featured-first feel kept.
-const TECH_CATEGORIES = new Set([
-  'developer-tools',
-  'devops',
-  'ai-ml',
-  'apis',
-  'no-code',
-  'open-source',
-])
-
-const { data: all } = await useAsyncData<ListingCard[]>(
-  'tech-products-source',
-  () => listListings(),
-  { default: () => [] },
+const { data: pageData, error: pageError, refresh } = await useAsyncData<ListingPage>(
+  () => `tech-products-${activePage.value}`,
+  () => listListingPage({
+    kind: 'tech',
+    sort: 'priority',
+    per_page: 24,
+    page: activePage.value,
+  }),
+  {
+    default: () => ({
+      data: [],
+      meta: { current_page: 1, from: null, last_page: 1, per_page: 24, to: null, total: 0 },
+    }),
+    watch: [activePage],
+  },
 )
 
-const listings = computed(() =>
-  (all.value ?? []).filter(l => l.category && TECH_CATEGORIES.has(l.category.slug)),
-)
+const listings = computed(() => pageData.value?.data ?? [])
+const meta = computed(() => pageData.value?.meta ?? {
+  current_page: 1,
+  from: null,
+  last_page: 1,
+  per_page: 24,
+  to: null,
+  total: 0,
+})
+
+const setPage = (page: number) => navigateTo({
+  path: '/tech-products',
+  query: page > 1 ? { page: String(page) } : {},
+})
 
 const config = useRuntimeConfig()
 const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
@@ -33,9 +49,13 @@ const ogImageUrl = `${siteUrl}/og-image.jpg`
 useSeoMeta({
   title: 'Tech products — LaunchLog',
   description: 'Developer tools, DevOps, AI/ML, APIs, no-code, and open-source launches on LaunchLog.',
+  ogTitle: 'Tech products — LaunchLog',
+  ogDescription: 'Developer tools, DevOps, AI/ML, APIs, no-code, and open-source launches on LaunchLog.',
   ogUrl: `${siteUrl}/tech-products`,
   ogImage: ogImageUrl,
   twitterCard: 'summary_large_image',
+  twitterTitle: 'Tech products — LaunchLog',
+  twitterDescription: 'Developer tools, DevOps, AI/ML, APIs, no-code, and open-source launches on LaunchLog.',
   twitterImage: ogImageUrl,
 })
 
@@ -60,19 +80,30 @@ useBreadcrumbs([
       </p>
     </header>
 
-    <!-- Grid -->
-    <div
-      v-if="listings.length"
-      class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
-    >
-      <ListingTile
-        v-for="listing in listings"
-        :key="listing.slug"
-        :listing="listing"
-      />
+    <div v-if="pageError" class="mt-16 rounded-2xl border border-red-400/20 bg-red-400/[0.05] py-16 text-center">
+      <p class="text-lg font-medium text-brand-fg">Tech products are temporarily unavailable</p>
+      <p class="mx-auto mt-2 max-w-sm text-brand-muted">The directory could not be loaded. Please try again.</p>
+      <Button class="mt-6" variant="outline" @click="() => refresh()">Try again</Button>
     </div>
 
-    <!-- Empty state -->
+    <template v-else-if="listings.length">
+      <div class="mt-8 flex flex-wrap items-center justify-between gap-3 text-sm text-brand-muted">
+        <span>Showing {{ meta.from }}–{{ meta.to }} of {{ meta.total }} tech products</span>
+        <span>Page {{ meta.current_page }} of {{ meta.last_page }}</span>
+      </div>
+      <div class="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <ListingTile v-for="listing in listings" :key="listing.slug" :listing="listing" />
+      </div>
+      <nav v-if="meta.last_page > 1" class="mt-10 flex justify-center gap-2" aria-label="Tech products pagination">
+        <Button variant="outline" :disabled="meta.current_page <= 1" @click="setPage(meta.current_page - 1)">
+          Previous
+        </Button>
+        <Button variant="outline" :disabled="meta.current_page >= meta.last_page" @click="setPage(meta.current_page + 1)">
+          Next
+        </Button>
+      </nav>
+    </template>
+
     <div v-else class="mt-16 rounded-2xl border border-brand-border bg-white/[0.02] py-20 text-center">
       <p class="text-lg font-medium text-brand-fg">
         No tech products yet

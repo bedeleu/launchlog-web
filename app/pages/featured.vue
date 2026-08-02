@@ -1,14 +1,41 @@
 <script setup lang="ts">
 import { Sparkles } from '@lucide/vue'
-import type { ListingCard } from '~/composables/useListings'
+import { Button } from '@/components/ui/button'
+import type { ListingPage } from '~/composables/useListings'
 
-const { listListings } = useListings()
+const route = useRoute()
+const { listListingPage } = useListings()
+const activePage = computed(() => {
+  const page = Number(route.query.page || 1)
+  return Number.isInteger(page) && page > 0 ? page : 1
+})
 
-const { data: listings } = await useAsyncData<ListingCard[]>(
-  'featured-listings',
-  () => listListings({ tier: 'featured' }),
-  { default: () => [] },
+const { data: pageData, error: pageError, refresh } = await useAsyncData<ListingPage>(
+  () => `featured-listings-${activePage.value}`,
+  () => listListingPage({ tier: 'featured', sort: 'priority', per_page: 24, page: activePage.value }),
+  {
+    default: () => ({
+      data: [],
+      meta: { current_page: 1, from: null, last_page: 1, per_page: 24, to: null, total: 0 },
+    }),
+    watch: [activePage],
+  },
 )
+
+const listings = computed(() => pageData.value?.data ?? [])
+const meta = computed(() => pageData.value?.meta ?? {
+  current_page: 1,
+  from: null,
+  last_page: 1,
+  per_page: 24,
+  to: null,
+  total: 0,
+})
+
+const setPage = (page: number) => navigateTo({
+  path: '/featured',
+  query: page > 1 ? { page: String(page) } : {},
+})
 
 const config = useRuntimeConfig()
 const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
@@ -17,9 +44,13 @@ const ogImageUrl = `${siteUrl}/og-image.jpg`
 useSeoMeta({
   title: 'Featured products — LaunchLog',
   description: 'Featured products on LaunchLog — premium placement for standout launches.',
+  ogTitle: 'Featured products — LaunchLog',
+  ogDescription: 'Featured products on LaunchLog — premium placement for standout launches.',
   ogUrl: `${siteUrl}/featured`,
   ogImage: ogImageUrl,
   twitterCard: 'summary_large_image',
+  twitterTitle: 'Featured products — LaunchLog',
+  twitterDescription: 'Featured products on LaunchLog — premium placement for standout launches.',
   twitterImage: ogImageUrl,
 })
 
@@ -40,23 +71,34 @@ useBreadcrumbs([
         Featured products
       </h1>
       <p class="mt-3 text-lg text-brand-muted">
-        Premium placement for standout launches — top of every browse, surfaced first to humans and AI assistants alike.
+        Premium placement for standout launches across LaunchLog browse and category surfaces.
       </p>
     </header>
 
-    <!-- Grid -->
-    <div
-      v-if="listings && listings.length"
-      class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
-    >
-      <ListingTile
-        v-for="listing in listings"
-        :key="listing.slug"
-        :listing="listing"
-      />
+    <div v-if="pageError" class="mt-16 rounded-2xl border border-red-400/20 bg-red-400/[0.05] py-16 text-center">
+      <p class="text-lg font-medium text-brand-fg">Featured products are temporarily unavailable</p>
+      <p class="mx-auto mt-2 max-w-sm text-brand-muted">The directory could not be loaded. Please try again.</p>
+      <Button class="mt-6" variant="outline" @click="() => refresh()">Try again</Button>
     </div>
 
-    <!-- Empty state -->
+    <template v-else-if="listings.length">
+      <div class="mt-8 flex flex-wrap items-center justify-between gap-3 text-sm text-brand-muted">
+        <span>Showing {{ meta.from }}–{{ meta.to }} of {{ meta.total }} featured products</span>
+        <span>Page {{ meta.current_page }} of {{ meta.last_page }}</span>
+      </div>
+      <div class="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <ListingTile v-for="listing in listings" :key="listing.slug" :listing="listing" />
+      </div>
+      <nav v-if="meta.last_page > 1" class="mt-10 flex justify-center gap-2" aria-label="Featured products pagination">
+        <Button variant="outline" :disabled="meta.current_page <= 1" @click="setPage(meta.current_page - 1)">
+          Previous
+        </Button>
+        <Button variant="outline" :disabled="meta.current_page >= meta.last_page" @click="setPage(meta.current_page + 1)">
+          Next
+        </Button>
+      </nav>
+    </template>
+
     <div v-else class="mt-16 rounded-2xl border border-brand-border bg-white/[0.02] py-20 text-center">
       <p class="text-lg font-medium text-brand-fg">
         No featured products yet

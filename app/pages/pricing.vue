@@ -34,14 +34,14 @@ const planMeta = {
     accent: 'border-brand-border bg-white/[0.025]',
   },
   premium: {
-    eyebrow: 'Most popular',
+    eyebrow: 'Priority placement',
     summary: 'Better placement across browse, category, and tech surfaces for products that need more visibility.',
     cta: 'Start Premium preview',
     accent: 'border-white/70 bg-white/[0.045]',
   },
   featured: {
     eyebrow: 'Best value',
-    summary: 'Top LaunchLog visibility with the large featured placement, badge, and launch discount from $149.',
+    summary: 'Top LaunchLog visibility with homepage placement, a Featured badge, and the launch discount from $149.',
     cta: 'Start Featured preview',
     accent: 'border-brand-accent bg-brand-accent/10 shadow-[0_0_0_1px_rgba(99,102,241,0.2),0_24px_80px_rgba(99,102,241,0.12)]',
   },
@@ -68,7 +68,7 @@ const discoveryItems = [
   {
     icon: FileJson2,
     title: 'Structured data graph',
-    body: 'Product, organization, offer, breadcrumb, and review-ready schema.org blocks live on the listing page.',
+    body: 'Supported product, organization, offer, and breadcrumb schema.org blocks live on the listing page.',
   },
   {
     icon: Image,
@@ -88,11 +88,8 @@ const featureRows = [
   { label: 'Sitemap + IndexNow submission', basic: true, premium: true, featured: true },
   { label: 'Browse directory placement', basic: 'Standard', premium: 'Priority', featured: 'Top' },
   { label: 'Category / tech visibility', basic: 'Standard', premium: 'Boosted', featured: 'Top slot' },
-  { label: 'Homepage visibility', basic: false, premium: 'Rotation', featured: 'Featured block' },
+  { label: 'Homepage visibility', basic: false, premium: false, featured: 'Featured section' },
   { label: 'Featured badge', basic: false, premium: false, featured: true },
-  { label: 'Large featured screenshot placement', basic: false, premium: false, featured: true },
-  { label: 'Screenshot / metadata refresh', basic: 'Initial', premium: 'Priority refresh', featured: 'Priority refresh' },
-  { label: 'Launch/social mention', basic: false, premium: false, featured: true },
 ]
 
 const faqs = [

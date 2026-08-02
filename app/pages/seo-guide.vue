@@ -4,7 +4,7 @@ const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
 const pageUrl = `${siteUrl}/seo-guide`
 const updated = 'May 31, 2026'
 const description
-  = 'A practical 2026 guide to getting your product discovered — across Google and AI answer engines. SEO fundamentals, the AI-citation tech edge, and the checklist every listing should pass.'
+  = 'A practical 2026 guide to getting your product discovered across Google and AI answer engines, with SEO fundamentals and a machine-readable launch checklist.'
 
 const pillars = [
   {

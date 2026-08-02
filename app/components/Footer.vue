@@ -54,7 +54,7 @@ const columns = [
             </span>
           </NuxtLink>
           <p class="mt-3 text-sm text-brand-muted">
-            The log of what just shipped — engineered to be cited by ChatGPT, Perplexity, Claude and Gemini.
+            The log of what just shipped — structured for people, search engines, and AI discovery.
           </p>
         </div>
 
