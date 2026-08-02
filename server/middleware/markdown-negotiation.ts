@@ -9,6 +9,11 @@
  * at that point this middleware will fetch the listing from the API, render it as markdown,
  * and set the proper Vary / Content-Signal / Cache-Control headers.
  */
+import {
+  listingAbsenceStatus,
+  type ListingAbsenceStatus,
+} from '#shared/utils/listing-http-status'
+
 // Only the fields renderListingAsMarkdown actually reads — deliberately narrow,
 // so the markdown contract stays independent of the full API resource shape.
 interface MarkdownListing {
@@ -45,15 +50,11 @@ export default defineEventHandler(async (event) => {
     // The Laravel routes/api.php is mounted under apiPrefix: 'api' (bootstrap/app.php), so callers must
     // include /api/v1/... in the path. See D-051 / plan v5 Resolved upfront point 5.
     // The API wraps the resource in a JsonResource envelope ({ data: {...} }).
-    const envelope = await $fetch<ListingEnvelope>(`${config.public.apiUrl}/api/v1/listings/${slug}`).catch(() => null)
+    const envelope = await $fetch<ListingEnvelope>(`${config.public.apiUrl}/api/v1/listings/${slug}`)
     const listing = envelope?.data ?? null
-    if (!listing) {
-      setResponseStatus(event, 404)
-      setResponseHeaders(event, {
-        'Content-Type': 'text/markdown; charset=utf-8',
-        'Vary': 'Accept',
-      })
-      return `# Not found\n\n> Listing \`${slug}\` does not exist.\n`
+    const absenceStatus = listingAbsenceStatus(undefined, listing)
+    if (absenceStatus || !listing) {
+      return renderMissingListing(event, slug, absenceStatus ?? 404)
     }
 
     setResponseHeaders(event, {
@@ -64,11 +65,30 @@ export default defineEventHandler(async (event) => {
     })
 
     return renderListingAsMarkdown(listing, config.public.domain as string)
-  } catch {
-    // Never throw from inside middleware — fall through to the regular HTML render.
-    return
+  }
+  catch (error) {
+    const absenceStatus = listingAbsenceStatus(error, undefined)
+    if (absenceStatus) return renderMissingListing(event, slug, absenceStatus)
+    throw error
   }
 })
+
+function renderMissingListing(
+  event: Parameters<typeof setResponseStatus>[0],
+  slug: string,
+  status: ListingAbsenceStatus,
+): string {
+  setResponseStatus(event, status)
+  setResponseHeaders(event, {
+    'Content-Type': 'text/markdown; charset=utf-8',
+    'Vary': 'Accept',
+    'X-Robots-Tag': 'noindex, nofollow',
+  })
+
+  return status === 410
+    ? `# Listing withdrawn\n\n> Listing \`${slug}\` has been withdrawn and is no longer available.\n`
+    : `# Listing not found\n\n> Listing \`${slug}\` does not exist.\n`
+}
 
 function renderListingAsMarkdown(listing: MarkdownListing, domain: string): string {
   return `# ${listing.name}

@@ -63,7 +63,6 @@ export default defineNuxtConfig({
     '/tech-products': { isr: 1800 },
     '/featured': { isr: 3600 },
     '/sponsors': { redirect: '/featured' },
-    '/listing/**': { isr: 3600 },
     '/pricing': { isr: 86400 },
     '/blog': { isr: 3600 },
     '/blog/**': { isr: 3600 },

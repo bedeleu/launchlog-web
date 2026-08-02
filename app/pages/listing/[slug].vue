@@ -13,6 +13,7 @@ import {
   Sparkles,
   Tag,
 } from '@lucide/vue'
+import { listingAbsenceStatus } from '#shared/utils/listing-http-status'
 import type { ListingCard, ListingTier } from '~/composables/useListings'
 
 const route = useRoute()
@@ -26,6 +27,19 @@ const { data: listing, error } = await useAsyncData(
   () => `listing-${slug.value}`,
   () => getListing(slug.value),
 )
+
+const absenceStatus = listingAbsenceStatus(error.value, listing.value)
+
+if (absenceStatus) {
+  const event = useRequestEvent()
+  if (event) {
+    setResponseStatus(event, absenceStatus)
+    useResponseHeader('X-Robots-Tag').value = 'noindex, nofollow'
+  }
+}
+else if (error.value) {
+  throw error.value
+}
 
 // Related listings — non-blocking, fetched only when a category is present.
 // Keyed by slug so it refetches on navigation between listings.
@@ -136,6 +150,7 @@ const seoDescription = computed(() => {
 useSeoMeta({
   title: () => seoTitle.value,
   description: () => seoDescription.value,
+  robots: () => absenceStatus ? 'noindex, nofollow' : undefined,
   ogTitle: () => seoTitle.value,
   ogDescription: () => seoDescription.value,
   ogImage: () => listing.value?.screenshot_url ?? undefined,
