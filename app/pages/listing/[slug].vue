@@ -146,6 +146,10 @@ const seoDescription = computed(() => {
   if (!l) return undefined
   return l.description?.slice(0, 200) ?? l.tagline
 })
+const screenshotAlt = computed(() => {
+  const l = listing.value
+  return l?.screenshot_url ? `${l.name} website screenshot` : undefined
+})
 
 useSeoMeta({
   title: () => seoTitle.value,
@@ -154,8 +158,13 @@ useSeoMeta({
   ogTitle: () => seoTitle.value,
   ogDescription: () => seoDescription.value,
   ogImage: () => listing.value?.screenshot_url ?? undefined,
+  ogImageAlt: () => screenshotAlt.value,
   ogType: 'website',
   twitterCard: 'summary_large_image',
+  twitterTitle: () => seoTitle.value,
+  twitterDescription: () => seoDescription.value,
+  twitterImage: () => listing.value?.screenshot_url ?? undefined,
+  twitterImageAlt: () => screenshotAlt.value,
 })
 
 const jsonLd = computed(() => {

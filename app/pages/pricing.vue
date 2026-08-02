@@ -14,6 +14,8 @@ useSeoMeta({
   ogUrl: `${siteUrl}/pricing`,
   ogImage: ogImageUrl,
   twitterCard: 'summary_large_image',
+  twitterTitle: 'LaunchLog Pricing — Basic $24.99, Premium $59.99, Featured $99/year',
+  twitterDescription: 'Annual LaunchLog listing packages. Pay only when you publish. Every plan ships schema.org structured data and AI-readable pages.',
   twitterImage: ogImageUrl,
 })
 

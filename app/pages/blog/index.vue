@@ -21,6 +21,11 @@ useSeoMeta({
   twitterDescription: blogDescription,
 })
 
+useBreadcrumbs([
+  { name: 'Home', path: '/' },
+  { name: 'Blog', path: '/blog' },
+])
+
 useHead({
   script: [
     {
