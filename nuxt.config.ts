@@ -103,6 +103,7 @@ export default defineNuxtConfig({
     ],
     sources: [
       '/api/__sitemap__/blog-urls',
+      '/api/__sitemap__/listing-urls',
     ],
   },
 })

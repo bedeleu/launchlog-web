@@ -6,7 +6,7 @@
 interface PublicListing {
   slug: string
   name: string
-  tagline: string
+  tagline: string | null
 }
 
 export default defineEventHandler(async (event) => {
@@ -17,8 +17,7 @@ export default defineEventHandler(async (event) => {
 
   let listings: PublicListing[]
   try {
-    const res = await $fetch<{ data: PublicListing[] }>(`${apiUrl}/api/v1/listings`, {
-      query: { per_page: 200 },
+    const res = await $fetch<{ data: PublicListing[] }>(`${apiUrl}/api/v1/discovery/listings`, {
       timeout: 5000,
     })
     listings = res?.data ?? []
