@@ -32,27 +32,37 @@ const meta = computed(() => pageData.value?.meta ?? {
   total: 0,
 })
 
-const setPage = (page: number) => navigateTo({
-  path: '/featured',
-  query: page > 1 ? { page: String(page) } : {},
-})
+const pageHref = (page: number) => page > 1 ? `/featured?page=${page}` : '/featured'
 
 const config = useRuntimeConfig()
 const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
 const ogImageUrl = `${siteUrl}/og-image.jpg`
+const pageUrl = computed(() => `${siteUrl}${pageHref(activePage.value)}`)
 
 useSeoMeta({
   title: 'Featured products — LaunchLog',
   description: 'Featured products on LaunchLog — premium placement for standout launches.',
   ogTitle: 'Featured products — LaunchLog',
   ogDescription: 'Featured products on LaunchLog — premium placement for standout launches.',
-  ogUrl: `${siteUrl}/featured`,
+  ogUrl: pageUrl,
   ogImage: ogImageUrl,
   twitterCard: 'summary_large_image',
   twitterTitle: 'Featured products — LaunchLog',
   twitterDescription: 'Featured products on LaunchLog — premium placement for standout launches.',
   twitterImage: ogImageUrl,
 })
+
+useHead(() => ({
+  link: [
+    { rel: 'canonical', href: pageUrl.value },
+    ...(activePage.value > 1
+      ? [{ rel: 'prev', href: `${siteUrl}${pageHref(activePage.value - 1)}` }]
+      : []),
+    ...(activePage.value < meta.value.last_page
+      ? [{ rel: 'next', href: `${siteUrl}${pageHref(activePage.value + 1)}` }]
+      : []),
+  ],
+}))
 
 useBreadcrumbs([
   { name: 'Home', path: '/' },
@@ -90,11 +100,17 @@ useBreadcrumbs([
         <ListingTile v-for="listing in listings" :key="listing.slug" :listing="listing" />
       </div>
       <nav v-if="meta.last_page > 1" class="mt-10 flex justify-center gap-2" aria-label="Featured products pagination">
-        <Button variant="outline" :disabled="meta.current_page <= 1" @click="setPage(meta.current_page - 1)">
+        <Button v-if="meta.current_page <= 1" variant="outline" disabled>
           Previous
         </Button>
-        <Button variant="outline" :disabled="meta.current_page >= meta.last_page" @click="setPage(meta.current_page + 1)">
+        <Button v-else as-child variant="outline">
+          <NuxtLink :to="pageHref(meta.current_page - 1)" rel="prev">Previous</NuxtLink>
+        </Button>
+        <Button v-if="meta.current_page >= meta.last_page" variant="outline" disabled>
           Next
+        </Button>
+        <Button v-else as-child variant="outline">
+          <NuxtLink :to="pageHref(meta.current_page + 1)" rel="next">Next</NuxtLink>
         </Button>
       </nav>
     </template>

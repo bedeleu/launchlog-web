@@ -5,7 +5,7 @@ export const renderListingMarkdown = (listing: Listing, domain: string): string 
 > ${listing.tagline ?? ''}
 
 **Website:** ${listing.url}
-**Last updated:** ${listing.published_at ? new Date(listing.published_at).toISOString().split('T')[0] : 'unknown'}
+**Published:** ${listing.published_at ? new Date(listing.published_at).toISOString().split('T')[0] : 'unknown'}
 
 ## Description
 

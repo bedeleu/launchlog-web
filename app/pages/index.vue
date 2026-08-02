@@ -4,17 +4,26 @@ import type { ListingCard } from '~/composables/useListings'
 const { user } = useAuth()
 const { listListings } = useListings()
 
-const { data: featuredListings } = await useAsyncData<ListingCard[]>(
-  'home-featured-listings',
-  () => listListings({ tier: 'featured', sort: 'priority', per_page: 3 }),
-  { default: () => [] },
+interface HomeListings {
+  featured: ListingCard[]
+  recent: ListingCard[]
+}
+
+const { data: homeListings } = await useAsyncData<HomeListings>(
+  'home-directory-listings',
+  async () => {
+    const [featured, recent] = await Promise.all([
+      listListings({ tier: 'featured', sort: 'priority', per_page: 3 }),
+      listListings({ sort: 'recent', per_page: 6 }),
+    ])
+
+    return { featured, recent }
+  },
+  { default: () => ({ featured: [], recent: [] }) },
 )
 
-const { data: recentListings } = await useAsyncData<ListingCard[]>(
-  'home-recent-listings',
-  () => listListings({ sort: 'recent', per_page: 6 }),
-  { default: () => [] },
-)
+const featuredListings = computed(() => homeListings.value?.featured ?? [])
+const recentListings = computed(() => homeListings.value?.recent ?? [])
 
 const config = useRuntimeConfig()
 const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`

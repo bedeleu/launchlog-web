@@ -31,7 +31,7 @@ describe('renderListingMarkdown', () => {
     expect(output).toContain('# Acme')
     expect(output).toContain('> Ship faster')
     expect(output).toContain('**Website:** https://acme.test')
-    expect(output).toContain('**Last updated:** 2026-07-28')
+    expect(output).toContain('**Published:** 2026-07-28')
     expect(output).toContain('A concise product description.')
     expect(output).toContain('- Nuxt')
     expect(output).toContain('Developer Tools')
@@ -56,7 +56,7 @@ describe('renderListingMarkdown', () => {
     const output = renderListingMarkdown(sparse, 'launchlog.ai')
 
     expect(output).toContain('# Sparse')
-    expect(output).toContain('**Last updated:** unknown')
+    expect(output).toContain('**Published:** unknown')
     expect(output).toContain('## Description\n\n\n\n## Tech Stack')
     expect(output).toContain('## Category\n\nUncategorized')
     expect(output).toContain('## Tags\n\n_None_')
