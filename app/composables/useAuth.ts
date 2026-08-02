@@ -12,29 +12,39 @@ export const useAuth = () => {
     return signInWithPopup($firebase.auth, $firebase.googleProvider)
   }
 
-  const sendMagicLink = async (email: string): Promise<void> => {
+  const sendMagicLink = async (email: string, redirect: unknown = '/dashboard'): Promise<void> => {
     if (!import.meta.client) return
     const { sendSignInLinkToEmail } = await import('firebase/auth')
     const { $firebase } = useNuxtApp()
-    // window.location.origin keeps the magic link valid on localhost / Railway preview / production
-    // without any env-aware logic. D-009 invisible-tech-edge says the auth flow must "just work" in
-    // every environment without hand-editing redirect URLs.
-    const url = `${window.location.origin}/login?magic=1`
+    const url = authMagicLinkUrl(window.location.origin, redirect)
     await sendSignInLinkToEmail($firebase.auth, email, { url, handleCodeInApp: true })
     window.localStorage.setItem('launchlog:magic-link-email', email)
   }
 
-  const completeMagicLink = async () => {
+  const completeMagicLink = async (confirmedEmail?: string) => {
     if (!import.meta.client) return null
     const { isSignInWithEmailLink, signInWithEmailLink } = await import('firebase/auth')
     const { $firebase } = useNuxtApp()
     if (!isSignInWithEmailLink($firebase.auth, window.location.href)) return null
-    let email = window.localStorage.getItem('launchlog:magic-link-email')
-    if (!email) email = window.prompt('Please confirm your email') ?? ''
-    if (!email) return null
-    const result = await signInWithEmailLink($firebase.auth, email, window.location.href)
+
+    const storedEmail = window.localStorage.getItem('launchlog:magic-link-email')
+    const email = resolveMagicLinkEmail(storedEmail, confirmedEmail)
+    if (!email) return { status: 'email_required' as const }
+
+    let credential
+    try {
+      credential = await signInWithEmailLink($firebase.auth, email, window.location.href)
+    }
+    catch (error: unknown) {
+      if (!confirmedEmail && storedEmail) {
+        window.localStorage.removeItem('launchlog:magic-link-email')
+        return { status: 'email_required' as const }
+      }
+      throw error
+    }
+
     window.localStorage.removeItem('launchlog:magic-link-email')
-    return result
+    return { status: 'signed_in' as const, user: credential.user }
   }
 
   const logout = async (): Promise<void> => {
