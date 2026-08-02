@@ -4,6 +4,11 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-16',
   devtools: { enabled: true },
+  experimental: {
+    // Extracted payload URLs omit the query string, so cached directory pages
+    // can hydrate page 2 with page 1 data. Keep query-specific SSR data inline.
+    payloadExtraction: false,
+  },
   // Tailwind v4 wired via the official Vite plugin (replaces the deprecated @nuxtjs/tailwindcss
   // legacy module which was pinned to Tailwind v3 and incompatible with shadcn-vue@2.7+).
   vite: {
