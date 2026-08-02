@@ -13,24 +13,12 @@ import {
   listingAbsenceStatus,
   type ListingAbsenceStatus,
 } from '#shared/utils/listing-http-status'
-
-// Only the fields renderListingAsMarkdown actually reads — deliberately narrow,
-// so the markdown contract stays independent of the full API resource shape.
-interface MarkdownListing {
-  name: string
-  slug: string
-  url: string
-  tagline?: string | null
-  description?: string | null
-  published_at?: string | null
-  tech_stack?: string[] | null
-  category?: { name?: string | null } | null
-  tags?: Array<{ name: string }> | null
-}
+import type { Listing } from '../../app/composables/useListings'
+import { renderListingMarkdown } from '../utils/listing-markdown'
 
 // The API wraps the resource in a JsonResource envelope.
 interface ListingEnvelope {
-  data?: MarkdownListing | null
+  data?: Listing | null
 }
 
 export default defineEventHandler(async (event) => {
@@ -64,7 +52,7 @@ export default defineEventHandler(async (event) => {
       'Cache-Control': 's-maxage=3600',
     })
 
-    return renderListingAsMarkdown(listing, config.public.domain as string)
+    return renderListingMarkdown(listing, config.public.domain as string)
   }
   catch (error) {
     const absenceStatus = listingAbsenceStatus(error, undefined)
@@ -88,34 +76,4 @@ function renderMissingListing(
   return status === 410
     ? `# Listing withdrawn\n\n> Listing \`${slug}\` has been withdrawn and is no longer available.\n`
     : `# Listing not found\n\n> Listing \`${slug}\` does not exist.\n`
-}
-
-function renderListingAsMarkdown(listing: MarkdownListing, domain: string): string {
-  return `# ${listing.name}
-
-> ${listing.tagline ?? ''}
-
-**Website:** ${listing.url}
-**Last updated:** ${listing.published_at ? new Date(listing.published_at).toISOString().split('T')[0] : 'unknown'}
-
-## Description
-
-${listing.description ?? ''}
-
-## Tech Stack
-
-${(listing.tech_stack ?? []).map((t: string) => `- ${t}`).join('\n')}
-
-## Category
-
-${listing.category?.name ?? 'Uncategorized'}
-
-## Tags
-
-${(listing.tags ?? []).map((t: { name: string }) => `- ${t.name}`).join('\n') || '_None_'}
-
----
-
-*Listed on [${domain}](https://${domain}/listing/${listing.slug})*
-`
 }

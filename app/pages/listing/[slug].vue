@@ -15,6 +15,7 @@ import {
 } from '@lucide/vue'
 import { listingAbsenceStatus } from '#shared/utils/listing-http-status'
 import type { ListingCard, ListingTier } from '~/composables/useListings'
+import { buildListingSchema } from '~/utils/listing-schema'
 
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? ''))
@@ -135,7 +136,6 @@ const aiDiscovery = computed(() => {
 })
 
 // --- SEO + schema.org @graph (D-009) ---
-const pageUrl = computed(() => `https://${domain}/listing/${slug.value}`)
 const seoTitle = computed(() => {
   const l = listing.value
   if (!l) return 'Listing not found | LaunchLog'
@@ -170,56 +170,7 @@ useSeoMeta({
 const jsonLd = computed(() => {
   const l = listing.value
   if (!l) return null
-
-  const orgNode = {
-    '@type': 'Organization',
-    '@id': `https://${domain}/#organization`,
-    'name': 'LaunchLog',
-    'url': `https://${domain}`,
-  }
-
-  const websiteNode = {
-    '@type': 'WebSite',
-    '@id': `https://${domain}/#website`,
-    'name': 'LaunchLog',
-    'url': `https://${domain}`,
-    'publisher': { '@id': `https://${domain}/#organization` },
-  }
-
-  const productNode: Record<string, unknown> = {
-    '@type': 'SoftwareApplication',
-    '@id': `${pageUrl.value}#product`,
-    'name': l.name,
-    'url': l.url,
-    'applicationCategory': l.category?.name ?? 'WebApplication',
-    'description': l.description ?? l.tagline,
-    'isPartOf': { '@id': `https://${domain}/#website` },
-  }
-  if (l.screenshot_url) productNode.image = l.screenshot_url
-  if (l.tech_stack?.length) productNode.featureList = l.tech_stack
-  if (l.pricing) {
-    productNode.offers = {
-      '@type': 'Offer',
-      'price': l.pricing.low,
-      'priceCurrency': l.pricing.currency,
-      'url': l.url,
-    }
-  }
-
-  const breadcrumbNode = {
-    '@type': 'BreadcrumbList',
-    '@id': `${pageUrl.value}#breadcrumb`,
-    'itemListElement': [
-      { '@type': 'ListItem', 'position': 1, 'name': 'Home', 'item': `https://${domain}` },
-      { '@type': 'ListItem', 'position': 2, 'name': 'Browse', 'item': `https://${domain}/browse-all` },
-      { '@type': 'ListItem', 'position': 3, 'name': l.name, 'item': pageUrl.value },
-    ],
-  }
-
-  return {
-    '@context': 'https://schema.org',
-    '@graph': [orgNode, websiteNode, productNode, breadcrumbNode],
-  }
+  return buildListingSchema(l, `https://${domain}`)
 })
 
 useHead({
