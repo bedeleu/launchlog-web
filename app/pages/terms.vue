@@ -2,9 +2,12 @@
 const config = useRuntimeConfig()
 const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
 const pageUrl = `${siteUrl}/terms`
-const updated = 'May 31, 2026'
+const updated = 'August 2, 2026'
+const legalName = config.public.legalName.trim()
+const legalEmail = config.public.legalEmail.trim()
+const supportEmail = config.public.supportEmail.trim()
 const description
-  = 'The terms that govern your use of LaunchLog — accounts, listings, acceptable use, subscriptions, the 7-day refund guarantee, moderation and liability.'
+  = 'The terms for using LaunchLog, including accounts, listings, acceptable use, annual subscriptions, manual refund requests and moderation.'
 
 const sections = [
   {
@@ -12,6 +15,7 @@ const sections = [
     title: 'Agreement',
     blocks: [
       { type: 'p', text: 'These Terms of Service govern your access to and use of launchlog.ai and related services (the "Service"). By creating an account, submitting a listing or otherwise using the Service, you agree to these terms. If you do not agree, do not use the Service.' },
+      { type: 'p', text: legalName ? `The Service is operated by ${legalName}.` : 'The legal operator name is not currently configured for display on this page.' },
       { type: 'p', text: 'If you use the Service on behalf of a company, you represent that you are authorised to bind that company to these terms.' },
     ],
   },
@@ -52,7 +56,7 @@ const sections = [
     id: 'acceptable-use',
     title: 'Acceptable use',
     blocks: [
-      { type: 'p', text: 'You agree not to abuse, disrupt or attempt to gain unauthorised access to the Service; not to scrape, overload or reverse-engineer it beyond what our public API permits; and not to use the Service to distribute spam or harmful content. We use automated and human review to enforce these rules.' },
+      { type: 'p', text: 'You agree not to abuse, disrupt or attempt to gain unauthorised access to the Service; not to scrape, overload or reverse-engineer it beyond what our documented public API permits; and not to use the Service to distribute spam or harmful content. We may apply administrator moderation actions to enforce these rules.' },
     ],
   },
   {
@@ -71,21 +75,21 @@ const sections = [
     id: 'refunds',
     title: 'Refunds',
     blocks: [
-      { type: 'p', text: 'We offer a 7-day money-back guarantee. If you are not satisfied, request a refund within 7 days of your initial purchase by emailing support@launchlog.ai and we will refund that payment and remove the listing. After 7 days, payments and renewals are non-refundable except where required by law. You can cancel anytime to prevent future renewals.' },
+      { type: 'p', text: supportEmail ? `We offer a 7-day money-back guarantee on the initial payment. Send a request to ${supportEmail} within 7 days of purchase. Refund requests are reviewed and processed manually in Stripe; rejecting or unpublishing a listing does not issue one. After 7 days, payments and renewals are non-refundable except where required by law. You can cancel future renewals through the billing portal.` : 'We offer a 7-day money-back guarantee on the initial payment. Refund requests are reviewed and processed manually in Stripe; rejecting or unpublishing a listing does not issue one. A public request mailbox is not currently configured, so check the Contact page for the current channel. After 7 days, payments and renewals are non-refundable except where required by law. You can cancel future renewals through the billing portal.' },
     ],
   },
   {
     id: 'moderation',
     title: 'Moderation and removal',
     blocks: [
-      { type: 'p', text: 'Every submission is reviewed. We may decline, edit for formatting, unpublish or remove any listing that violates these terms, is flagged by our spam and quality checks, or that we reasonably believe harms users or the directory. Where a paid listing is removed for a clear violation, fees are non-refundable.' },
+      { type: 'p', text: 'A successful paid conversion publishes the listing. An administrator may later edit, unpublish to pending-review status, republish or reject a listing that violates these terms or reasonably harms users or the directory. Moderation actions do not automatically refund a payment or respond to a Stripe dispute.' },
     ],
   },
   {
     id: 'ip-thirdparty',
     title: 'Intellectual property and third parties',
     blocks: [
-      { type: 'p', text: 'The LaunchLog name, brand, design and software are owned by LaunchLog and protected by applicable law. Listings link to third-party websites we do not control; we are not responsible for their content, products or practices.' },
+      { type: 'p', text: 'The LaunchLog name, brand, design and software are protected by applicable law. Listings link to third-party websites we do not control; we are not responsible for their content, products or practices.' },
     ],
   },
   {
@@ -93,14 +97,14 @@ const sections = [
     title: 'Disclaimers and liability',
     blocks: [
       { type: 'p', text: 'The Service is provided "as is" and "as available" without warranties of any kind, to the maximum extent permitted by law. We do not warrant uninterrupted or error-free operation, or any particular discovery, ranking or business outcome.' },
-      { type: 'p', text: 'To the maximum extent permitted by law, LaunchLog’s total liability arising out of or relating to the Service is limited to the amount you paid us in the 12 months preceding the claim. We are not liable for indirect, incidental or consequential damages. You agree to indemnify LaunchLog against claims arising from your content or your breach of these terms.' },
+      { type: 'p', text: 'To the maximum extent permitted by law, the Service operator’s total liability arising out of or relating to the Service is limited to the amount you paid for the Service in the 12 months preceding the claim. The operator is not liable for indirect, incidental or consequential damages. You agree to indemnify the operator against claims arising from your content or your breach of these terms.' },
     ],
   },
   {
     id: 'termination-law',
     title: 'Termination, law and changes',
     blocks: [
-      { type: 'p', text: 'You may stop using the Service and cancel at any time. We may suspend or terminate access for violations of these terms. These terms are governed by the laws applicable to LaunchLog’s place of establishment, without regard to conflict-of-law rules. We may update these terms; continued use after changes take effect constitutes acceptance, and the "Last updated" date above reflects the current version.' },
+      { type: 'p', text: 'You may stop using the Service and cancel at any time. We may suspend or terminate access for violations of these terms. Governing law and forum follow the Service operator’s place of establishment and any mandatory consumer protections that apply. We may update these terms; continued use after changes take effect constitutes acceptance, and the "Last updated" date above reflects the current version.' },
     ],
   },
 ]
@@ -130,7 +134,7 @@ useHead({
         name: 'Terms of Service — LaunchLog',
         description,
         inLanguage: 'en-US',
-        dateModified: '2026-05-31',
+        dateModified: '2026-08-02',
         isPartOf: { '@id': `${siteUrl}/#website` },
       }),
     },
@@ -145,5 +149,6 @@ useHead({
     intro="The rules for using LaunchLog — what we provide, what we expect from listings, how subscriptions and refunds work, and the limits of our liability."
     :updated="updated"
     :sections="sections"
+    :contact-email="legalEmail"
   />
 </template>

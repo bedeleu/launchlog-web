@@ -48,6 +48,11 @@ export default defineNuxtConfig({
       // server/middleware/markdown-negotiation.ts for the canonical pattern.
       apiUrl: process.env.NUXT_PUBLIC_API_URL || 'https://api.launchlog.ai',
       domain: process.env.NUXT_PUBLIC_DOMAIN || 'launchlog.ai',
+      legalName: process.env.NUXT_PUBLIC_LEGAL_NAME || '',
+      legalEmail: process.env.NUXT_PUBLIC_LEGAL_EMAIL || '',
+      supportEmail: process.env.NUXT_PUBLIC_SUPPORT_EMAIL || '',
+      dmcaEmail: process.env.NUXT_PUBLIC_DMCA_EMAIL || '',
+      statusPageUrl: process.env.NUXT_PUBLIC_STATUS_PAGE_URL || '',
       firebase: {
         // 6 fields — no measurementId (D-032 — Plausible, not GA4).
         // storageBucket/messagingSenderId/appId kept for future App Check + headers, harmless if unused.

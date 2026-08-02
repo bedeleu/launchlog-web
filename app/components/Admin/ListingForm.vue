@@ -29,6 +29,8 @@ const form = reactive({
 const inputClass = 'w-full rounded-md border border-brand-border bg-transparent px-3 py-2 text-sm text-brand-fg placeholder:text-brand-muted/60 focus:border-brand-accent/60 focus:outline-none'
 
 function onSubmit() {
+  if (props.submitting) return
+
   // Drop empty optional strings so the API keeps nulls clean; name/url stay.
   const payload: Record<string, unknown> = {}
   for (const [k, v] of Object.entries(form)) {

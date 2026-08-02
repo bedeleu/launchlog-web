@@ -13,8 +13,14 @@ const { get, update, publish, unpublish, reject } = useAdminListings()
 const listing = ref<AdminListing | null>(null)
 const loading = ref(true)
 const submitting = ref(false)
+const actionBusy = ref<'publish' | 'unpublish' | 'reject' | null>(null)
 const error = ref<string | null>(null)
 const saved = ref(false)
+
+function errorMessage(e: unknown, fallback: string): string {
+  const err = toErrorLike(e)
+  return err.data?.message ?? err.data?.error ?? err.message ?? fallback
+}
 
 async function load() {
   loading.value = true
@@ -22,7 +28,7 @@ async function load() {
     listing.value = await get(id)
   }
   catch (e: unknown) {
-    error.value = toErrorLike(e).data?.error ?? 'Listing not found'
+    error.value = errorMessage(e, 'Listing not found')
   }
   finally {
     loading.value = false
@@ -38,8 +44,7 @@ async function onSubmit(payload: Record<string, unknown>) {
     saved.value = true
   }
   catch (e: unknown) {
-    const err = toErrorLike(e)
-    error.value = err.data?.message ?? err.data?.error ?? 'Failed to save'
+    error.value = errorMessage(e, 'Failed to save')
   }
   finally {
     submitting.value = false
@@ -47,8 +52,19 @@ async function onSubmit(payload: Record<string, unknown>) {
 }
 
 async function act(verb: 'publish' | 'unpublish' | 'reject') {
+  actionBusy.value = verb
+  error.value = null
+  saved.value = false
   const fn = verb === 'publish' ? publish : verb === 'unpublish' ? unpublish : reject
-  listing.value = await fn(id)
+  try {
+    listing.value = await fn(id)
+  }
+  catch (e: unknown) {
+    error.value = errorMessage(e, `Failed to ${verb} listing`)
+  }
+  finally {
+    actionBusy.value = null
+  }
 }
 
 onMounted(load)
@@ -92,21 +108,24 @@ onMounted(load)
 
       <div class="mt-6">
         <AdminListingForm
-          :key="listing.id"
+          :key="`${listing.id}:${listing.status}:${listing.updated_at ?? ''}`"
           :initial="listing"
-          :submitting="submitting"
+          :submitting="submitting || !!actionBusy"
           submit-label="Save changes"
           @submit="onSubmit"
         >
           <template #actions>
-            <Button v-if="listing.status !== 'published'" type="button" variant="outline" @click="act('publish')">
-              Publish
+            <Button v-if="listing.status !== 'published'" type="button" variant="outline" :disabled="submitting || !!actionBusy" @click="act('publish')">
+              <AppSpinner v-if="actionBusy === 'publish'" class="mr-1.5" size="sm" color="text-current" label="Publishing listing" />
+              {{ actionBusy === 'publish' ? 'Publishing…' : 'Publish' }}
             </Button>
-            <Button v-if="listing.status === 'published'" type="button" variant="outline" @click="act('unpublish')">
-              Move to pending
+            <Button v-if="listing.status === 'published'" type="button" variant="outline" :disabled="submitting || !!actionBusy" @click="act('unpublish')">
+              <AppSpinner v-if="actionBusy === 'unpublish'" class="mr-1.5" size="sm" color="text-current" label="Unpublishing listing" />
+              {{ actionBusy === 'unpublish' ? 'Unpublishing…' : 'Unpublish to pending review' }}
             </Button>
-            <Button v-if="listing.status !== 'rejected'" type="button" variant="ghost" class="text-red-400 hover:text-red-300" @click="act('reject')">
-              Reject
+            <Button v-if="listing.status !== 'rejected'" type="button" variant="ghost" class="text-red-400 hover:text-red-300" :disabled="submitting || !!actionBusy" @click="act('reject')">
+              <AppSpinner v-if="actionBusy === 'reject'" class="mr-1.5" size="sm" color="text-current" label="Rejecting listing" />
+              {{ actionBusy === 'reject' ? 'Rejecting…' : 'Reject' }}
             </Button>
           </template>
         </AdminListingForm>

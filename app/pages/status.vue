@@ -1,17 +1,13 @@
 <script setup lang="ts">
+import { safeExternalHttpUrl } from '~/utils/safe-public-url'
+
 const config = useRuntimeConfig()
 const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
 const pageUrl = `${siteUrl}/status`
+const statusPageUrl = safeExternalHttpUrl(config.public.statusPageUrl)
+const supportEmail = config.public.supportEmail.trim()
 const description
-  = 'Live operational status of LaunchLog — the website, API, database, screenshots and payments. Current state and recent incidents.'
-
-const components = [
-  { name: 'Website', detail: 'launchlog.ai — public pages and dashboard' },
-  { name: 'API', detail: 'api.launchlog.ai — listings, previews and auth' },
-  { name: 'Database', detail: 'PostgreSQL — listing and account data' },
-  { name: 'Screenshots & CDN', detail: 'Microlink capture and cdn.launchlog.ai delivery' },
-  { name: 'Payments', detail: 'Stripe checkout and billing' },
-]
+  = 'Where to find configured LaunchLog service-status and incident updates.'
 
 useSeoMeta({
   title: 'System Status — LaunchLog',
@@ -47,78 +43,51 @@ useHead({
 
 <template>
   <main class="mx-auto max-w-4xl px-6 py-14 md:py-20">
-    <header>
+    <header class="max-w-2xl">
       <p class="text-sm font-semibold uppercase tracking-[0.18em] text-brand-muted">
         Status
       </p>
       <h1 class="mt-5 text-4xl font-bold tracking-normal text-white md:text-5xl">
-        System status
+        Service updates
       </h1>
+      <p class="mt-5 text-lg leading-8 text-brand-muted">
+        This page does not infer live health from the website response. Use the configured
+        channel below for operational and incident information.
+      </p>
     </header>
 
-    <!-- Overall banner -->
-    <div class="mt-8 flex items-center gap-4 rounded-lg border border-brand-success/30 bg-brand-success/[0.08] p-5">
-      <span class="relative flex size-3">
-        <span class="absolute inline-flex size-full animate-ping rounded-full bg-brand-success opacity-60" />
-        <span class="relative inline-flex size-3 rounded-full bg-brand-success" />
-      </span>
-      <div>
-        <p class="text-lg font-semibold text-white">
-          All systems operational
-        </p>
-        <p class="text-sm text-brand-muted">
-          Everything is running normally.
-        </p>
-      </div>
-    </div>
-
-    <!-- Components -->
-    <section class="mt-10">
-      <h2 class="text-xs font-semibold uppercase tracking-wider text-brand-muted/80">
-        Components
-      </h2>
-      <div class="mt-4 divide-y divide-brand-border overflow-hidden rounded-lg border border-brand-border">
-        <div
-          v-for="component in components"
-          :key="component.name"
-          class="flex items-center justify-between gap-4 p-5"
-        >
-          <div class="min-w-0">
-            <p class="font-medium text-white">
-              {{ component.name }}
-            </p>
-            <p class="mt-0.5 truncate text-sm text-brand-muted">
-              {{ component.detail }}
-            </p>
-          </div>
-          <span class="inline-flex shrink-0 items-center gap-2 text-sm font-medium text-brand-success">
-            <span class="size-2 rounded-full bg-brand-success" aria-hidden="true" />
-            Operational
-          </span>
-        </div>
-      </div>
+    <section v-if="statusPageUrl" class="mt-10 rounded-lg border border-brand-border bg-white/[0.03] p-6 md:p-8">
+      <p class="text-xs font-semibold uppercase tracking-wider text-brand-muted/80">
+        Configured status page
+      </p>
+      <a
+        :href="statusPageUrl"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="mt-4 inline-flex items-center rounded-md bg-brand-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent"
+      >
+        Open service status
+        <span class="ml-2" aria-hidden="true">↗</span>
+      </a>
     </section>
 
-    <!-- Incident history -->
-    <section class="mt-10">
-      <h2 class="text-xs font-semibold uppercase tracking-wider text-brand-muted/80">
-        Recent incidents
+    <section v-else-if="supportEmail" class="mt-10 rounded-lg border border-brand-border bg-white/[0.03] p-6 md:p-8">
+      <h2 class="text-xl font-semibold text-white">
+        Support channel
       </h2>
-      <div class="mt-4 rounded-lg border border-brand-border bg-white/[0.02] p-8 text-center">
-        <p class="text-sm font-medium text-white">
-          No incidents reported.
-        </p>
-        <p class="mt-2 text-sm text-brand-muted">
-          We’ll post any disruptions here, with updates until they’re resolved.
-        </p>
-      </div>
+      <p class="mt-3 leading-7 text-brand-muted">
+        To report or ask about a service issue, contact
+        <a :href="`mailto:${supportEmail}`" class="font-medium text-brand-accent hover:underline">{{ supportEmail }}</a>.
+      </p>
     </section>
 
-    <!-- Footnote -->
-    <p class="mt-8 text-sm leading-7 text-brand-muted">
-      Seeing a problem we haven’t posted? Let us know at
-      <a href="mailto:support@launchlog.ai" class="font-medium text-brand-accent hover:underline">support@launchlog.ai</a>
-      and we’ll look into it right away.
-    </p>
+    <section v-else class="mt-10 rounded-lg border border-brand-border bg-white/[0.03] p-6 md:p-8">
+      <h2 class="text-xl font-semibold text-white">
+        No public status channel is configured
+      </h2>
+      <p class="mt-3 leading-7 text-brand-muted">
+        LaunchLog has not configured a public status-page URL or support mailbox.
+      </p>
+    </section>
   </main>
 </template>

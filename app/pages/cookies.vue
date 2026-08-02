@@ -2,28 +2,30 @@
 const config = useRuntimeConfig()
 const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
 const pageUrl = `${siteUrl}/cookies`
-const updated = 'May 31, 2026'
+const updated = 'August 2, 2026'
+const legalEmail = config.public.legalEmail.trim()
 const description
-  = 'How LaunchLog uses cookies and local storage. We keep it minimal — essential cookies for sign-in and security, cookieless analytics, and no advertising trackers.'
+  = 'How the current LaunchLog web application uses browser storage and how Stripe may use cookies during hosted checkout and billing.'
 
 const sections = [
   {
     id: 'what',
-    title: 'What cookies are',
+    title: 'Browser storage in the current app',
     blocks: [
-      { type: 'p', text: 'Cookies and similar technologies (such as local storage) are small pieces of data stored by your browser. They let a site remember things like whether you are signed in. This page explains which we use and why.' },
-      { type: 'p', text: 'LaunchLog takes a minimal approach: we use cookies that are essential to operate the Service and we do not use advertising or cross-site tracking cookies.' },
+      { type: 'p', text: 'Cookies and local storage are browser technologies used to retain data between page loads. The current LaunchLog web code relies on browser storage for authentication continuity, email-link completion and private-preview drafts.' },
+      { type: 'p', text: 'The current application does not include an advertising tracker or a dedicated first-party analytics script.' },
     ],
   },
   {
-    id: 'essential',
-    title: 'Essential cookies',
+    id: 'local-storage',
+    title: 'Local storage and authentication persistence',
     blocks: [
-      { type: 'p', text: 'These are required for the site to function and cannot be switched off in our system. They include:' },
+      { type: 'p', text: 'The application currently stores the following browser-side data:' },
       { type: 'list', items: [
-        'Authentication and session — set by Firebase Authentication to keep you securely signed in.',
-        'Security — to protect against fraud and abuse and to maintain the integrity of forms and requests.',
-        'Preferences — to remember basic choices such as interface state.',
+        'Firebase Authentication persistence used by the Firebase client SDK to restore sign-in state.',
+        'The email entered for an email-link sign-in, removed after the link is completed.',
+        'Private-preview drafts, including the preview token, submitted URL, editable listing fields, email, selected tier and expiry time.',
+        'The last submitted URL and the selected pricing tier used to resume the preview flow.',
       ] },
     ],
   },
@@ -36,16 +38,16 @@ const sections = [
   },
   {
     id: 'analytics',
-    title: 'Analytics without cookies',
+    title: 'Analytics',
     blocks: [
-      { type: 'p', text: 'We measure aggregate traffic with Plausible, a privacy-first analytics tool that does not use cookies, does not collect personal data and does not track you across sites. Because it is cookieless, there is no analytics cookie to opt out of.' },
+      { type: 'p', text: 'Although a runtime configuration field exists for a future analytics domain, the current web application does not load Plausible or another dedicated analytics script.' },
     ],
   },
   {
     id: 'managing',
     title: 'Managing cookies',
     blocks: [
-      { type: 'p', text: 'You can control or delete cookies through your browser settings. Because the cookies we set are essential, blocking them may prevent you from signing in or completing a purchase. Since we do not use advertising or non-essential tracking cookies, there is no marketing consent to manage.' },
+      { type: 'p', text: 'You can clear LaunchLog site data through your browser settings. Doing so can sign you out, remove the saved email-link address and delete locally saved preview drafts. Blocking cookies on Stripe’s hosted pages may affect checkout or billing-portal operation.' },
     ],
   },
   {
@@ -82,7 +84,7 @@ useHead({
         name: 'Cookie Policy — LaunchLog',
         description,
         inLanguage: 'en-US',
-        dateModified: '2026-05-31',
+        dateModified: '2026-08-02',
         isPartOf: { '@id': `${siteUrl}/#website` },
       }),
     },
@@ -94,8 +96,9 @@ useHead({
   <LegalDoc
     eyebrow="Legal"
     title="Cookie Policy"
-    intro="No advertising trackers, no cross-site profiling. Just the essential cookies that keep you signed in and your payments secure — plus cookieless analytics."
+    intro="The current web app uses browser storage for sign-in continuity and private-preview drafts. Stripe may use cookies on its hosted checkout and billing pages."
     :updated="updated"
     :sections="sections"
+    :contact-email="legalEmail"
   />
 </template>

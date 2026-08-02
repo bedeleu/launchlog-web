@@ -3,34 +3,32 @@ const config = useRuntimeConfig()
 const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
 const pageUrl = `${siteUrl}/contact`
 const description
-  = 'Get in touch with LaunchLog — support for your listing, billing questions, press and partnerships, legal and copyright. Real humans, fast replies.'
+  = 'LaunchLog contact channels for listing support, billing, legal requests and copyright notices.'
+const legalName = config.public.legalName.trim()
+const supportEmail = config.public.supportEmail.trim()
+const legalEmail = config.public.legalEmail.trim()
+const dmcaEmail = config.public.dmcaEmail.trim()
 
-const channels = [
-  {
-    label: 'General',
-    email: 'hello@launchlog.ai',
-    body: 'Questions about LaunchLog, how listings work, or anything not covered elsewhere.',
-    icon: 'M3 8l9 6 9-6M3 8v8a2 2 0 002 2h14a2 2 0 002-2V8M3 8l9-5 9 5',
-  },
-  {
+const channels = computed(() => [
+  supportEmail ? {
     label: 'Support',
-    email: 'support@launchlog.ai',
-    body: 'Help with an existing listing, your account, billing, refunds or technical issues.',
+    email: supportEmail,
+    body: 'Help with an existing listing, account access, billing or technical issues.',
     icon: 'M18.364 5.636A9 9 0 105.636 18.364 9 9 0 0018.364 5.636zM12 8v4m0 4h.01',
-  },
-  {
-    label: 'Press & partnerships',
-    email: 'press@launchlog.ai',
-    body: 'Media enquiries, collaborations, bulk listings and partnership proposals.',
-    icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10',
-  },
-  {
-    label: 'Legal & copyright',
-    email: 'legal@launchlog.ai',
-    body: 'Privacy requests, terms questions and DMCA takedowns (dmca@launchlog.ai).',
+  } : null,
+  legalEmail ? {
+    label: 'Legal & privacy',
+    email: legalEmail,
+    body: 'Privacy requests, data-rights requests and questions about the legal terms.',
     icon: 'M12 3l8 4v5c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V7l8-4z',
-  },
-]
+  } : null,
+  dmcaEmail ? {
+    label: 'Copyright notices',
+    email: dmcaEmail,
+    body: 'Copyright notices and counter-notices concerning content hosted by LaunchLog.',
+    icon: 'M3 8l9 6 9-6M3 8v8a2 2 0 002 2h14a2 2 0 002-2V8M3 8l9-5 9 5',
+  } : null,
+].filter((channel): channel is NonNullable<typeof channel> => channel !== null))
 
 const quickLinks = [
   { label: 'Browse the Help Center', to: '/help' },
@@ -82,23 +80,19 @@ useHead({
           Talk to a human.
         </h1>
         <p class="mt-6 max-w-xl text-lg leading-8 text-brand-muted">
-          LaunchLog is run by a small team, not a ticket factory. Pick the right
-          inbox below and you’ll hear back — usually within one business day.
+          Use a configured channel below for support, legal requests or
+          copyright notices.
         </p>
       </div>
-      <aside class="rounded-lg border border-brand-border bg-white/[0.03] p-6">
-        <div class="flex items-center gap-2.5">
-          <span class="size-2 rounded-full bg-brand-success" aria-hidden="true" />
-          <p class="text-sm font-semibold text-white">Typical response time</p>
-        </div>
+      <aside v-if="legalName" class="rounded-lg border border-brand-border bg-white/[0.03] p-6">
+        <p class="text-sm font-semibold text-white">Service operator</p>
         <p class="mt-3 leading-7 text-brand-muted">
-          Within one business day for support and billing. For urgent listing
-          issues, mention “urgent” in your subject line.
+          {{ legalName }}
         </p>
       </aside>
     </section>
 
-    <section class="mt-14 grid gap-4 sm:grid-cols-2" aria-label="Contact channels">
+    <section v-if="channels.length" class="mt-14 grid gap-4 sm:grid-cols-2" aria-label="Contact channels">
       <a
         v-for="channel in channels"
         :key="channel.email"
@@ -125,6 +119,16 @@ useHead({
           {{ channel.email }}
         </p>
       </a>
+    </section>
+
+    <section v-else class="mt-14 rounded-lg border border-brand-border bg-white/[0.03] p-6 md:p-8">
+      <h2 class="text-xl font-semibold text-white">
+        Contact details are not configured
+      </h2>
+      <p class="mt-3 max-w-2xl leading-7 text-brand-muted">
+        No public support, legal or copyright mailbox is currently published on this page.
+        The resources below describe the available self-service paths.
+      </p>
     </section>
 
     <section class="mt-16 rounded-lg border border-brand-border p-6 md:p-8">

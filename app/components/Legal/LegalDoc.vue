@@ -29,6 +29,7 @@ defineProps<{
   intro: string
   updated: string
   sections: Section[]
+  contactEmail?: string
 }>()
 </script>
 
@@ -116,9 +117,14 @@ defineProps<{
         <!-- Footer help line -->
         <div class="mt-12 rounded-lg border border-brand-border bg-white/[0.03] p-6">
           <p class="text-sm leading-7 text-brand-muted">
-            Questions about this policy? Email
-            <a href="mailto:legal@launchlog.ai" class="font-medium text-brand-accent hover:underline">legal@launchlog.ai</a>
-            or reach the team via the
+            <template v-if="contactEmail">
+              Questions about this policy? Email
+              <a :href="`mailto:${contactEmail}`" class="font-medium text-brand-accent hover:underline">{{ contactEmail }}</a>
+              or use the
+            </template>
+            <template v-else>
+              No public policy mailbox is currently configured. Check the
+            </template>
             <NuxtLink to="/contact" class="font-medium text-brand-accent hover:underline">contact page</NuxtLink>.
           </p>
         </div>

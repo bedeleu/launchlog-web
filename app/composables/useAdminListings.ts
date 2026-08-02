@@ -30,6 +30,27 @@ export interface AdminListingFilters {
   tier?: string
   source?: string
   q?: string
+  page?: number
+}
+
+export interface AdminListingPaginationMeta {
+  current_page: number
+  from: number | null
+  last_page: number
+  per_page: number
+  to: number | null
+  total: number
+}
+
+export interface AdminListingPage {
+  data: AdminListing[]
+  links: {
+    first: string | null
+    last: string | null
+    prev: string | null
+    next: string | null
+  }
+  meta: AdminListingPaginationMeta
 }
 
 export interface FounderScreenshotRun {
@@ -84,13 +105,12 @@ export const useAdminListings = () => {
     return { Authorization: `Bearer ${token}` }
   }
 
-  const list = async (filters: AdminListingFilters = {}): Promise<AdminListing[]> => {
+  const list = async (filters: AdminListingFilters = {}): Promise<AdminListingPage> => {
     const query = Object.fromEntries(Object.entries(filters).filter(([, v]) => v))
-    const { data } = await $fetch<{ data: AdminListing[] }>(`${base}/listings`, {
+    return await $fetch<AdminListingPage>(`${base}/listings`, {
       headers: await authHeaders(),
       query,
     })
-    return data
   }
 
   const dashboard = async (): Promise<AdminDashboard> => {

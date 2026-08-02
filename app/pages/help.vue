@@ -3,7 +3,9 @@ const config = useRuntimeConfig()
 const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
 const pageUrl = `${siteUrl}/help`
 const description
-  = 'Answers to common questions about LaunchLog — getting listed, free previews, pricing, machine-readable discovery, moderation and your account.'
+  = 'Answers to common questions about LaunchLog listings, private previews, pricing, billing, discovery and account access.'
+const supportEmail = config.public.supportEmail.trim()
+const legalEmail = config.public.legalEmail.trim()
 
 interface Faq { q: string, a: string }
 interface Category { id: string, title: string, summary: string, faqs: Faq[] }
@@ -15,7 +17,7 @@ const categories: Category[] = [
     summary: 'What LaunchLog is and how to get on it.',
     faqs: [
       { q: 'What is LaunchLog?', a: 'LaunchLog is a curated paid directory for indie makers, SaaS founders and tech launches. Every listing is a clean, structured product page built to be understood by people, search engines and AI answer engines like ChatGPT, Perplexity, Claude and Gemini.' },
-      { q: 'How do I get listed?', a: 'Paste your product URL to generate a free private preview, edit the details, then choose a plan and publish. Your page goes live once payment succeeds and the listing passes review.' },
+      { q: 'How do I get listed?', a: 'Paste your product URL to generate a free private preview, edit the details, then choose a plan. A successful Stripe payment converts that preview into a published listing.' },
       { q: 'Is there a free listing?', a: 'There is no free public listing, but there is a free private preview so you can see exactly how your listing will look before you pay anything. You only pay when you decide to publish.' },
     ],
   },
@@ -25,9 +27,9 @@ const categories: Category[] = [
     summary: 'How previews, publishing and editing work.',
     faqs: [
       { q: 'What is a free preview?', a: 'When you submit a URL, we light-crawl it and build a private preview of your listing — screenshot, title, tagline, description and category. The preview is private, excluded from search and the directory, reachable only via its unguessable link, and it expires after 7 days.' },
-      { q: 'How long until my listing is live?', a: 'After a successful payment your listing is created and runs through enrichment and quality checks. Clean listings publish right away; a small number that get flagged go to a short manual review first.' },
-      { q: 'Can I edit my listing?', a: 'Yes. You can edit the title, tagline, short description and category from the preview before publishing, and from your dashboard afterwards.' },
-      { q: 'What does a listing include?', a: 'A dedicated public page on launchlog.ai with your product link, a human-readable summary, category context, a screenshot, schema.org structured data, sitemap inclusion and AI-friendly metadata.' },
+      { q: 'How long until my listing is live?', a: 'A successful Stripe checkout creates and publishes the listing through the payment webhook. Provider or delivery delays can affect how quickly the completed checkout appears in your dashboard.' },
+      { q: 'Can I edit my listing?', a: 'Yes. Before checkout you can edit the preview fields. After publishing, the customer dashboard currently lets you edit the listing name, tagline and description.' },
+      { q: 'What does a listing include?', a: 'A dedicated public page on launchlog.ai with your product link, summary, category context, schema.org structured data, sitemap and llms.txt inclusion, markdown content negotiation, and a captured screenshot when one is available.' },
     ],
   },
   {
@@ -37,8 +39,8 @@ const categories: Category[] = [
     faqs: [
       { q: 'How much does it cost?', a: 'Basic is $24.99/year, Premium is $59.99/year, and Featured is $99/year as a launch price (regularly $149/year). All plans are annual and in USD.' },
       { q: 'Is billing monthly or annual?', a: 'Annual only. Plans renew automatically each year unless you cancel before the renewal date.' },
-      { q: 'Do you offer refunds?', a: 'Yes — a 7-day money-back guarantee. If LaunchLog is not for you, email support@launchlog.ai within 7 days of your first payment and we will refund it and remove the listing.' },
-      { q: 'How do I cancel?', a: 'You can cancel anytime from your billing settings to stop future renewals. Your listing stays live until the end of the period you have paid for.' },
+      { q: 'Do you offer refunds?', a: supportEmail ? `LaunchLog has a 7-day money-back guarantee for the initial payment. Requests are reviewed and processed manually in Stripe; email ${supportEmail} within 7 days of purchase.` : 'LaunchLog has a 7-day money-back guarantee for the initial payment. Requests are reviewed and processed manually in Stripe. A public request mailbox has not yet been configured; check the Contact page for current channels.' },
+      { q: 'How do I cancel?', a: 'Use your billing settings to manage or cancel the subscription. The listing remains published while Stripe reports the subscription active and is archived when Stripe reports it canceled.' },
     ],
   },
   {
@@ -47,18 +49,18 @@ const categories: Category[] = [
     summary: 'Why LaunchLog pages are built for AI and search.',
     faqs: [
       { q: 'How does LaunchLog help AI discovery?', a: 'Every listing ships schema.org JSON-LD in an @graph, is included in a dynamic llms.txt, and supports content-negotiated markdown — so search crawlers and large language models can read and cite your product cleanly. Users see a normal directory page; machines see structured, citable data.' },
-      { q: 'What is llms.txt?', a: 'llms.txt is an emerging convention that gives AI systems a clean, machine-readable map of a site’s content. LaunchLog generates one automatically so your listing is easy for LLMs to find and quote.' },
-      { q: 'Will I rank #1 on Google?', a: 'No directory can promise a ranking, and we never will. What we do is give your product a well-structured, indexable, citable page — a credible signal that helps discovery across search and AI surfaces. The outcome still depends on your product and market.' },
+      { q: 'What is llms.txt?', a: 'llms.txt is an emerging convention for a clean, machine-readable map of site content. LaunchLog generates llms.txt and llms-full.txt from published listings.' },
+      { q: 'Does LaunchLog guarantee search or AI results?', a: 'No. LaunchLog provides structured, indexable discovery surfaces, but does not guarantee indexing, traffic, search position or AI citations.' },
     ],
   },
   {
     id: 'account',
     title: 'Account & moderation',
-    summary: 'Reviews, rejections and your data.',
+    summary: 'Admin actions and your data.',
     faqs: [
-      { q: 'How are submissions reviewed?', a: 'We use a hybrid of automated spam and quality checks plus human review. Most listings publish instantly; flagged or uncertain ones get a quick manual look before going live.' },
-      { q: 'Why was my listing flagged or rejected?', a: 'Common reasons are misleading claims, spammy SEO tactics, prohibited content, or not being authorised to list the product. If you think it was a mistake, reply to the review email or contact support and we will take another look.' },
-      { q: 'How do I delete my account or data?', a: 'Email privacy@launchlog.ai and we will handle deletion and data requests in line with our Privacy Policy and applicable law.' },
+      { q: 'How does moderation work?', a: 'Paid listings publish after successful conversion. An administrator can later edit, unpublish to pending-review status, republish or reject a listing. These actions do not automatically issue refunds or change Stripe disputes.' },
+      { q: 'Why was my listing unpublished or rejected?', a: supportEmail ? `An administrator may remove listings that violate the Terms or harm the directory. If you believe an action was mistaken, contact ${supportEmail}.` : 'An administrator may remove listings that violate the Terms or harm the directory. No public support mailbox is currently configured; check the Contact page for current channels.' },
+      { q: 'How do I request access to or deletion of my data?', a: legalEmail ? `Send the request to ${legalEmail}. We will handle it under the Privacy Policy and applicable law.` : 'The public legal mailbox is not currently configured. Check the Contact page for the current legal channel.' },
     ],
   },
 ]
@@ -109,7 +111,7 @@ useHead({
       </h1>
       <p class="mt-6 text-lg leading-8 text-brand-muted">
         Straight answers about getting listed, pricing, the tech edge and your
-        account. Can’t find it here? The team is one email away.
+        account. Current contact channels are listed on the Contact page.
       </p>
     </header>
 
@@ -156,8 +158,8 @@ useHead({
             Still stuck?
           </h2>
           <p class="mt-3 max-w-xl leading-7 text-brand-muted">
-            Email the team and a real person will get back to you, usually within
-            one business day.
+            Use the Contact page to find any support or legal channel that has
+            been configured for LaunchLog.
           </p>
         </div>
         <div class="flex flex-wrap gap-3">
@@ -168,7 +170,8 @@ useHead({
             Contact us
           </NuxtLink>
           <a
-            href="mailto:support@launchlog.ai"
+            v-if="supportEmail"
+            :href="`mailto:${supportEmail}`"
             class="inline-flex rounded-md bg-brand-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-accent/90"
           >
             Email support

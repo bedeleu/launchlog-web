@@ -2,16 +2,19 @@
 const config = useRuntimeConfig()
 const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
 const pageUrl = `${siteUrl}/dmca`
-const updated = 'May 31, 2026'
+const updated = 'August 2, 2026'
+const legalName = config.public.legalName.trim()
+const dmcaEmail = config.public.dmcaEmail.trim()
 const description
-  = 'LaunchLog’s copyright and DMCA policy — how to submit a takedown notice, what to include, the counter-notice process and our repeat-infringer policy.'
+  = 'LaunchLog copyright-notice guidance, including the information required for a notice or counter-notice and the configured delivery channel.'
 
 const sections = [
   {
     id: 'overview',
     title: 'Overview',
     blocks: [
-      { type: 'p', text: 'LaunchLog respects the intellectual property of others and expects its users to do the same. If you believe content on launchlog.ai infringes your copyright, you may submit a notice and we will respond in accordance with the Digital Millennium Copyright Act (DMCA) and similar laws.' },
+      { type: 'p', text: 'LaunchLog respects the intellectual property of others and expects its users to do the same. If you believe content hosted on launchlog.ai infringes your copyright, you may submit a complete notice for evaluation under applicable copyright law.' },
+      ...(legalName ? [{ type: 'p', text: `The configured Service operator is ${legalName}.` }] : []),
       { type: 'p', text: 'Because listings link to third-party websites we do not control, takedown requests directed at LaunchLog can only address content hosted on launchlog.ai itself.' },
     ],
   },
@@ -19,7 +22,7 @@ const sections = [
     id: 'notice',
     title: 'Filing a takedown notice',
     blocks: [
-      { type: 'p', text: 'To report allegedly infringing content, send a written notice to dmca@launchlog.ai that includes all of the following:' },
+      { type: 'p', text: dmcaEmail ? `To report allegedly infringing content, send a written notice to ${dmcaEmail} that includes all of the following:` : 'A public copyright-notice mailbox is not currently configured. Check the Contact page for the current copyright channel. A complete written notice should include all of the following:' },
       { type: 'list', items: [
         'Identification of the copyrighted work you claim has been infringed.',
         'The specific URL(s) on launchlog.ai of the material you want removed, so we can locate it.',
@@ -41,7 +44,7 @@ const sections = [
     id: 'counter',
     title: 'Counter-notice',
     blocks: [
-      { type: 'p', text: 'If your content was removed and you believe this was a mistake or misidentification, you may send a counter-notice to dmca@launchlog.ai including:' },
+      { type: 'p', text: dmcaEmail ? `If your content was removed and you believe this was a mistake or misidentification, you may send a counter-notice to ${dmcaEmail} including:` : 'If your content was removed and you believe this was a mistake or misidentification, use the copyright channel on the Contact page when one is configured. A counter-notice should include:' },
       { type: 'list', items: [
         'Identification of the removed content and the URL where it appeared.',
         'A statement, under penalty of perjury, that you have a good-faith belief the content was removed as a result of mistake or misidentification.',
@@ -85,7 +88,7 @@ useHead({
         name: 'DMCA & Copyright — LaunchLog',
         description,
         inLanguage: 'en-US',
-        dateModified: '2026-05-31',
+        dateModified: '2026-08-02',
         isPartOf: { '@id': `${siteUrl}/#website` },
       }),
     },
@@ -100,5 +103,6 @@ useHead({
     intro="We respect intellectual property. If something on LaunchLog infringes your copyright, here is exactly how to file a takedown notice and how the counter-notice process works."
     :updated="updated"
     :sections="sections"
+    :contact-email="dmcaEmail"
   />
 </template>

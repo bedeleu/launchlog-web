@@ -1,20 +1,34 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button'
-import type { AdminListing, AdminListingFilters, FounderScreenshotStatus, ListingStatus } from '~/composables/useAdminListings'
+import type { AdminListing, AdminListingFilters, AdminListingPaginationMeta, FounderScreenshotStatus, ListingStatus } from '~/composables/useAdminListings'
 import { toErrorLike } from '~/utils/error-like'
 
 definePageMeta({ middleware: 'admin' })
 useHead({ title: 'Admin · Listings', meta: [{ name: 'robots', content: 'noindex,nofollow' }] })
 
 const { list, publish, unpublish, reject, runFounderScreenshots, founderScreenshotStatus } = useAdminListings()
+const route = useRoute()
+const router = useRouter()
 
-const filters = reactive<AdminListingFilters>({ status: '', tier: '', source: '', q: '' })
+const queryValue = (value: unknown): string => typeof value === 'string' ? value.trim() : ''
+const queryPage = Number.parseInt(queryValue(route.query.page), 10)
+const filters = reactive<AdminListingFilters>({
+  status: queryValue(route.query.status),
+  tier: queryValue(route.query.tier),
+  source: queryValue(route.query.source),
+  q: queryValue(route.query.q),
+})
 const listings = ref<AdminListing[]>([])
+const pagination = ref<AdminListingPaginationMeta | null>(null)
+const page = ref(Number.isFinite(queryPage) && queryPage > 0 ? queryPage : 1)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const actionBusy = reactive<Record<string, 'publish' | 'unpublish' | 'reject' | undefined>>({})
+const actionErrors = reactive<Record<string, string | undefined>>({})
 const screenshotStatus = ref<FounderScreenshotStatus | null>(null)
 const screenshotBusy = ref(false)
 const screenshotMessage = ref<string | null>(null)
+let loadRequestId = 0
 
 const statusClass: Record<ListingStatus, string> = {
   published: 'border-brand-accent/40 bg-brand-accent/10 text-brand-accent',
@@ -25,26 +39,68 @@ const statusClass: Record<ListingStatus, string> = {
   spam: 'border-red-500/40 bg-red-500/10 text-red-400',
 }
 
-async function load() {
+function errorMessage(e: unknown, fallback: string): string {
+  const err = toErrorLike(e)
+  return err.data?.message ?? err.data?.error ?? err.message ?? fallback
+}
+
+async function syncQuery() {
+  const query: Record<string, string> = {}
+  if (filters.status) query.status = filters.status
+  if (filters.tier) query.tier = filters.tier
+  if (filters.source) query.source = filters.source
+  if (filters.q) query.q = filters.q
+  if (page.value > 1) query.page = String(page.value)
+  await router.replace({ query })
+}
+
+async function load(targetPage = 1) {
+  const requestId = ++loadRequestId
   loading.value = true
   error.value = null
   try {
-    listings.value = await list(filters)
+    const response = await list({ ...filters, page: targetPage })
+    if (requestId !== loadRequestId) return
+
+    if (response.data.length === 0 && targetPage > response.meta.last_page) {
+      await load(Math.max(1, response.meta.last_page))
+      return
+    }
+
+    listings.value = response.data
+    pagination.value = response.meta
+    page.value = response.meta.current_page
+    await syncQuery()
   }
   catch (e: unknown) {
-    const err = toErrorLike(e)
-    error.value = err.data?.error ?? err.message ?? 'Failed to load listings'
+    if (requestId !== loadRequestId) return
+    error.value = errorMessage(e, 'Failed to load listings')
   }
   finally {
-    loading.value = false
+    if (requestId === loadRequestId) loading.value = false
   }
 }
 
 async function act(l: AdminListing, verb: 'publish' | 'unpublish' | 'reject') {
+  actionBusy[l.id] = verb
+  actionErrors[l.id] = undefined
   const fn = verb === 'publish' ? publish : verb === 'unpublish' ? unpublish : reject
-  const updated = await fn(l.id)
-  const i = listings.value.findIndex(x => x.id === l.id)
-  if (i !== -1) listings.value[i] = updated
+  try {
+    const updated = await fn(l.id)
+    if (filters.status && updated.status !== filters.status) {
+      await load(page.value)
+    }
+    else {
+      const index = listings.value.findIndex(listing => listing.id === updated.id)
+      if (index !== -1) listings.value[index] = updated
+    }
+  }
+  catch (e: unknown) {
+    actionErrors[l.id] = errorMessage(e, `Failed to ${verb} listing`)
+  }
+  finally {
+    actionBusy[l.id] = undefined
+  }
 }
 
 async function refreshScreenshotStatus() {
@@ -70,7 +126,7 @@ async function startScreenshotBatch(dryRun = false) {
 }
 
 onMounted(async () => {
-  await load()
+  await load(page.value)
   try {
     await refreshScreenshotStatus()
   }
@@ -133,7 +189,7 @@ onMounted(async () => {
     <div class="mt-6 flex flex-wrap items-end gap-3">
       <label class="flex flex-col gap-1 text-xs text-brand-muted">
         Status
-        <select v-model="filters.status" class="rounded-md border border-brand-border bg-transparent px-2 py-1.5 text-sm text-brand-fg" @change="load">
+        <select v-model="filters.status" class="rounded-md border border-brand-border bg-transparent px-2 py-1.5 text-sm text-brand-fg" @change="load(1)">
           <option value="">All</option>
           <option value="published">Published</option>
           <option value="pending_review">Pending review</option>
@@ -144,7 +200,7 @@ onMounted(async () => {
       </label>
       <label class="flex flex-col gap-1 text-xs text-brand-muted">
         Tier
-        <select v-model="filters.tier" class="rounded-md border border-brand-border bg-transparent px-2 py-1.5 text-sm text-brand-fg" @change="load">
+        <select v-model="filters.tier" class="rounded-md border border-brand-border bg-transparent px-2 py-1.5 text-sm text-brand-fg" @change="load(1)">
           <option value="">All</option>
           <option value="basic">Basic</option>
           <option value="premium">Premium</option>
@@ -153,7 +209,7 @@ onMounted(async () => {
       </label>
       <label class="flex flex-col gap-1 text-xs text-brand-muted">
         Source
-        <select v-model="filters.source" class="rounded-md border border-brand-border bg-transparent px-2 py-1.5 text-sm text-brand-fg" @change="load">
+        <select v-model="filters.source" class="rounded-md border border-brand-border bg-transparent px-2 py-1.5 text-sm text-brand-fg" @change="load(1)">
           <option value="">All</option>
           <option value="founding">Founding</option>
           <option value="customer">Customer</option>
@@ -163,9 +219,9 @@ onMounted(async () => {
       </label>
       <label class="flex flex-1 flex-col gap-1 text-xs text-brand-muted">
         Search
-        <input v-model="filters.q" type="search" placeholder="name, url, tagline" class="rounded-md border border-brand-border bg-transparent px-2 py-1.5 text-sm text-brand-fg" @keyup.enter="load">
+        <input v-model="filters.q" type="search" placeholder="name, url, tagline" class="rounded-md border border-brand-border bg-transparent px-2 py-1.5 text-sm text-brand-fg" @keyup.enter="load(1)">
       </label>
-      <Button variant="outline" :disabled="loading" @click="load">
+      <Button variant="outline" :disabled="loading" @click="load(1)">
         Apply
       </Button>
     </div>
@@ -212,24 +268,50 @@ onMounted(async () => {
             <td class="px-4 py-3 text-brand-muted">{{ l.tier ?? '—' }}</td>
             <td class="px-4 py-3 text-brand-muted">{{ l.source }}</td>
             <td class="px-4 py-3">
-              <div class="flex items-center justify-end gap-1.5">
+              <div class="flex flex-wrap items-center justify-end gap-1.5">
                 <Button size="sm" variant="ghost" as-child>
                   <NuxtLink :to="`/admin/listings/${l.id}`">Edit</NuxtLink>
                 </Button>
-                <Button v-if="l.status !== 'published'" size="sm" variant="outline" @click="act(l, 'publish')">
-                  Publish
+                <Button v-if="l.status !== 'published'" size="sm" variant="outline" :disabled="!!actionBusy[l.id]" @click="act(l, 'publish')">
+                  <AppSpinner v-if="actionBusy[l.id] === 'publish'" class="mr-1.5" size="sm" color="text-current" label="Publishing listing" />
+                  {{ actionBusy[l.id] === 'publish' ? 'Publishing…' : 'Publish' }}
                 </Button>
-                <Button v-if="l.status === 'published'" size="sm" variant="outline" @click="act(l, 'unpublish')">
-                  Pending
+                <Button v-if="l.status === 'published'" size="sm" variant="outline" :disabled="!!actionBusy[l.id]" @click="act(l, 'unpublish')">
+                  <AppSpinner v-if="actionBusy[l.id] === 'unpublish'" class="mr-1.5" size="sm" color="text-current" label="Unpublishing listing" />
+                  {{ actionBusy[l.id] === 'unpublish' ? 'Unpublishing…' : 'Unpublish to pending review' }}
                 </Button>
-                <Button v-if="l.status !== 'rejected'" size="sm" variant="ghost" class="text-red-400 hover:text-red-300" @click="act(l, 'reject')">
-                  Reject
+                <Button v-if="l.status !== 'rejected'" size="sm" variant="ghost" class="text-red-400 hover:text-red-300" :disabled="!!actionBusy[l.id]" @click="act(l, 'reject')">
+                  <AppSpinner v-if="actionBusy[l.id] === 'reject'" class="mr-1.5" size="sm" color="text-current" label="Rejecting listing" />
+                  {{ actionBusy[l.id] === 'reject' ? 'Rejecting…' : 'Reject' }}
                 </Button>
               </div>
+              <p v-if="actionErrors[l.id]" class="mt-2 text-right text-xs text-red-400" role="alert">
+                {{ actionErrors[l.id] }}
+              </p>
             </td>
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <div v-if="pagination" class="mt-4 flex flex-col gap-3 text-sm text-brand-muted sm:flex-row sm:items-center sm:justify-between">
+      <p>
+        <template v-if="pagination.from !== null && pagination.to !== null">
+          Showing {{ pagination.from }}–{{ pagination.to }} of {{ pagination.total }}
+        </template>
+        <template v-else>
+          {{ pagination.total }} listings
+        </template>
+      </p>
+      <div class="flex items-center gap-2">
+        <Button variant="outline" size="sm" :disabled="loading || pagination.current_page <= 1" @click="load(pagination.current_page - 1)">
+          Previous
+        </Button>
+        <span>Page {{ pagination.current_page }} of {{ pagination.last_page }}</span>
+        <Button variant="outline" size="sm" :disabled="loading || pagination.current_page >= pagination.last_page" @click="load(pagination.current_page + 1)">
+          Next
+        </Button>
+      </div>
     </div>
   </div>
 </template>

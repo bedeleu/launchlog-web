@@ -1,5 +1,10 @@
 <script setup lang="ts">
+import { safeExternalHttpUrl } from '~/utils/safe-public-url'
+
 const year = new Date().getFullYear()
+const config = useRuntimeConfig()
+const legalName = config.public.legalName.trim()
+const statusPageUrl = safeExternalHttpUrl(config.public.statusPageUrl)
 
 const columns = [
   {
@@ -75,11 +80,19 @@ const columns = [
       <!-- Bottom bar -->
       <div class="mt-12 flex flex-col items-center justify-between gap-3 border-t border-brand-border pt-6 sm:flex-row">
         <p class="text-xs text-brand-muted">
-          © {{ year }} LaunchLog.ai — All rights reserved.
+          © {{ year }} LaunchLog.ai<span v-if="legalName"> · Operated by {{ legalName }}</span>
         </p>
-        <NuxtLink to="/status" class="flex items-center gap-2 text-xs text-brand-muted transition-colors hover:text-brand-fg">
-          <span class="size-2 rounded-full bg-brand-success" />
-          All systems operational
+        <a
+          v-if="statusPageUrl"
+          :href="statusPageUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-xs text-brand-muted transition-colors hover:text-brand-fg"
+        >
+          Service status ↗
+        </a>
+        <NuxtLink v-else to="/status" class="text-xs text-brand-muted transition-colors hover:text-brand-fg">
+          Service status
         </NuxtLink>
       </div>
     </div>
