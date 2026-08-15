@@ -1,15 +1,32 @@
 <script setup lang="ts">
+import { listingAbsenceStatus } from '#shared/utils/listing-http-status'
+
 const route = useRoute()
 const config = useRuntimeConfig()
 const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
 const slug = computed(() => String(route.params.slug ?? ''))
 
-const { data: post } = await useAsyncData(`blog-post-${slug.value}`, () =>
+const { data: post, error } = await useAsyncData(`blog-post-${slug.value}`, () =>
   $fetch(`/api/blog/posts/${slug.value}`),
 )
 
-if (!post.value) {
-  throw createError({ statusCode: 404, statusMessage: 'Blog post not found' })
+// Absence and upstream failure must not share a branch. A WordPress outage makes the API
+// answer 5xx for posts that really exist; answering 404 there would ask search engines to
+// remove the whole mirrored corpus.
+const absenceStatus = listingAbsenceStatus(error.value, post.value)
+
+if (absenceStatus) {
+  const event = useRequestEvent()
+  if (event) {
+    useResponseHeader('X-Robots-Tag').value = 'noindex, nofollow'
+  }
+
+  throw createError({ statusCode: absenceStatus, statusMessage: 'Blog post not found' })
+}
+
+if (error.value) {
+  // Temporary, and explicitly not deindexable: crawlers retry a 503 and keep the URL.
+  throw createError({ statusCode: 503, statusMessage: 'Blog temporarily unavailable' })
 }
 
 const canonicalUrl = computed(() => `${siteUrl}/blog/${post.value?.slug}`)

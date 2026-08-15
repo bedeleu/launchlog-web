@@ -5,5 +5,8 @@ export default defineEventHandler(async (event) => {
   const limit = Number(query.limit ?? 24)
   const safeLimit = Number.isFinite(limit) ? Math.min(Math.max(limit, 1), 50) : 24
 
-  return fetchWordPressPosts(safeLimit)
+  // Same rule as the single-post route: an upstream failure is unavailability, never absence.
+  return fetchWordPressPosts(safeLimit).catch((cause) => {
+    throw createError({ statusCode: 503, statusMessage: 'Blog temporarily unavailable', cause })
+  })
 })

@@ -4,9 +4,15 @@ const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
 const blogUrl = `${siteUrl}/blog`
 const blogDescription = 'LaunchLog blog covers SaaS launches, indie maker discovery, AI search visibility, schema.org and practical product distribution.'
 
-const { data: posts } = await useAsyncData('blog-posts', () => $fetch('/api/blog/posts', {
+const { data: posts, error } = await useAsyncData('blog-posts', () => $fetch('/api/blog/posts', {
   query: { limit: 24 },
 }))
+
+if (error.value) {
+  // Only a successful empty response means "nothing published". Rendering the empty state on an
+  // upstream failure ships an indexable, linkless page for a blog that has published articles.
+  throw createError({ statusCode: 503, statusMessage: 'Blog temporarily unavailable' })
+}
 
 const blogPosts = computed(() => posts.value ?? [])
 

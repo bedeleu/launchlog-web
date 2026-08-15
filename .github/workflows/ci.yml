@@ -52,6 +52,13 @@ jobs:
       - name: Build
         run: bun run build
 
+      # SSR tests need .output, so they run after the build. SSR_TESTS=required turns the
+      # "no build present" skip into a failure, so they cannot silently pass by not running.
+      - name: SSR tests
+        env:
+          SSR_TESTS: required
+        run: bun test test/blog-ssr.test.ts
+
       - name: Verify portable server output
         run: |
           test ! -e .output/server/node_modules

@@ -1,9 +1,11 @@
 export default defineSitemapEventHandler(async () => {
-  const posts = await fetchWordPressPosts(50)
+  // Every published post, not a recent-N window: the sitemap is the only complete
+  // discovery path for the mirrored blog corpus.
+  const refs = await fetchAllWordPressPostRefs()
 
-  return posts.map((post) => ({
-    loc: `/blog/${post.slug}`,
-    lastmod: post.modified,
-    images: post.featuredImage ? [{ loc: post.featuredImage }] : undefined,
+  return refs.map(ref => ({
+    loc: `/blog/${ref.slug}`,
+    lastmod: ref.modified,
+    images: ref.featuredImage ? [{ loc: ref.featuredImage }] : undefined,
   }))
 })
