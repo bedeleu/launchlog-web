@@ -2,7 +2,15 @@
 const config = useRuntimeConfig()
 const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
 const pageUrl = `${siteUrl}/terms`
-const updated = 'August 16, 2026'
+// One source of truth for the date: the visible line and the JSON-LD dateModified drifted
+// apart before, so the human-readable form is derived rather than written twice.
+const updatedIso = '2026-08-16'
+const updated = new Date(`${updatedIso}T00:00:00Z`).toLocaleDateString('en-US', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+  timeZone: 'UTC',
+})
 const legalName = config.public.legalName.trim()
 const legalEmail = config.public.legalEmail.trim()
 const supportEmail = config.public.supportEmail.trim()
@@ -135,7 +143,7 @@ useHead({
         name: 'Terms of Service — LaunchLog',
         description,
         inLanguage: 'en-US',
-        dateModified: '2026-08-02',
+        dateModified: updatedIso,
         isPartOf: { '@id': `${siteUrl}/#website` },
       }),
     },

@@ -64,7 +64,7 @@ const columns = [
         </div>
 
         <div v-for="col in columns" :key="col.title">
-          <h3 class="text-xs font-semibold uppercase tracking-wider text-brand-muted/80">
+          <h3 class="text-xs font-semibold uppercase tracking-wider text-brand-muted">
             {{ col.title }}
           </h3>
           <ul class="mt-4 space-y-3">
