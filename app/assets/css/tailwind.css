@@ -20,7 +20,14 @@
   --color-brand-accent: #6366F1;
   --color-brand-success: #10B981;
   --color-brand-warning: #F59E0B;
-  --color-brand-muted: #6B7280;
+  /* 5.12:1 on --color-brand-bg, clearing WCAG AA 4.5:1 for normal text.
+     Was #6B7280 at 3.98:1, which failed AA everywhere it was used as body text.
+     Opacity variants do NOT clear AA: /80 is 3.65:1 and /60 is 2.57:1. Every /80 use
+     was semantic text (status labels, API Docs labels, footer column headings, the
+     legal "On this page" label) and has been raised to full opacity. The three
+     surviving /60 uses are two SVG icons and an input placeholder, which are not
+     body text. Do not reintroduce an opacity variant for anything a user reads. */
+  --color-brand-muted: #7C8493;
   --color-brand-border: rgba(255,255,255,0.08);
 
   --font-sans: "Geist", "Inter", system-ui, sans-serif;

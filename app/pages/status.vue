@@ -57,7 +57,7 @@ useHead({
     </header>
 
     <section v-if="statusPageUrl" class="mt-10 rounded-lg border border-brand-border bg-white/[0.03] p-6 md:p-8">
-      <p class="text-xs font-semibold uppercase tracking-wider text-brand-muted/80">
+      <p class="text-xs font-semibold uppercase tracking-wider text-brand-muted">
         Configured status page
       </p>
       <a

@@ -142,7 +142,7 @@ useHead({
 
     <section class="mt-12 grid gap-4 md:grid-cols-2">
       <div class="rounded-lg border border-brand-border bg-white/[0.03] p-6">
-        <p class="text-xs font-semibold uppercase tracking-wider text-brand-muted/80">
+        <p class="text-xs font-semibold uppercase tracking-wider text-brand-muted">
           Runtime base URL
         </p>
         <p class="mt-3 break-all font-mono text-sm text-brand-accent">
@@ -150,7 +150,7 @@ useHead({
         </p>
       </div>
       <div class="rounded-lg border border-brand-border bg-white/[0.03] p-6">
-        <p class="text-xs font-semibold uppercase tracking-wider text-brand-muted/80">
+        <p class="text-xs font-semibold uppercase tracking-wider text-brand-muted">
           Customer authentication
         </p>
         <p class="mt-3 text-sm leading-6 text-brand-muted">
@@ -216,13 +216,13 @@ useHead({
       </div>
       <div class="mt-6 grid gap-4 lg:grid-cols-2">
         <div>
-          <p class="mb-2 text-xs font-semibold uppercase tracking-wider text-brand-muted/80">
+          <p class="mb-2 text-xs font-semibold uppercase tracking-wider text-brand-muted">
             List owned listings
           </p>
           <pre class="overflow-x-auto rounded-lg border border-brand-border bg-black/40 p-4 font-mono text-xs leading-6 text-brand-fg/90"><code>{{ dashboardExample }}</code></pre>
         </div>
         <div>
-          <p class="mb-2 text-xs font-semibold uppercase tracking-wider text-brand-muted/80">
+          <p class="mb-2 text-xs font-semibold uppercase tracking-wider text-brand-muted">
             Update editable fields
           </p>
           <pre class="overflow-x-auto rounded-lg border border-brand-border bg-black/40 p-4 font-mono text-xs leading-6 text-brand-fg/90"><code>{{ updateExample }}</code></pre>

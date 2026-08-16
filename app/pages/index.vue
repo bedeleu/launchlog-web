@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button'
 import type { ListingCard } from '~/composables/useListings'
+import { takeListingsWithoutSlugs } from '~/utils/listing-placement'
 
 const { user } = useAuth()
 const { listListings } = useListings()
@@ -9,12 +11,17 @@ interface HomeListings {
   recent: ListingCard[]
 }
 
-const { data: homeListings } = await useAsyncData<HomeListings>(
+const HOMEPAGE_FEATURED_SLOTS = 3
+const HOMEPAGE_RECENT_SLOTS = 6
+
+const { data: homeListings, error: homeListingsError, refresh: refreshHomeListings } = await useAsyncData<HomeListings>(
   'home-directory-listings',
   async () => {
     const [featured, recent] = await Promise.all([
-      listListings({ tier: 'featured', sort: 'priority', per_page: 3 }),
-      listListings({ sort: 'recent', per_page: 6 }),
+      listListings({ tier: 'featured', sort: 'priority', per_page: HOMEPAGE_FEATURED_SLOTS }),
+      // Over-fetch: the featured slugs are removed below, and asking for exactly
+      // six would leave the recent row short whenever they overlap.
+      listListings({ sort: 'recent', per_page: HOMEPAGE_RECENT_SLOTS + HOMEPAGE_FEATURED_SLOTS }),
     ])
 
     return { featured, recent }
@@ -23,7 +30,21 @@ const { data: homeListings } = await useAsyncData<HomeListings>(
 )
 
 const featuredListings = computed(() => homeListings.value?.featured ?? [])
-const recentListings = computed(() => homeListings.value?.recent ?? [])
+
+const recentListings = computed(() => takeListingsWithoutSlugs(
+  homeListings.value?.recent ?? [],
+  new Set(featuredListings.value.map(listing => listing.slug)),
+  HOMEPAGE_RECENT_SLOTS,
+))
+
+// A failed fetch used to fall through to the empty default, which removed the
+// paid Homepage Featured section with no signal at all.
+if (import.meta.server && homeListingsError.value) {
+  console.error('[home] directory listings failed to load', homeListingsError.value)
+}
+
+const homeListingsFailed = computed(() =>
+  Boolean(homeListingsError.value) && !featuredListings.value.length && !recentListings.value.length)
 
 const config = useRuntimeConfig()
 const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
@@ -177,6 +198,22 @@ useHead({
       </p>
     </section>
 
+    <section v-if="homeListingsFailed" class="border-t border-brand-border">
+      <div class="mx-auto max-w-6xl px-6 py-14">
+        <div class="rounded-2xl border border-red-400/20 bg-red-400/[0.05] py-16 text-center">
+          <p class="text-lg font-medium text-brand-fg">
+            Listings are temporarily unavailable
+          </p>
+          <p class="mx-auto mt-2 max-w-sm text-brand-muted">
+            The directory could not be loaded. Please try again.
+          </p>
+          <Button class="mt-6" variant="outline" @click="() => refreshHomeListings()">
+            Try again
+          </Button>
+        </div>
+      </div>
+    </section>
+
     <section v-if="featuredListings.length" class="border-t border-brand-border">
       <div class="mx-auto max-w-6xl px-6 py-14">
         <div class="flex flex-wrap items-end justify-between gap-4">
@@ -192,13 +229,7 @@ useHead({
             View all featured
           </NuxtLink>
         </div>
-        <div class="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          <ListingTile
-            v-for="listing in featuredListings"
-            :key="listing.slug"
-            :listing="listing"
-          />
-        </div>
+        <ListingGrid class="mt-7" :listings="featuredListings" mode="homepage-featured" />
       </div>
     </section>
 
@@ -217,13 +248,7 @@ useHead({
             Browse all launches
           </NuxtLink>
         </div>
-        <div class="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          <ListingTile
-            v-for="listing in recentListings"
-            :key="listing.slug"
-            :listing="listing"
-          />
-        </div>
+        <ListingGrid class="mt-7" :listings="recentListings" mode="uniform" />
       </div>
     </section>
   </main>

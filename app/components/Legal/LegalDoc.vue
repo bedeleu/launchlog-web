@@ -55,7 +55,7 @@ defineProps<{
     <div class="mt-14 grid gap-10 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-16">
       <!-- Table of contents -->
       <aside class="lg:sticky lg:top-24 lg:self-start">
-        <p class="text-xs font-semibold uppercase tracking-wider text-brand-muted/80">
+        <p class="text-xs font-semibold uppercase tracking-wider text-brand-muted">
           On this page
         </p>
         <nav class="mt-4 border-l border-brand-border">

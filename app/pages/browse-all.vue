@@ -221,13 +221,12 @@ useBreadcrumbs([
         </span>
       </div>
 
-      <div class="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        <ListingTile
-          v-for="listing in listings"
-          :key="listing.slug"
-          :listing="listing"
-        />
-      </div>
+      <ListingGrid
+        class="mt-5"
+        :listings="listings"
+        :mode="meta.current_page === 1 ? 'mixed' : 'uniform'"
+        heading-level="h2"
+      />
 
       <nav
         v-if="meta.last_page > 1"

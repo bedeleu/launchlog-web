@@ -59,6 +59,11 @@ jobs:
           SSR_TESTS: required
         run: bun test test/blog-ssr.test.ts
 
+      - name: Directory SSR tests
+        env:
+          SSR_TESTS: required
+        run: bun test test/directory-ssr.test.ts
+
       - name: Verify portable server output
         run: |
           test ! -e .output/server/node_modules
