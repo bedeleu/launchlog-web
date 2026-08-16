@@ -86,6 +86,16 @@ export default defineNuxtConfig({
     // below (the canonical @nuxtjs/sitemap API) — no per-route `sitemap: false`
     // rules here, which aren't typed on NitroRouteConfig.
   },
+  router: {
+    options: {
+      // Exact-case route matching. Without it every page answers 200 under any casing, so
+      // /Admin, /Listing/<slug> and friends were live duplicates of their canonical lowercase URL,
+      // each emitting a self-referential canonical. Nuxt <4.5.1 additionally dropped route rules
+      // for mixed-case paths (GHSA-hxvh-4h3w-prp9), so /Admin lost its noindex header too.
+      // Dynamic parameter values keep their own casing; only the static route segments are matched.
+      sensitive: true,
+    },
+  },
   components: {
     // Exclude shadcn-vue barrel files (app/components/ui/<name>/index.ts) from auto-import.
     // Without this, Nuxt registers both Foo.vue AND index.ts (which re-exports the same component),

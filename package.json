@@ -23,7 +23,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "firebase": "^12.13.0",
-    "nuxt": "~4.4.8",
+    "nuxt": "~4.5.1",
     "pinia": "^3.0.4",
     "reka-ui": "^2.9.8",
     "sanitize-html": "^2.17.6",
