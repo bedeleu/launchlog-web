@@ -12,11 +12,14 @@ const props = withDefaults(defineProps<{
   /** Preview-only: slugs rendered as blurred context. Never set on live surfaces. */
   contextualSlugs?: string[]
   generating?: boolean
+  /** Forwarded to every card; top-level directory pages pass 'h2'. */
+  headingLevel?: 'h2' | 'h3'
 }>(), {
   mode: 'uniform',
   interactive: true,
   contextualSlugs: () => [],
   generating: false,
+  headingLevel: 'h3',
 })
 
 const placed = computed<PlacedListing<ListingCardData>[]>(() => {
@@ -55,6 +58,7 @@ const contextual = computed(() => new Set(props.contextualSlugs))
         :listing="item.listing"
         :variant="item.variant"
         :generating="generating"
+        :heading-level="headingLevel"
       />
     </component>
   </div>

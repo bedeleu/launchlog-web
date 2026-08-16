@@ -110,15 +110,15 @@ const previewListings = computed<ListingCard[]>(() => [buyerCard.value, ...conte
     <p class="mt-3 text-xs text-brand-muted">
       <template v-if="isFeatured">
         Featured takes the largest spotlight placement at the top of browse and category results,
-        plus the homepage Featured section. Position rotates daily among Featured listings.
+        plus eligibility for one of up to three homepage Featured slots. Order within Featured is
+        re-seeded daily — it is not a guaranteed exposure cadence.
       </template>
       <template v-else-if="isPremium">
         Premium gets a double-width priority placement above Basic listings in browse and category
-        results. Position rotates daily among Premium listings.
+        results. Order within Premium is re-seeded daily — it is not a guaranteed exposure cadence.
       </template>
       <template v-else>
-        Basic lists you in the directory with a standard card. Position rotates daily among Basic
-        listings.
+        Basic lists you in the directory with a standard card. Order within Basic is re-seeded daily.
       </template>
     </p>
   </div>

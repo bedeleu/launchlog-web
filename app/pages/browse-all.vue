@@ -225,6 +225,7 @@ useBreadcrumbs([
         class="mt-5"
         :listings="listings"
         :mode="meta.current_page === 1 ? 'mixed' : 'uniform'"
+        heading-level="h2"
       />
 
       <nav

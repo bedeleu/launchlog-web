@@ -2,7 +2,7 @@
 const config = useRuntimeConfig()
 const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
 const pageUrl = `${siteUrl}/terms`
-const updated = 'August 2, 2026'
+const updated = 'August 16, 2026'
 const legalName = config.public.legalName.trim()
 const legalEmail = config.public.legalEmail.trim()
 const supportEmail = config.public.supportEmail.trim()
@@ -24,7 +24,7 @@ const sections = [
     title: 'The service',
     blocks: [
       { type: 'p', text: 'LaunchLog is a curated, paid directory for indie makers, SaaS founders and tech launches. We provide listing pages, a free private preview before purchase, and discovery surfaces designed to be understood by people, search engines and AI answer engines.' },
-      { type: 'p', text: 'Paid plans determine placement inside LaunchLog. Featured listings appear above Premium listings, and Premium above Basic, in browse and category results; Featured listings also appear in the homepage Featured section. Within each plan, position rotates once per calendar day (UTC) so listings on the same plan share the strongest slots.' },
+      { type: 'p', text: 'Paid plans determine placement inside LaunchLog. Featured listings appear above Premium listings, and Premium above Basic, in browse and category results; Featured listings also appear in the homepage Featured section. Within each plan, the order is re-seeded once per calendar day (UTC); it is not a fixed rotation and we do not guarantee any exposure cadence. The homepage Featured section displays up to three Featured listings at a time, so a Featured listing is eligible for one of those slots rather than guaranteed one.' },
       { type: 'p', text: 'Your listing remains published for as long as your subscription is active. That does not mean a permanently fixed position: we do not guarantee any specific ordinal position inside LaunchLog, and we do not guarantee external search ranking, traffic, clicks, indexing speed, backlink value, sales or AI citation.' },
     ],
   },

@@ -89,14 +89,14 @@ const featureRows = [
   { label: 'Browse directory placement', basic: 'Standard card', premium: 'Double-width card', featured: 'Spotlight card' },
   { label: 'Category / tech visibility', basic: 'Standard card', premium: 'Double-width card', featured: 'Spotlight card' },
   { label: 'Ranked above lower plans', basic: false, premium: true, featured: true },
-  { label: 'Homepage Featured section', basic: false, premium: false, featured: 'Rotating daily' },
+  { label: 'Homepage Featured section', basic: false, premium: false, featured: 'Up to 3 slots' },
   { label: 'Featured badge', basic: false, premium: false, featured: true },
 ]
 
 const faqs = [
   {
     question: 'Is my position in the directory fixed?',
-    answer: 'Your listing stays published for as long as your subscription is active. Position rotates once a day inside your plan, so every listing on the same plan gets the strongest slots over time. Plan order never changes: Featured is always above Premium, and Premium above Basic.',
+    answer: 'Your listing stays published for as long as your subscription is active. Position is not fixed: the order within each plan is re-seeded once per day, so it changes over time rather than following a guaranteed rotation or exposure cadence. Plan order never changes: Featured is always above Premium, and Premium above Basic. The homepage Featured section shows up to three Featured listings at a time, so a Featured listing is eligible for one of those slots rather than guaranteed one.',
   },
   {
     question: 'Do I need an account before paying?',

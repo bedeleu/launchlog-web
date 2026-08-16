@@ -105,6 +105,7 @@ useBreadcrumbs([
         class="mt-5"
         :listings="listings"
         :mode="meta.current_page === 1 ? 'mixed' : 'uniform'"
+        heading-level="h2"
       />
       <nav v-if="meta.last_page > 1" class="mt-10 flex justify-center gap-2" aria-label="Tech products pagination">
         <Button v-if="meta.current_page <= 1" variant="outline" disabled>

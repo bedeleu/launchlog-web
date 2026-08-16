@@ -7,9 +7,15 @@ const props = withDefaults(defineProps<{
   listing: ListingCard
   variant?: ListingCardVariant
   generating?: boolean
+  /**
+   * Heading level for the listing name. Top-level directory pages go h1 -> card,
+   * so they pass 'h2'; cards nested under a section heading keep the default.
+   */
+  headingLevel?: 'h2' | 'h3'
 }>(), {
   variant: 'standard',
   generating: false,
+  headingLevel: 'h3',
 })
 
 const tierMeta: Record<ListingTier, { label: string, classes: string }> = {
@@ -120,12 +126,13 @@ const aiChips = computed(() => [
         </span>
       </div>
 
-      <h3
+      <component
+        :is="headingLevel"
         class="min-w-0 font-semibold text-brand-fg"
         :class="isSpotlight ? 'line-clamp-2 text-xl md:text-2xl' : isWide ? 'line-clamp-2 text-lg' : 'truncate'"
       >
         {{ listing.name }}
-      </h3>
+      </component>
 
       <p
         class="text-sm leading-6 text-brand-muted"
