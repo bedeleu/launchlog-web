@@ -165,7 +165,7 @@ useHead({
 
 <template>
   <main class="min-h-screen">
-    <section class="mx-auto flex min-h-[76vh] max-w-6xl flex-col justify-center px-6 py-16">
+    <section class="mx-auto flex max-w-6xl flex-col justify-center px-6 py-16">
       <p class="text-sm font-semibold uppercase tracking-[0.2em] text-gray-500">
         Curated directory for indie tech
       </p>
