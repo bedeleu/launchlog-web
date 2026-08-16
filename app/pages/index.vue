@@ -166,14 +166,14 @@ useHead({
 <template>
   <main class="min-h-screen">
     <section class="mx-auto flex max-w-6xl flex-col justify-center px-6 py-16">
-      <p class="text-sm font-semibold uppercase tracking-[0.2em] text-gray-500">
+      <p class="text-sm font-semibold uppercase tracking-[0.2em] text-brand-muted">
         Curated directory for indie tech
       </p>
-      <h1 class="mt-6 max-w-3xl text-5xl font-bold tracking-normal text-white md:text-7xl">
+      <h1 class="mt-6 max-w-3xl text-5xl font-bold tracking-normal text-brand-fg md:text-7xl">
         Get Listed.
-        <span class="block text-gray-600">Get Found.</span>
+        <span class="block text-brand-muted">Get Found.</span>
       </h1>
-      <p class="mt-6 max-w-2xl text-lg text-gray-300">
+      <p class="mt-6 max-w-2xl text-lg text-brand-muted">
         LaunchLog is the log of what just shipped, with structured and machine-readable
         product pages built for search and AI discovery.
       </p>
@@ -184,7 +184,7 @@ useHead({
 
       <p class="mt-8 text-sm text-brand-muted">
         <template v-if="user">
-          Signed in as <strong class="text-white">{{ user.email }}</strong> —
+          Signed in as <strong class="text-brand-fg">{{ user.email }}</strong> —
           <NuxtLink to="/dashboard" class="text-brand-accent underline">
             Dashboard
           </NuxtLink>
