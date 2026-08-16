@@ -82,7 +82,6 @@ const isSecure = computed(() => (listing.value?.url ?? '').startsWith('https'))
 // Gracefully fall back to the placeholder when a screenshot_url 404s (file not
 // on the CDN yet / stale snapshot) instead of rendering a broken-image glyph.
 const heroShotFailed = ref(false)
-const failedShots = ref(new Set<string>())
 
 const descriptionParagraphs = computed<string[]>(() =>
   (listing.value?.description ?? '')
@@ -180,11 +179,6 @@ useHead({
       : [],
   ),
 })
-
-const tierBadgeClass = (t?: ListingTier): string =>
-  (tierMeta[(t ?? 'basic') as ListingTier] ?? tierMeta.basic).classes
-const tierLabel = (t?: ListingTier): string =>
-  (tierMeta[(t ?? 'basic') as ListingTier] ?? tierMeta.basic).label
 </script>
 
 <template>
@@ -488,44 +482,7 @@ const tierLabel = (t?: ListingTier): string =>
         <h2 class="text-xl font-semibold text-brand-fg">
           Related listings
         </h2>
-        <div class="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          <NuxtLink
-            v-for="item in related"
-            :key="item.slug"
-            :to="`/listing/${item.slug}`"
-            class="group flex flex-col overflow-hidden rounded-xl border border-brand-border bg-white/[0.02] transition-colors hover:border-brand-accent/40"
-          >
-            <div class="aspect-[16/10] w-full overflow-hidden bg-white/[0.03]">
-              <img
-                v-if="item.screenshot_url && !failedShots.has(item.slug)"
-                :src="item.screenshot_url"
-                :alt="`${item.name} screenshot`"
-                loading="lazy"
-                class="size-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.03]"
-                width="640"
-                height="400"
-                @error="failedShots.add(item.slug)"
-              >
-              <div v-else class="flex size-full items-center justify-center text-brand-muted">
-                <ImageOff class="size-6" />
-              </div>
-            </div>
-            <div class="flex min-w-0 flex-1 flex-col gap-1.5 p-4">
-              <div class="flex items-center justify-between gap-2">
-                <span class="truncate font-medium text-brand-fg">{{ item.name }}</span>
-                <span
-                  class="shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
-                  :class="tierBadgeClass(item.tier)"
-                >
-                  {{ tierLabel(item.tier) }}
-                </span>
-              </div>
-              <p class="line-clamp-2 text-sm text-brand-muted">
-                {{ item.tagline }}
-              </p>
-            </div>
-          </NuxtLink>
-        </div>
+        <ListingGrid class="mt-6" :listings="related" mode="uniform" />
       </section>
     </template>
   </main>
