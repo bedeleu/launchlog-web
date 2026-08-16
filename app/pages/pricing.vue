@@ -86,13 +86,18 @@ const featureRows = [
   { label: 'Markdown listing endpoint', basic: true, premium: true, featured: true },
   { label: 'Included in /llms.txt surfaces', basic: true, premium: true, featured: true },
   { label: 'Sitemap + IndexNow submission', basic: true, premium: true, featured: true },
-  { label: 'Browse directory placement', basic: 'Standard', premium: 'Priority', featured: 'Top' },
-  { label: 'Category / tech visibility', basic: 'Standard', premium: 'Boosted', featured: 'Top slot' },
-  { label: 'Homepage visibility', basic: false, premium: false, featured: 'Featured section' },
+  { label: 'Browse directory placement', basic: 'Standard card', premium: 'Double-width card', featured: 'Spotlight card' },
+  { label: 'Category / tech visibility', basic: 'Standard card', premium: 'Double-width card', featured: 'Spotlight card' },
+  { label: 'Ranked above lower plans', basic: false, premium: true, featured: true },
+  { label: 'Homepage Featured section', basic: false, premium: false, featured: 'Rotating daily' },
   { label: 'Featured badge', basic: false, premium: false, featured: true },
 ]
 
 const faqs = [
+  {
+    question: 'Is my position in the directory fixed?',
+    answer: 'Your listing stays published for as long as your subscription is active. Position rotates once a day inside your plan, so every listing on the same plan gets the strongest slots over time. Plan order never changes: Featured is always above Premium, and Premium above Basic.',
+  },
   {
     question: 'Do I need an account before paying?',
     answer: 'No. Start with your URL, review the generated preview, choose a package, then we create the account after checkout.',

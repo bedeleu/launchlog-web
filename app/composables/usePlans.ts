@@ -24,11 +24,11 @@ const PLANS: Plan[] = [
     priceLabel: '$24.99',
     monthlyLabel: '$2.08',
     features: [
-      'Listed in the directory',
+      'Standard card in the directory',
       'Real website screenshot',
       'Included in sitemap, llms.txt and Markdown',
       'schema.org structured data',
-      '1-year listing',
+      'Listed for a full year while your subscription is active',
     ],
   },
   {
@@ -39,10 +39,10 @@ const PLANS: Plan[] = [
     badge: 'Priority placement',
     features: [
       'Everything in Basic',
-      'Priority in browse results',
-      'Priority in category views',
-      'Premium tier treatment',
-      '1-year listing',
+      'Double-width priority card in browse and category results',
+      'Ranked above every Basic listing',
+      'Daily rotating position among Premium listings',
+      'Listed for a full year while your subscription is active',
     ],
   },
   {
@@ -55,8 +55,8 @@ const PLANS: Plan[] = [
     highlight: true,
     features: [
       'Everything in Premium',
-      'Homepage featured section',
-      'Highest directory priority',
+      'Largest spotlight card at the top of browse and category results',
+      'Homepage Featured section, rotating daily',
       'Dedicated Featured badge',
       'Launch discount from $149',
     ],
