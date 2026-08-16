@@ -20,7 +20,11 @@
   --color-brand-accent: #6366F1;
   --color-brand-success: #10B981;
   --color-brand-warning: #F59E0B;
-  --color-brand-muted: #6B7280;
+  /* 5.12:1 on --color-brand-bg, clearing WCAG AA 4.5:1 for normal text.
+     Was #6B7280 at 3.98:1, which failed AA everywhere it was used as body text.
+     The /60 and /80 opacity variants do NOT clear AA (2.57:1 and 3.65:1) and are
+     acceptable only for icons, placeholders and decorative text. */
+  --color-brand-muted: #7C8493;
   --color-brand-border: rgba(255,255,255,0.08);
 
   --font-sans: "Geist", "Inter", system-ui, sans-serif;
