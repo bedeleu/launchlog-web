@@ -39,14 +39,14 @@ const showImage = computed(() => Boolean(props.listing.screenshot_url) && !image
 
 const cardClass = computed(() => {
   if (props.listing.tier === 'featured') {
-    return 'border-brand-accent/55 bg-[linear-gradient(145deg,rgba(99,102,241,0.12),rgba(12,17,32,0.96)_58%)] shadow-[0_22px_60px_-34px_rgba(99,102,241,0.7)] ring-1 ring-brand-accent/15 group-hover:border-brand-accent/80'
+    return 'border-brand-accent/55 bg-[linear-gradient(145deg,rgba(99,102,241,0.12),rgba(12,17,32,0.96)_58%)] shadow-[0_22px_60px_-34px_rgba(99,102,241,0.7)] ring-1 ring-brand-accent/15 group-hover:border-brand-accent/80 group-focus-visible:border-brand-accent/80'
   }
 
   if (props.listing.tier === 'premium') {
-    return 'border-white/20 bg-[linear-gradient(145deg,rgba(255,255,255,0.055),rgba(12,17,32,0.94))] shadow-[0_18px_44px_-34px_rgba(255,255,255,0.38)] group-hover:border-brand-accent/55'
+    return 'border-white/20 bg-[linear-gradient(145deg,rgba(255,255,255,0.055),rgba(12,17,32,0.94))] shadow-[0_18px_44px_-34px_rgba(255,255,255,0.38)] group-hover:border-brand-accent/55 group-focus-visible:border-brand-accent/55'
   }
 
-  return 'border-brand-border bg-white/[0.02] group-hover:border-brand-accent/40'
+  return 'border-brand-border bg-white/[0.02] group-hover:border-brand-accent/40 group-focus-visible:border-brand-accent/40'
 })
 
 const layoutClass = computed(() =>
@@ -73,7 +73,7 @@ const aiChips = computed(() => [
 
 <template>
   <article
-    class="h-full min-w-0 overflow-hidden rounded-xl border transition-[border-color,transform,box-shadow] duration-200 group-hover:-translate-y-0.5"
+    class="h-full min-w-0 overflow-hidden rounded-xl border transition-[border-color,transform,box-shadow] duration-200 group-hover:-translate-y-0.5 group-focus-visible:-translate-y-0.5"
     :class="[cardClass, layoutClass]"
   >
     <div
@@ -93,7 +93,7 @@ const aiChips = computed(() => [
         loading="lazy"
         width="960"
         height="600"
-        class="size-full object-cover object-top transition-transform duration-500 group-hover:scale-[1.025]"
+        class="size-full object-cover object-top transition-transform duration-500 group-hover:scale-[1.025] group-focus-visible:scale-[1.025]"
         @error="imageFailed = true"
       >
       <ListingShotFallback
@@ -135,7 +135,7 @@ const aiChips = computed(() => [
       </p>
 
       <div v-if="(isSpotlight || isWide) && aiChips.length" class="flex flex-wrap items-center gap-1.5 pt-1">
-        <span class="mr-1 text-[10px] font-semibold uppercase tracking-wider text-brand-muted/70">
+        <span class="mr-1 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
           AI-readable
         </span>
         <span
