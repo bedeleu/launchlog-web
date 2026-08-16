@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ListingCard as ListingCardData } from '~/composables/useListings'
 import type { PlacedListing, PlacementSpan } from '~/utils/listing-placement'
+import { NuxtLink } from '#components'
 import { packHomepageFeatured, packMixedTierPage, packUniform } from '~/utils/listing-placement'
 
 const props = withDefaults(defineProps<{
@@ -38,7 +39,7 @@ const contextual = computed(() => new Set(props.contextualSlugs))
 <template>
   <div class="grid auto-rows-auto grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
     <component
-      :is="interactive && !contextual.has(item.listing.slug) ? 'NuxtLink' : 'div'"
+      :is="interactive && !contextual.has(item.listing.slug) ? NuxtLink : 'div'"
       v-for="item in placed"
       :key="item.listing.slug"
       :to="interactive && !contextual.has(item.listing.slug) ? `/listing/${item.listing.slug}` : undefined"
