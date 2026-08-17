@@ -215,13 +215,13 @@ const taglineClass = computed(() => {
     </div>
 
     <!-- The directory Featured register runs under image and text alike as a
-         solid inverted band: the only full white in the directory, so the tier
-         reads at a glance without borrowing any colour. -->
+         tonal band: one surface step brighter than the card, never leaving the
+         dark theme. Structure carries the tier — no other card has a strip. -->
     <p
       v-if="isDirectorySpotlight && hasRegisterLine"
-      class="break-words bg-white px-5 py-3 font-mono text-[11px] leading-5 text-brand-bg/70 lg:px-6"
+      class="break-words border-t border-white/25 bg-white/[0.08] px-5 py-3 font-mono text-[11px] leading-5 text-brand-muted lg:px-6"
     >
-      <span class="whitespace-nowrap font-semibold uppercase tracking-[0.3em] text-brand-bg">{{ listing.tier }}</span>
+      <span class="whitespace-nowrap font-semibold uppercase tracking-[0.3em] text-brand-fg">{{ listing.tier }}</span>
       <span v-if="listing.category || registerHost">{{ '\u00A0· ' }}</span>
       <span v-if="listing.category" class="whitespace-nowrap">{{ listing.category.name }}</span>
       <span v-if="listing.category && registerHost">{{ '\u00A0· ' }}</span>
