@@ -15,24 +15,31 @@ const isFeatured = computed(() => props.tier === 'featured')
 const isPremium = computed(() => props.tier === 'premium')
 
 /**
+ * Three illustrative rows, not a full 30-slot production page: the buyer only
+ * needs to see the shape of their own card among neighbours. The buyer's own
+ * footprint is subtracted, so Featured needs 6 context cards, Premium 7 and
+ * Basic 8 — each case lands on exactly nine slots.
+ */
+const PREVIEW_SLOTS = 9
+const SAMPLE_IMAGES = 5
+
+const buyerWeight = computed(() => (isFeatured.value ? 3 : isPremium.value ? 2 : 1))
+
+/**
  * Preview-only context. These are static illustrations of neighbouring listings
  * and must never reach a live directory code path — ListingGrid blurs them and
  * makes them inert via contextualSlugs. Live surfaces never pass that prop.
  */
-const CONTEXT_SLUGS = [
-  'preview-context-1',
-  'preview-context-2',
-  'preview-context-3',
-  'preview-context-4',
-  'preview-context-5',
-]
+const contextSlugs = computed(() =>
+  Array.from({ length: PREVIEW_SLOTS - buyerWeight.value }, (_, index) => `preview-context-${index + 1}`),
+)
 
-const contextCards = computed<ListingCard[]>(() => CONTEXT_SLUGS.map((slug, index) => ({
+const contextCards = computed<ListingCard[]>(() => contextSlugs.value.map((slug, index) => ({
   slug,
   name: 'Example product',
   tagline: 'A short pitch from another listing in the directory.',
   url: 'https://example.com',
-  screenshot_url: `/images/samples/${index + 1}.png`,
+  screenshot_url: `/images/samples/${(index % SAMPLE_IMAGES) + 1}.png`,
   tier: 'basic',
   source: 'seed',
   category: null,
@@ -66,7 +73,7 @@ const buyerCard = computed<ListingCard>(() => ({
 /**
  * The buyer goes first and every context card is `basic`, so packMixedTierPage
  * lands the buyer on exactly the footprint the live directory would give it:
- * featured -> 3x2 spotlight, premium -> 2x2 plus two 1x1 companions, basic -> 1x1.
+ * featured -> 3x1 spotlight, premium -> 2x1 plus one 1x1 companion, basic -> 1x1.
  * Same packer, same card, same grid as production — the preview cannot drift
  * from what we actually ship because it is not a separate implementation.
  */
@@ -101,7 +108,7 @@ const previewListings = computed<ListingCard[]>(() => [buyerCard.value, ...conte
           :listings="previewListings"
           mode="mixed"
           :interactive="false"
-          :contextual-slugs="CONTEXT_SLUGS"
+          :contextual-slugs="contextSlugs"
           :generating="generating"
         />
       </div>
@@ -109,13 +116,14 @@ const previewListings = computed<ListingCard[]>(() => [buyerCard.value, ...conte
 
     <p class="mt-3 text-xs text-brand-muted">
       <template v-if="isFeatured">
-        Featured takes the largest spotlight placement at the top of browse and category results,
-        plus eligibility for one of up to three homepage Featured slots. Order within Featured is
-        re-seeded daily — it is not a guaranteed exposure cadence.
+        Featured takes the full-width spotlight card at the top of eligible browse and category
+        pages, plus eligibility for one of up to three homepage Featured slots. Order within
+        Featured is re-seeded daily — it is not a guaranteed exposure cadence.
       </template>
       <template v-else-if="isPremium">
-        Premium gets a double-width priority placement above Basic listings in browse and category
-        results. Order within Premium is re-seeded daily — it is not a guaranteed exposure cadence.
+        Premium gets a double-width priority card, placed above the Basic listings on the same
+        directory page. Order within Premium is re-seeded daily — it is not a guaranteed exposure
+        cadence.
       </template>
       <template v-else>
         Basic lists you in the directory with a standard card. Order within Basic is re-seeded daily.

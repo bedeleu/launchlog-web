@@ -40,7 +40,7 @@ const PLANS: Plan[] = [
     features: [
       'Everything in Basic',
       'Double-width priority card in browse and category results',
-      'Ranked above every Basic listing',
+      'Placed above the Basic listings on the same directory page',
       'Order among Premium listings is re-seeded daily',
       'Listed for a full year while your subscription is active',
     ],
@@ -55,7 +55,7 @@ const PLANS: Plan[] = [
     highlight: true,
     features: [
       'Everything in Premium',
-      'Largest spotlight card at the top of browse and category results',
+      'Full-width spotlight card at the top of eligible browse and category pages',
       'Eligible for one of up to three Homepage Featured slots',
       'Dedicated Featured badge',
       'Launch discount from $149',

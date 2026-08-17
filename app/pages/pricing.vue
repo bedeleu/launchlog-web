@@ -86,9 +86,9 @@ const featureRows = [
   { label: 'Markdown listing endpoint', basic: true, premium: true, featured: true },
   { label: 'Included in /llms.txt surfaces', basic: true, premium: true, featured: true },
   { label: 'Sitemap + IndexNow submission', basic: true, premium: true, featured: true },
-  { label: 'Browse directory placement', basic: 'Standard card', premium: 'Double-width card', featured: 'Spotlight card' },
-  { label: 'Category / tech visibility', basic: 'Standard card', premium: 'Double-width card', featured: 'Spotlight card' },
-  { label: 'Ranked above lower plans', basic: false, premium: true, featured: true },
+  { label: 'Browse directory placement', basic: 'Standard card', premium: 'Double-width card', featured: 'Full-width spotlight card' },
+  { label: 'Category / tech visibility', basic: 'Standard card', premium: 'Double-width card', featured: 'Full-width spotlight card' },
+  { label: 'Placed above lower plans on the page', basic: false, premium: true, featured: true },
   { label: 'Homepage Featured section', basic: false, premium: false, featured: 'Up to 3 slots' },
   { label: 'Featured badge', basic: false, premium: false, featured: true },
 ]
@@ -96,7 +96,7 @@ const featureRows = [
 const faqs = [
   {
     question: 'Is my position in the directory fixed?',
-    answer: 'Your listing stays published for as long as your subscription is active. Position is not fixed: the order within each plan is re-seeded once per day, so it changes over time rather than following a guaranteed rotation or exposure cadence. Plan order never changes: Featured is always above Premium, and Premium above Basic. The homepage Featured section shows up to three Featured listings at a time, so a Featured listing is eligible for one of those slots rather than guaranteed one.',
+    answer: 'Your listing stays published for as long as your subscription is active. Position is not fixed: the order within each plan is re-seeded once per day, so it changes over time rather than following a guaranteed rotation or exposure cadence. Plan order never changes inside a directory page: on any page, Featured cards come before Premium, and Premium before Basic. Pages are laid out by visual slots rather than a fixed record count, so a Basic listing that completes a row on one page can appear before a paid listing that continues on the next page. The homepage Featured section shows up to three Featured listings at a time, so a Featured listing is eligible for one of those slots rather than guaranteed one.',
   },
   {
     question: 'Do I need an account before paying?',

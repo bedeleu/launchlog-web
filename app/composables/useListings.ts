@@ -52,9 +52,17 @@ export interface ListingPaginationMeta {
   current_page: number
   from: number | null
   last_page: number
+  /** Records actually returned on this page — variable under view=directory. */
   per_page: number
   to: number | null
   total: number
+  /**
+   * Slot-aware directory pages only (view=directory). Ordinary paginated calls
+   * — /featured, dashboard, admin, recent — never send them, so both stay
+   * optional rather than forcing every caller to invent a value.
+   */
+  slot_capacity?: number
+  slots_used?: number
 }
 
 export interface ListingPage {

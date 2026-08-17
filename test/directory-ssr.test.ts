@@ -160,6 +160,22 @@ describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
     expect(html).toContain('xl:h-64')
   })
 
+  test('browse-all asks the API for a slot-aware directory page', async () => {
+    await fetch(`${BASE}/browse-all`).then(response => response.text())
+
+    const listingCalls = upstreamRequests.filter(url => url.includes('/api/v1/listings'))
+
+    expect(listingCalls.length).toBeGreaterThan(0)
+
+    for (const url of listingCalls) {
+      // The API owns page membership. Sending per_page as well would ask for a
+      // record count and a slot count in the same request.
+      expect(url).toContain('view=directory')
+      expect(url).toContain('sort=priority')
+      expect(url).not.toContain('per_page')
+    }
+  })
+
   test('listing names render as h2 on a top-level directory page', async () => {
     const html = await fetch(`${BASE}/browse-all`).then(response => response.text())
 

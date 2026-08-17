@@ -16,10 +16,14 @@ const activePage = computed(() => {
   return Number.isInteger(page) && page > 0 ? page : 1
 })
 
+// view=directory hands page membership to the API: it plans 30 visual slots and
+// returns however many real records fill them, so no per_page is sent — a record
+// count and a slot count are different pagination units and the API owns the one
+// that matches this grid.
 const filters = computed<Record<string, string | number>>(() => {
   const f: Record<string, string | number> = {
+    view: 'directory',
     page: activePage.value,
-    per_page: 24,
     sort: 'priority',
   }
   if (activeCategory.value) f.category = activeCategory.value
@@ -221,10 +225,13 @@ useBreadcrumbs([
         </span>
       </div>
 
+      <!-- Mixed on every numeric page: the API plans slots for all of them, and a
+           page that happens to hold only Basic listings renders as the ordinary
+           three-column grid anyway. -->
       <ListingGrid
         class="mt-5"
         :listings="listings"
-        :mode="meta.current_page === 1 ? 'mixed' : 'uniform'"
+        mode="mixed"
         heading-level="h2"
       />
 

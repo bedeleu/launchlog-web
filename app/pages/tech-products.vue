@@ -12,10 +12,12 @@ const activePage = computed(() => {
 
 const { data: pageData, error: pageError, refresh } = await useAsyncData<ListingPage>(
   () => `tech-products-${activePage.value}`,
+  // view=directory: the API plans this page's 30 visual slots and returns the
+  // real records that fill them, so no per_page is sent.
   () => listListingPage({
+    view: 'directory',
     kind: 'tech',
     sort: 'priority',
-    per_page: 24,
     page: activePage.value,
   }),
   {
@@ -101,10 +103,12 @@ useBreadcrumbs([
         <span>Showing {{ meta.from }}–{{ meta.to }} of {{ meta.total }} tech products</span>
         <span>Page {{ meta.current_page }} of {{ meta.last_page }}</span>
       </div>
+      <!-- Mixed on every numeric page; a Basic-only page renders as the ordinary
+           three-column grid on its own. -->
       <ListingGrid
         class="mt-5"
         :listings="listings"
-        :mode="meta.current_page === 1 ? 'mixed' : 'uniform'"
+        mode="mixed"
         heading-level="h2"
       />
       <nav v-if="meta.last_page > 1" class="mt-10 flex justify-center gap-2" aria-label="Tech products pagination">
