@@ -98,8 +98,10 @@ const layoutClass = computed(() => {
   // ledger rule floats above dead space instead of anchoring to the bottom.
   if (isDirectorySpotlight.value) return 'flex flex-col lg:grid lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]'
   // Two of three columns, stretched by h-full to whatever height its real basic
-  // companion establishes in the same row.
-  if (isWide.value) return 'flex flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'
+  // companion establishes in the same row. Same split as Featured so both paid
+  // media columns share one aspect and one capture variant fills both edge to
+  // edge; the tiers stay apart through type scale, rule weight and surface.
+  if (isWide.value) return 'flex flex-col lg:grid lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]'
   return 'flex flex-col'
 })
 
