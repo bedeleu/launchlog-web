@@ -1,16 +1,25 @@
 import type { ListingTier } from '../composables/useListings'
 
-/** Card density. Tier chrome (accent, badge, sparkles) comes from listing.tier. */
-export type ListingCardVariant = 'standard' | 'wide' | 'spotlight'
+/**
+ * Card density. Tier chrome (accent, badge, sparkles) comes from listing.tier.
+ *
+ * `spotlight` is the homepage editorial lead; `directory-spotlight` is the
+ * compact one-row Featured card used inside a directory page. They are separate
+ * variants because only the directory one is height-constrained.
+ */
+export type ListingCardVariant = 'standard' | 'wide' | 'spotlight' | 'directory-spotlight'
 
 /**
  * Semantic grid footprint. The grid component maps these onto Tailwind spans;
  * the packer stays framework-free so it can be unit-tested with bun test.
  *
- * unit       1x1   half-tall  2 cols x 2 rows
- * full-tall  3 cols x 2 rows  full-short 3 cols x 1 row
+ * unit   1x1                double     2 cols x 1 row
+ * full-short 3 cols x 1 row half-tall  2 cols x 2 rows (homepage lead only)
+ *
+ * Every mixed directory card is one row tall, so the only two-row span left is
+ * the homepage editorial one.
  */
-export type PlacementSpan = 'unit' | 'half-tall' | 'full-tall' | 'full-short'
+export type PlacementSpan = 'unit' | 'double' | 'half-tall' | 'full-short'
 
 export interface PlacementListing {
   slug: string
@@ -27,13 +36,17 @@ const place = <T>(listing: T, variant: ListingCardVariant, span: PlacementSpan):
   ({ listing, variant, span })
 
 /**
- * Page-one bento for mixed sort=priority surfaces.
+ * Footprints for a mixed sort=priority directory page.
  *
- * The API has already ordered the page (tier-major, daily-rotated inside each
- * tier), so this only groups and assigns footprints — it must never re-sort or
- * re-rotate. Emission order matters: CSS grid sparse auto-placement puts the two
- * basic companions in the third column beside a 2x2 premium precisely because
- * they follow it in the DOM.
+ * The API owns page membership: it plans thirty visual slots (ten rows of three
+ * columns, Featured 3, Premium 2, Basic 1) and returns exactly the real records
+ * that fill them, already ordered tier-major and daily-rotated inside each tier.
+ * This function therefore only assigns footprints — it must never re-sort,
+ * re-rotate, count slots, paginate or invent a card.
+ *
+ * Emission order matters: CSS grid auto-placement drops a premium's basic
+ * companion into the free third column precisely because it follows the premium
+ * in the DOM.
  */
 export const packMixedTierPage = <T extends PlacementListing>(
   listings: readonly T[],
@@ -48,23 +61,21 @@ export const packMixedTierPage = <T extends PlacementListing>(
     else basic.push(listing)
   }
 
-  const packed: PlacedListing<T>[] = featured.map(l => place(l, 'spotlight', 'full-tall'))
+  const packed: PlacedListing<T>[] = featured.map(l => place(l, 'directory-spotlight', 'full-short'))
   let cursor = 0
 
   for (const block of premium) {
-    const companions = basic.slice(cursor, cursor + 2)
+    packed.push(place(block, 'wide', 'double'))
 
-    if (companions.length === 2) {
-      // A 2x2 premium leaves exactly one column free for two stacked 1x1 cards.
-      packed.push(place(block, 'wide', 'half-tall'))
-      packed.push(...companions.map(l => place(l, 'standard', 'unit')))
-      cursor += 2
-      continue
+    const companion = basic[cursor]
+
+    // A premium without a real companion keeps its two columns and leaves the
+    // third honestly empty. Widening it would show a full-width placement the
+    // buyer did not purchase, and synthesizing a card would fake a listing.
+    if (companion) {
+      packed.push(place(companion, 'standard', 'unit'))
+      cursor += 1
     }
-
-    // Fewer than two companions would leave a visible hole beside the block, so
-    // the premium placement goes full width instead.
-    packed.push(place(block, 'wide', 'full-short'))
   }
 
   packed.push(...basic.slice(cursor).map(l => place(l, 'standard', 'unit')))
