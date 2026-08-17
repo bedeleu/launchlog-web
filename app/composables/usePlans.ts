@@ -53,8 +53,10 @@ const PLANS: Plan[] = [
 ]
 
 export const usePlans = () => {
+  // Unknown input resolves to Featured everywhere the funnel does, so one
+  // stale value cannot produce two different answers on the same screen.
   const findPlan = (tier: string | null | undefined): Plan =>
-    PLANS.find(p => p.tier === tier) ?? PLANS[0]!
+    PLANS.find(p => p.tier === tier) ?? PLANS[1]!
 
   return { plans: PLANS, findPlan }
 }

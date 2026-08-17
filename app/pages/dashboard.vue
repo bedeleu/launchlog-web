@@ -175,6 +175,9 @@ onMounted(async () => {
   authReady.value = true
   await loadListings()
 })
+/** Customer-facing plan names: the internal identifier `basic` sells as Standard. */
+const tierLabel = (tier: string | null | undefined): string =>
+  tier === 'basic' ? 'Standard' : (tier ?? '')
 </script>
 
 <template>
@@ -253,7 +256,7 @@ onMounted(async () => {
                 {{ statusLabels[listing.status] }}
               </span>
               <span v-if="listing.tier" class="rounded-full border border-brand-accent/25 bg-brand-accent/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-indigo-200">
-                {{ listing.tier }}
+                {{ tierLabel(listing.tier) }}
               </span>
             </div>
             <h2 class="mt-4 text-2xl font-semibold tracking-tight text-white">
@@ -271,7 +274,7 @@ onMounted(async () => {
             </p>
             <template v-if="listing.subscription">
               <p class="mt-3 text-sm font-medium text-white">
-                {{ listing.subscription.status.replace('_', ' ') }} · {{ listing.subscription.tier }}
+                {{ listing.subscription.status.replace('_', ' ') }} · {{ tierLabel(listing.subscription.tier) }}
               </p>
               <p class="mt-1 text-xs leading-5 text-brand-muted">
                 {{ listing.subscription.canceled_at ? 'Canceled' : 'Current period ends' }}

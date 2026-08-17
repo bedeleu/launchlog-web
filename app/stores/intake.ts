@@ -54,7 +54,11 @@ const toDraft = (preview: Preview, existing?: PreviewDraft): PreviewDraft => ({
   tagline: existing?.tagline ?? preview.tagline ?? '',
   description: existing?.description ?? preview.description ?? '',
   email: existing?.email ?? preview.email ?? '',
-  tier: existing?.tier ?? (isPlanTier(preview.tier) ? preview.tier : 'featured'),
+  // A draft persisted before the two-plan model may carry a retired tier;
+  // never trust a stored value the validator no longer accepts.
+  tier: isPlanTier(existing?.tier)
+    ? existing.tier
+    : (isPlanTier(preview.tier) ? preview.tier : 'featured'),
   screenshotUrl: preview.screenshot_url,
   status: preview.status,
   expiresAt: preview.expires_at,

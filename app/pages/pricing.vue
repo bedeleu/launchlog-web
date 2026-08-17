@@ -165,7 +165,7 @@ useFaqSchema(faqs.map(f => ({ q: f.question, a: f.answer })))
       <!--
         Subgrid: each card spans the same seven parent rows (eyebrow, name,
         summary, price, monthly, features, CTA), so every band shares one
-        baseline across all three cards no matter how the copy wraps. The
+        baseline across both cards no matter how the copy wraps. The
         features row is 1fr, so it absorbs the slack and the CTA always sits on
         the bottom edge.
       -->
@@ -176,13 +176,6 @@ useFaqSchema(faqs.map(f => ({ q: f.question, a: f.answer })))
           class="relative flex flex-col rounded-xl border p-6 lg:row-span-7 lg:grid lg:grid-rows-subgrid"
           :class="plan.accent"
         >
-          <div
-            v-if="plan.highlight"
-            class="absolute right-5 top-5 rounded-full bg-brand-accent px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white"
-          >
-            Launch deal
-          </div>
-
           <p class="text-xs font-semibold uppercase tracking-[0.2em] text-brand-muted">
             {{ plan.eyebrow }}
           </p>

@@ -30,9 +30,8 @@ Canonical site: ${site}
 
 ## Pricing (annual, USD)
 
-- Basic: $24.99/year
-- Premium: $59.99/year
-- Featured: $99/year
+- Standard: $24.99/year — full listing with schema.org, markdown and llms.txt surfaces
+- Featured: $99/year — everything in Standard plus promoted Featured placement
 
 ## Attribution
 

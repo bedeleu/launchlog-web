@@ -88,6 +88,15 @@ describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
       fetch(request) {
         upstreamRequests.push(request.url)
 
+        // page=5 simulates a deep page whose plan holds no Featured records, so
+        // the suite can prove the register renders only when Featured exists.
+        if (request.url.includes('page=5')) {
+          return Response.json({
+            data: LISTINGS.filter(listing => listing.tier === 'basic'),
+            meta: { ...DIRECTORY_META, current_page: 5, last_page: 5 },
+          })
+        }
+
         return Response.json({ data: LISTINGS, meta: DIRECTORY_META })
       },
     })
@@ -161,6 +170,22 @@ describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
     // Standard companions are not mislabeled.
     expect(html.match(/Featured launches/g) ?? []).toHaveLength(1)
     expect(html.match(/Paid placement/g) ?? []).toHaveLength(2)
+  })
+
+  test('a page without featured records renders no register and no empty section', async () => {
+    const html = await fetch(`${BASE}/browse-all?page=5`).then(response => response.text())
+
+    expect(html).not.toContain('Featured launches')
+    expect(html).not.toContain('Paid placement')
+    expect(html.match(/href="\/listing\//g) ?? []).toHaveLength(26)
+  })
+
+  test('tech-products shares the segmented directory presentation', async () => {
+    const html = await fetch(`${BASE}/tech-products`).then(response => response.text())
+
+    expect(html.match(/Featured launches/g) ?? []).toHaveLength(1)
+    expect(html).not.toContain('<NuxtLink')
+    expect(html).toContain('href="/listing/one-featured"')
   })
 
   test('no mixed directory card is two rows tall', async () => {
