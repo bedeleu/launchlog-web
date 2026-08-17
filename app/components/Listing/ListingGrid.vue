@@ -28,11 +28,14 @@ const placed = computed<PlacedListing<ListingCardData>[]>(() => {
   return packUniform(props.listings)
 })
 
-// row-span only from lg up: at two columns a spanned row would open a blank cell.
+// Every mixed directory card is one row tall, so the API's 30-slot page and the
+// grid's cells stay the same unit. half-tall is the homepage editorial lead and
+// the only remaining row span; row-span only from lg up, because at two columns
+// a spanned row would open a blank cell.
 const spanClass: Record<PlacementSpan, string> = {
   'unit': '',
+  'double': 'sm:col-span-2 lg:col-span-2',
   'half-tall': 'sm:col-span-2 lg:col-span-2 lg:row-span-2',
-  'full-tall': 'sm:col-span-2 lg:col-span-3 lg:row-span-2',
   'full-short': 'sm:col-span-2 lg:col-span-3',
 }
 

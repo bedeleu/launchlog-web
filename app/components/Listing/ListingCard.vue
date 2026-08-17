@@ -34,7 +34,12 @@ const tierMeta: Record<ListingTier, { label: string, classes: string }> = {
 }
 
 const tier = computed(() => tierMeta[props.listing.tier] ?? tierMeta.basic)
+/** Homepage editorial lead: horizontal from md, height driven by its content. */
 const isSpotlight = computed(() => props.variant === 'spotlight')
+/** Directory Featured: one row of a 30-slot page, so its desktop height is capped. */
+const isDirectorySpotlight = computed(() => props.variant === 'directory-spotlight')
+/** Either spotlight — both carry the Featured chrome and the wider content treatment. */
+const isFeature = computed(() => isSpotlight.value || isDirectorySpotlight.value)
 const isWide = computed(() => props.variant === 'wide')
 
 const imageFailed = ref(false)
@@ -55,16 +60,37 @@ const cardClass = computed(() => {
   return 'border-brand-border bg-white/[0.02] group-hover:border-brand-accent/40 group-focus-visible:border-brand-accent/40'
 })
 
-const layoutClass = computed(() =>
-  isSpotlight.value
-    ? 'md:grid md:grid-cols-[minmax(0,1.45fr)_minmax(260px,0.85fr)]'
-    : 'flex flex-col',
-)
+const layoutClass = computed(() => {
+  if (isSpotlight.value) return 'md:grid md:grid-cols-[minmax(0,1.45fr)_minmax(260px,0.85fr)]'
+  // Fixed 240/256px so a Featured row stays one row of the page instead of the
+  // wall of hero cards the two-row version produced in production. It only goes
+  // horizontal at lg, where the three-column directory grid exists.
+  if (isDirectorySpotlight.value) return 'lg:grid lg:h-60 lg:grid-cols-[minmax(0,1.4fr)_minmax(240px,0.9fr)] xl:h-64'
+  // Two of three columns, stretched by h-full to whatever height its real basic
+  // companion establishes in the same row.
+  if (isWide.value) return 'flex flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'
+  return 'flex flex-col'
+})
+
+/** Below lg both directory cards stay ordinary stacked cards with a 16/10 shot. */
+const mediaClass = computed(() => {
+  if (isSpotlight.value) return 'md:aspect-auto md:min-h-64'
+  if (isDirectorySpotlight.value || isWide.value) return 'lg:aspect-auto lg:h-full'
+  return ''
+})
 
 const contentClass = computed(() => {
   if (isSpotlight.value) return 'gap-3 p-5 md:p-7'
+  if (isDirectorySpotlight.value) return 'gap-2 p-5 lg:gap-2.5 lg:p-6'
   if (isWide.value) return 'gap-2.5 p-5'
   return 'gap-2 p-4'
+})
+
+const headingClass = computed(() => {
+  if (isSpotlight.value) return 'line-clamp-2 text-xl md:text-2xl'
+  if (isDirectorySpotlight.value) return 'line-clamp-2 text-xl'
+  if (isWide.value) return 'line-clamp-2 text-lg'
+  return 'truncate'
 })
 
 // Basic capabilities, surfaced wherever the card has room. They are deliberately
@@ -84,7 +110,7 @@ const aiChips = computed(() => [
   >
     <div
       class="relative aspect-[16/10] w-full overflow-hidden bg-white/[0.03]"
-      :class="{ 'md:aspect-auto md:min-h-64': isSpotlight }"
+      :class="mediaClass"
     >
       <span
         v-if="listing.source === 'founding'"
@@ -118,7 +144,7 @@ const aiChips = computed(() => [
           <Sparkles v-if="listing.tier === 'featured'" class="size-2.5" />
           {{ tier.label }}
         </span>
-        <span v-if="isSpotlight" class="text-[11px] font-medium text-brand-accent">
+        <span v-if="isFeature" class="text-[11px] font-medium text-brand-accent">
           Featured placement
         </span>
         <span v-else-if="isWide" class="text-[11px] font-medium text-brand-fg/70">
@@ -129,7 +155,7 @@ const aiChips = computed(() => [
       <component
         :is="headingLevel"
         class="min-w-0 font-semibold text-brand-fg"
-        :class="isSpotlight ? 'line-clamp-2 text-xl md:text-2xl' : isWide ? 'line-clamp-2 text-lg' : 'truncate'"
+        :class="headingClass"
       >
         {{ listing.name }}
       </component>
@@ -141,7 +167,7 @@ const aiChips = computed(() => [
         {{ listing.tagline }}
       </p>
 
-      <div v-if="(isSpotlight || isWide) && aiChips.length" class="flex flex-wrap items-center gap-1.5 pt-1">
+      <div v-if="(isFeature || isWide) && aiChips.length" class="flex flex-wrap items-center gap-1.5 pt-1">
         <span class="mr-1 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
           AI-readable
         </span>

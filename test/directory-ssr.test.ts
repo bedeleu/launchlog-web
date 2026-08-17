@@ -37,14 +37,29 @@ const card = (slug: string, tier: 'basic' | 'premium' | 'featured') => ({
   published_at: '2026-08-01T00:00:00Z',
 })
 
+// A production-shaped slot-aware page: 1 Featured (3 slots) + 1 Premium (2) +
+// 25 Basic (25) spends exactly the 30 visual slots a directory page owns.
 // Mirrors the API's tier-major ordering: featured, then premium, then basic.
 const LISTINGS = [
   card('one-featured', 'featured'),
   card('two-premium', 'premium'),
-  card('three-basic', 'basic'),
-  card('four-basic', 'basic'),
-  card('five-basic', 'basic'),
+  ...Array.from({ length: 25 }, (_, index) =>
+    card(`basic-${String(index + 1).padStart(2, '0')}`, 'basic')),
 ]
+
+const DIRECTORY_META = {
+  current_page: 1,
+  from: 1,
+  last_page: 1,
+  per_page: LISTINGS.length,
+  to: LISTINGS.length,
+  total: LISTINGS.length,
+  slot_capacity: 30,
+  slots_used: 30,
+}
+
+/** Every upstream URL the SSR render asked for, so tests can assert the request. */
+const upstreamRequests: string[] = []
 
 let upstream: ReturnType<typeof Bun.serve> | undefined
 let server: ReturnType<typeof Bun.spawn> | undefined
@@ -70,11 +85,10 @@ describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
   beforeAll(async () => {
     upstream = Bun.serve({
       port: UPSTREAM_PORT,
-      fetch() {
-        return Response.json({
-          data: LISTINGS,
-          meta: { current_page: 1, from: 1, last_page: 1, per_page: 24, to: LISTINGS.length, total: LISTINGS.length },
-        })
+      fetch(request) {
+        upstreamRequests.push(request.url)
+
+        return Response.json({ data: LISTINGS, meta: DIRECTORY_META })
       },
     })
 
@@ -121,12 +135,29 @@ describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
     expect(anchors).toHaveLength(LISTINGS.length)
   })
 
-  test('page one applies the bento footprints to the paid tiers', async () => {
+  test('paid cards take one-row 3x1 and 2x1 footprints', async () => {
     const html = await fetch(`${BASE}/browse-all`).then(response => response.text())
 
-    // Featured spans the full 3-column row and two rows; Premium spans two of three.
-    expect(html).toContain('lg:col-span-3 lg:row-span-2')
-    expect(html).toContain('lg:col-span-2 lg:row-span-2')
+    // Featured spans all three columns, Premium two of three.
+    expect(html).toContain('lg:col-span-3')
+    expect(html).toContain('lg:col-span-2')
+  })
+
+  test('no mixed directory card is two rows tall', async () => {
+    const html = await fetch(`${BASE}/browse-all`).then(response => response.text())
+
+    // Asserted on the bare utility rather than on a concatenated class string:
+    // class attribute order is an implementation detail, and a gate that a
+    // one-character reordering can silently satisfy is not a gate. The homepage
+    // editorial lead is the only surface allowed a row span, and it is not here.
+    expect(html).not.toContain('lg:row-span-2')
+  })
+
+  test('the featured card is height-capped on desktop instead of running tall', async () => {
+    const html = await fetch(`${BASE}/browse-all`).then(response => response.text())
+
+    expect(html).toContain('lg:h-60')
+    expect(html).toContain('xl:h-64')
   })
 
   test('listing names render as h2 on a top-level directory page', async () => {
