@@ -151,7 +151,14 @@ const headingClass = computed(() => {
         width="960"
         height="600"
         class="size-full object-cover object-top"
-        :class="isDirectorySpotlight ? 'absolute inset-0' : ''"
+        :class="[
+          isDirectorySpotlight ? 'absolute inset-0' : '',
+          // Once the media becomes a side column its box is taller than the
+          // 16:10 capture, and cover would trim the sides — contain shows the
+          // whole screenshot as a centred plate on the media surface instead.
+          isDirectorySpotlight || isWide ? 'lg:object-contain lg:object-center' : '',
+          isSpotlight ? 'md:object-contain md:object-center' : '',
+        ]"
         @error="imageFailed = true"
       >
       <!-- Neutral everywhere the card chrome is neutral; only the homepage
