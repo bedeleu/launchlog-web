@@ -219,10 +219,12 @@ const aiChips = computed(() => [
       </div>
 
       <!-- Wraps rather than truncates: a domain cut mid-word reads as a rendering
-           bug, and the card has no fixed height to protect. -->
+           bug, and the card has no fixed height to protect. break-words is load
+           bearing — a hostname is one unbreakable token, so without it a long
+           domain runs past the card and overflow-hidden slices it mid-word. -->
       <p
         v-if="isDirectorySpotlight && registerLine"
-        class="mt-auto font-mono text-[11px] leading-5 text-brand-muted"
+        class="mt-auto break-words font-mono text-[11px] leading-5 text-brand-muted"
       >
         {{ registerLine }}
       </p>
