@@ -26,8 +26,6 @@ const isSpotlight = computed(() => props.variant === 'spotlight')
  * rather than from extra size or a colour the rest of the directory does not use.
  */
 const isDirectorySpotlight = computed(() => props.variant === 'directory-spotlight')
-/** Either spotlight — both carry the Featured chrome and the wider content treatment. */
-const isFeature = computed(() => isSpotlight.value || isDirectorySpotlight.value)
 const isWide = computed(() => props.variant === 'wide')
 
 /** Register host: real product truth, nothing invented. */
@@ -62,11 +60,11 @@ watch(() => props.listing.screenshot_url, () => {
 const showImage = computed(() => Boolean(props.listing.screenshot_url) && !imageFailed.value)
 
 const cardClass = computed(() => {
-  // The directory Featured card is deliberately monochrome: it sits beside a free
-  // Basic listing, and a card that shouts is not the same as a card that reads as
-  // chosen. A heavier hairline is the whole frame.
+  // The directory Featured card is monochrome but unmistakable: a double frame
+  // on a lifted surface, closed by the solid register band below. Framed and
+  // stamped — still not a colour the rest of the directory does not use.
   if (isDirectorySpotlight.value) {
-    return 'border-white/25 bg-white/[0.03] group-hover:border-white/45 group-focus-visible:border-white/45'
+    return 'border-2 border-white/40 bg-white/[0.05] group-hover:border-white/60 group-focus-visible:border-white/60'
   }
 
   // The homepage editorial lead is the one surface that keeps the accent chrome;
@@ -122,9 +120,16 @@ const contentClass = computed(() => {
 const headingClass = computed(() => {
   if (isSpotlight.value) return 'line-clamp-2 text-xl md:text-2xl'
   // Display scale is the loudest thing about this card, and it costs no colour.
-  if (isDirectorySpotlight.value) return 'line-clamp-2 text-2xl leading-[1.15] tracking-tight'
+  if (isDirectorySpotlight.value) return 'line-clamp-2 text-3xl leading-[1.1] tracking-tight'
   if (isWide.value) return 'line-clamp-2 text-lg tracking-tight'
   return 'truncate'
+})
+
+const taglineClass = computed(() => {
+  // The directory Featured tagline steps up with its display name.
+  if (isDirectorySpotlight.value) return 'line-clamp-3 text-base leading-7'
+  if (isSpotlight.value) return 'line-clamp-3 text-sm leading-6'
+  return 'line-clamp-2 text-sm leading-6'
 })
 </script>
 
@@ -132,13 +137,16 @@ const headingClass = computed(() => {
   <!-- Still, by request: no hover motion on the card or the screenshot. The only
        hover feedback is the border-colour step from cardClass. -->
   <article
-    class="h-full min-w-0 overflow-hidden rounded-xl border transition-colors duration-200"
-    :class="[cardClass, layoutClass]"
+    class="flex h-full min-w-0 flex-col overflow-hidden rounded-xl border transition-colors duration-200"
+    :class="cardClass"
   >
-    <div
-      class="relative aspect-[16/10] w-full overflow-hidden bg-white/[0.03]"
-      :class="mediaClass"
-    >
+    <!-- The split lives on an inner wrapper so the directory Featured card can
+         close with a register strip that runs under image and text alike. -->
+    <div class="flex min-w-0 flex-1 flex-col" :class="layoutClass">
+      <div
+        class="relative aspect-[16/10] w-full overflow-hidden bg-white/[0.03]"
+        :class="mediaClass"
+      >
       <span
         v-if="listing.source === 'founding'"
         class="absolute left-2.5 top-2.5 z-10 inline-flex items-center rounded-sm border border-white/15 bg-brand-bg/85 px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wider text-brand-fg/85 backdrop-blur"
@@ -177,10 +185,7 @@ const headingClass = computed(() => {
         {{ listing.name }}
       </component>
 
-      <p
-        class="text-sm leading-6 text-brand-muted"
-        :class="isFeature ? 'line-clamp-3' : 'line-clamp-2'"
-      >
+      <p class="text-brand-muted" :class="taglineClass">
         {{ listing.tagline }}
       </p>
 
@@ -191,7 +196,7 @@ const headingClass = computed(() => {
            break-words stays as the last resort for a hostname wider than the
            column, which one unbreakable token would otherwise overflow. -->
       <p
-        v-if="hasRegisterLine"
+        v-if="!isDirectorySpotlight && hasRegisterLine"
         class="mt-auto break-words border-t pt-2.5 font-mono text-[11px] leading-5 text-brand-muted"
         :class="registerRuleClass"
       >
@@ -207,5 +212,20 @@ const headingClass = computed(() => {
         <span v-if="registerHost">{{ registerHost }}</span>
       </p>
     </div>
+    </div>
+
+    <!-- The directory Featured register runs under image and text alike as a
+         solid inverted band: the only full white in the directory, so the tier
+         reads at a glance without borrowing any colour. -->
+    <p
+      v-if="isDirectorySpotlight && hasRegisterLine"
+      class="break-words bg-white px-5 py-3 font-mono text-[11px] leading-5 text-brand-bg/70 lg:px-6"
+    >
+      <span class="whitespace-nowrap font-semibold uppercase tracking-[0.3em] text-brand-bg">{{ listing.tier }}</span>
+      <span v-if="listing.category || registerHost">{{ '\u00A0· ' }}</span>
+      <span v-if="listing.category" class="whitespace-nowrap">{{ listing.category.name }}</span>
+      <span v-if="listing.category && registerHost">{{ '\u00A0· ' }}</span>
+      <span v-if="registerHost">{{ registerHost }}</span>
+    </p>
   </article>
 </template>
