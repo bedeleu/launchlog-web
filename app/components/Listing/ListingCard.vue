@@ -103,18 +103,11 @@ const layoutClass = computed(() => {
   return 'flex flex-col'
 })
 
-/**
- * Below lg both directory cards stay ordinary stacked cards with a 16/10 shot.
- * The corner radii repeat the card's own on whichever media corners coincide
- * with it: the hover scale makes the screenshot a transformed descendant, and a
- * transformed descendant escapes an ancestor's rounded overflow clip in
- * Chromium/WebKit — the rounded clip must live on the element that directly
- * contains the scaled image, not only on the <article>.
- */
+/** Below lg both directory cards stay ordinary stacked cards with a 16/10 shot. */
 const mediaClass = computed(() => {
-  if (isSpotlight.value) return 'rounded-t-xl md:aspect-auto md:min-h-64 md:rounded-l-xl md:rounded-tr-none'
-  if (isDirectorySpotlight.value || isWide.value) return 'rounded-t-xl lg:aspect-auto lg:h-full lg:rounded-l-xl lg:rounded-tr-none'
-  return 'rounded-t-xl'
+  if (isSpotlight.value) return 'md:aspect-auto md:min-h-64'
+  if (isDirectorySpotlight.value || isWide.value) return 'lg:aspect-auto lg:h-full'
+  return ''
 })
 
 const contentClass = computed(() => {
@@ -134,8 +127,10 @@ const headingClass = computed(() => {
 </script>
 
 <template>
+  <!-- Still, by request: no hover motion on the card or the screenshot. The only
+       hover feedback is the border-colour step from cardClass. -->
   <article
-    class="h-full min-w-0 overflow-hidden rounded-xl border transition-[border-color,translate,box-shadow] duration-200 group-hover:-translate-y-0.5 group-focus-visible:-translate-y-0.5"
+    class="h-full min-w-0 overflow-hidden rounded-xl border transition-colors duration-200"
     :class="[cardClass, layoutClass]"
   >
     <div
@@ -155,7 +150,7 @@ const headingClass = computed(() => {
         loading="lazy"
         width="960"
         height="600"
-        class="size-full origin-top object-cover object-top transition-transform duration-500 group-hover:scale-[1.025] group-focus-visible:scale-[1.025]"
+        class="size-full object-cover object-top"
         :class="isDirectorySpotlight ? 'absolute inset-0' : ''"
         @error="imageFailed = true"
       >
