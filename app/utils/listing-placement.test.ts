@@ -12,7 +12,7 @@ const shape = <T extends { slug: string }>(packed: { listing: T, variant: string
   packed.map(p => `${p.listing.slug}:${p.variant}:${p.span}`)
 
 describe('packMixedTierPage', () => {
-  test('assigns the approved one-row footprint to each tier', () => {
+  test('gives both paid tiers the same two-column footprint and one companion each', () => {
     const packed = packMixedTierPage([
       item('f1', 'featured'),
       item('p1', 'premium'),
@@ -22,53 +22,54 @@ describe('packMixedTierPage', () => {
       item('b3', 'basic'),
     ])
 
+    // Featured leads, then Premium; each paid card is immediately followed by the
+    // real Basic that completes its row.
     expect(shape(packed)).toEqual([
-      'f1:directory-spotlight:full-short',
-      'p1:wide:double',
+      'f1:directory-spotlight:double',
       'b1:standard:unit',
-      'p2:wide:double',
+      'p1:wide:double',
       'b2:standard:unit',
+      'p2:wide:double',
       'b3:standard:unit',
     ])
   })
 
-  test('gives each premium exactly one real basic companion', () => {
+  test('keeps featured ahead of premium and both ahead of the basic fill', () => {
     const packed = packMixedTierPage([
-      item('p1', 'premium'),
-      item('p2', 'premium'),
       item('b1', 'basic'),
+      item('p1', 'premium'),
+      item('f1', 'featured'),
       item('b2', 'basic'),
+      item('f2', 'featured'),
       item('b3', 'basic'),
       item('b4', 'basic'),
     ])
 
-    expect(shape(packed)).toEqual([
-      'p1:wide:double',
-      'b1:standard:unit',
-      'p2:wide:double',
-      'b2:standard:unit',
-      'b3:standard:unit',
-      'b4:standard:unit',
-    ])
+    expect(packed.map(p => p.listing.slug)).toEqual(['f1', 'b1', 'f2', 'b2', 'p1', 'b3', 'b4'])
   })
 
-  test('keeps premium two columns wide when no real companion is left', () => {
-    // The API fills a page's premium rows with real basics whenever the filtered
-    // cohort has them. When it genuinely cannot, the third column stays empty:
-    // widening the card would advertise a placement the buyer did not purchase.
-    expect(shape(packMixedTierPage([item('p1', 'premium')]))).toEqual([
-      'p1:wide:double',
+  test('keeps a paid card two columns wide when no real companion is left', () => {
+    // The API fills paid rows with real basics whenever the filtered cohort has
+    // them. When it genuinely cannot, the third column stays empty: widening the
+    // card would advertise a placement the buyer did not purchase.
+    expect(shape(packMixedTierPage([item('f1', 'featured')]))).toEqual([
+      'f1:directory-spotlight:double',
     ])
 
-    expect(shape(packMixedTierPage([item('p1', 'premium'), item('p2', 'premium'), item('b1', 'basic')]))).toEqual([
-      'p1:wide:double',
+    expect(shape(packMixedTierPage([
+      item('f1', 'featured'),
+      item('p1', 'premium'),
+      item('b1', 'basic'),
+    ]))).toEqual([
+      'f1:directory-spotlight:double',
       'b1:standard:unit',
-      'p2:wide:double',
+      'p1:wide:double',
     ])
   })
 
   test('companion slugs never appear again in the trailing collection', () => {
     const packed = packMixedTierPage([
+      item('f1', 'featured'),
       item('p1', 'premium'),
       item('b1', 'basic'),
       item('b2', 'basic'),
@@ -79,7 +80,7 @@ describe('packMixedTierPage', () => {
     expect(new Set(slugs).size).toBe(slugs.length)
   })
 
-  test('never emits a row span on a mixed directory card', () => {
+  test('never emits a row span or a three-column span in a mixed directory page', () => {
     const packed = packMixedTierPage([
       item('f1', 'featured'),
       item('p1', 'premium'),
@@ -87,8 +88,7 @@ describe('packMixedTierPage', () => {
       item('b2', 'basic'),
     ])
 
-    expect(packed.map(p => p.span)).not.toContain('half-tall')
-    expect(packed.every(p => p.span === 'unit' || p.span === 'double' || p.span === 'full-short')).toBe(true)
+    expect(packed.every(p => p.span === 'unit' || p.span === 'double')).toBe(true)
   })
 
   test('spends exactly thirty slots on the production-shaped page', () => {
@@ -96,12 +96,12 @@ describe('packMixedTierPage', () => {
     const page = [
       ...Array.from({ length: 2 }, (_, n) => item(`f${n}`, 'featured' as const)),
       item('p1', 'premium'),
-      ...Array.from({ length: 22 }, (_, n) => item(`b${n}`, 'basic' as const)),
+      ...Array.from({ length: 24 }, (_, n) => item(`b${n}`, 'basic' as const)),
     ]
 
     const packed = packMixedTierPage(page)
 
-    expect(packed).toHaveLength(25)
+    expect(packed).toHaveLength(27)
     expect(packed.reduce((sum, p) => sum + weight[p.span], 0)).toBe(30)
   })
 
@@ -114,7 +114,7 @@ describe('packMixedTierPage', () => {
       item('b3', 'basic'),
     ])
 
-    expect(packed.map(p => p.listing.slug)).toEqual(['f2', 'f1', 'b1', 'b2', 'b3'])
+    expect(packed.map(p => p.listing.slug)).toEqual(['f2', 'b1', 'f1', 'b2', 'b3'])
   })
 
   test('never duplicates, synthesizes or drops an input listing', () => {
@@ -134,7 +134,7 @@ describe('packMixedTierPage', () => {
   test('handles empty and single-item cohorts safely', () => {
     expect(packMixedTierPage([])).toEqual([])
     expect(shape(packMixedTierPage([item('b1', 'basic')]))).toEqual(['b1:standard:unit'])
-    expect(shape(packMixedTierPage([item('f1', 'featured')]))).toEqual(['f1:directory-spotlight:full-short'])
+    expect(shape(packMixedTierPage([item('f1', 'featured')]))).toEqual(['f1:directory-spotlight:double'])
   })
 
   test('does not mutate the input array or its element order', () => {

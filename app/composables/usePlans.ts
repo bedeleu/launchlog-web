@@ -55,7 +55,7 @@ const PLANS: Plan[] = [
     highlight: true,
     features: [
       'Everything in Premium',
-      'Full-width spotlight card at the top of eligible browse and category pages',
+      'Editorial spotlight card, first on eligible browse and category pages',
       'Eligible for one of up to three Homepage Featured slots',
       'Dedicated Featured badge',
       'Launch discount from $149',

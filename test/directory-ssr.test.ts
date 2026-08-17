@@ -37,13 +37,13 @@ const card = (slug: string, tier: 'basic' | 'premium' | 'featured') => ({
   published_at: '2026-08-01T00:00:00Z',
 })
 
-// A production-shaped slot-aware page: 1 Featured (3 slots) + 1 Premium (2) +
-// 25 Basic (25) spends exactly the 30 visual slots a directory page owns.
+// A production-shaped slot-aware page: 1 Featured (2 slots) + 1 Premium (2) +
+// 26 Basic (26) spends exactly the 30 visual slots a directory page owns.
 // Mirrors the API's tier-major ordering: featured, then premium, then basic.
 const LISTINGS = [
   card('one-featured', 'featured'),
   card('two-premium', 'premium'),
-  ...Array.from({ length: 25 }, (_, index) =>
+  ...Array.from({ length: 26 }, (_, index) =>
     card(`basic-${String(index + 1).padStart(2, '0')}`, 'basic')),
 ]
 
@@ -135,24 +135,22 @@ describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
     expect(anchors).toHaveLength(LISTINGS.length)
   })
 
-  test('paid cards take one-row 3x1 and 2x1 footprints', async () => {
+  test('both paid tiers take the same one-row 2x1 footprint', async () => {
     const html = await fetch(`${BASE}/browse-all`).then(response => response.text())
+    const cell = (slug: string) => html.match(new RegExp(`<a href="/listing/${slug}"[^>]*class="([^"]*)"`))?.[1]
 
-    // Featured spans all three columns, Premium two of three.
-    expect(html).toContain('lg:col-span-3')
-    expect(html).toContain('lg:col-span-2')
-  })
+    for (const slug of ['one-featured', 'two-premium']) {
+      const classes = cell(slug)
+      expect(classes).toBeDefined()
+      expect(classes!).toContain('lg:col-span-2')
+      // At sm the grid is two columns wide. A 2-wide paid card followed by its
+      // 1-wide companion cannot tile there: the companion takes column 1, the next
+      // paid card wraps, and sparse auto-placement never goes back to fill column 2.
+      expect(classes!).not.toContain('sm:col-span-2')
+    }
 
-  test('premium does not span two columns where the grid only has two', async () => {
-    const html = await fetch(`${BASE}/browse-all`).then(response => response.text())
-    const premium = html.match(/<a href="\/listing\/two-premium"[^>]*class="([^"]*)"/)
-
-    expect(premium).not.toBeNull()
-    expect(premium![1]).toContain('lg:col-span-2')
-    // At sm the grid is two columns wide. A 2-wide Premium followed by its 1-wide
-    // companion cannot tile there: the companion takes column 1, the next Premium
-    // wraps, and sparse auto-placement never goes back to fill column 2.
-    expect(premium![1]).not.toContain('sm:col-span-2')
+    // The retired three-slot Featured geometry must not come back.
+    expect(html).not.toContain('lg:col-span-3')
   })
 
   test('no mixed directory card is two rows tall', async () => {
@@ -165,11 +163,25 @@ describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
     expect(html).not.toContain('lg:row-span-2')
   })
 
-  test('the featured card is height-capped on desktop instead of running tall', async () => {
+  test('no directory card carries a fixed desktop height', async () => {
     const html = await fetch(`${BASE}/browse-all`).then(response => response.text())
 
-    expect(html).toContain('lg:h-60')
-    expect(html).toContain('xl:h-64')
+    // Every retired attempt at sizing Featured by a fixed number. The row height
+    // now comes from the real Basic companion, exactly as it does for Premium.
+    for (const retired of ['lg:h-60', 'xl:h-64', 'lg:h-80']) {
+      expect(html).not.toContain(retired)
+    }
+  })
+
+  test('the directory featured card carries no accent colour', async () => {
+    const html = await fetch(`${BASE}/browse-all`).then(response => response.text())
+    const cell = html.match(/<a href="\/listing\/one-featured"[\s\S]*?<\/a>/)
+
+    expect(cell).not.toBeNull()
+    // Featured is differentiated by composition and typography. The indigo brand
+    // accent belongs to the homepage spotlight, not to this card.
+    expect(cell![0]).not.toContain('brand-accent')
+    expect(cell![0]).toContain('Featured')
   })
 
   test('browse-all asks the API for a slot-aware directory page', async () => {

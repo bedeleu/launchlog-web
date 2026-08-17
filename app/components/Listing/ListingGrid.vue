@@ -56,9 +56,13 @@ const contextual = computed(() => new Set(props.contextualSlugs))
       :to="interactive && !contextual.has(item.listing.slug) ? `/listing/${item.listing.slug}` : undefined"
       :aria-hidden="contextual.has(item.listing.slug) ? 'true' : undefined"
       :tabindex="contextual.has(item.listing.slug) ? -1 : undefined"
-      class="group block min-w-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2 focus-visible:ring-offset-brand-bg"
+      class="group block min-w-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-bg"
       :class="[
         spanClass[item.span],
+        // Every other card focuses in the brand accent. The directory Featured card
+        // is differentiated without indigo, and that has to hold in its focus state
+        // too, so it takes an equally visible neutral ring instead.
+        item.variant === 'directory-spotlight' ? 'focus-visible:ring-white/70' : 'focus-visible:ring-brand-accent',
         contextual.has(item.listing.slug) ? 'pointer-events-none select-none opacity-55 blur-[1.5px]' : '',
       ]"
     >

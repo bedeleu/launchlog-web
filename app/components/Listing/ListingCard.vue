@@ -36,11 +36,29 @@ const tierMeta: Record<ListingTier, { label: string, classes: string }> = {
 const tier = computed(() => tierMeta[props.listing.tier] ?? tierMeta.basic)
 /** Homepage editorial lead: horizontal from md, height driven by its content. */
 const isSpotlight = computed(() => props.variant === 'spotlight')
-/** Directory Featured: one row of a 30-slot page, so its desktop height is capped. */
+/**
+ * Directory Featured: an ordinary two-column directory tile, the same footprint
+ * and natural row height as Premium. It earns its distinction from composition
+ * and typography — a register rule, a display-scale name, one line of record —
+ * rather than from extra size or a colour the rest of the directory does not use.
+ */
 const isDirectorySpotlight = computed(() => props.variant === 'directory-spotlight')
 /** Either spotlight — both carry the Featured chrome and the wider content treatment. */
 const isFeature = computed(() => isSpotlight.value || isDirectorySpotlight.value)
 const isWide = computed(() => props.variant === 'wide')
+
+/** Register line on the directory Featured card: real product truth, nothing invented. */
+const registerLine = computed(() => {
+  let host = ''
+  try {
+    host = new URL(props.listing.url).hostname.replace(/^www\./, '')
+  }
+  catch {
+    host = ''
+  }
+
+  return [props.listing.category?.name, host].filter(Boolean).join('  ·  ')
+})
 
 const imageFailed = ref(false)
 watch(() => props.listing.screenshot_url, () => {
@@ -49,6 +67,13 @@ watch(() => props.listing.screenshot_url, () => {
 const showImage = computed(() => Boolean(props.listing.screenshot_url) && !imageFailed.value)
 
 const cardClass = computed(() => {
+  // The directory Featured card is deliberately monochrome: it sits beside a free
+  // Basic listing, and a card that shouts is not the same as a card that reads as
+  // chosen. A heavier hairline is the whole frame.
+  if (isDirectorySpotlight.value) {
+    return 'border-white/25 bg-white/[0.03] group-hover:border-white/45 group-focus-visible:border-white/45'
+  }
+
   if (props.listing.tier === 'featured') {
     return 'border-brand-accent/55 bg-[linear-gradient(145deg,rgba(99,102,241,0.12),rgba(12,17,32,0.96)_58%)] shadow-[0_22px_60px_-34px_rgba(99,102,241,0.7)] ring-1 ring-brand-accent/15 group-hover:border-brand-accent/80 group-focus-visible:border-brand-accent/80'
   }
@@ -62,14 +87,10 @@ const cardClass = computed(() => {
 
 const layoutClass = computed(() => {
   if (isSpotlight.value) return 'md:grid md:grid-cols-[minmax(0,1.45fr)_minmax(260px,0.85fr)]'
-  // Fixed 240/256px so a Featured row stays one row of the page instead of the
-  // wall of hero cards the two-row version produced in production. It only goes
-  // horizontal at lg, where the three-column directory grid exists.
-  // The content track is the wide one, because this card's height is fixed while
-  // its text is not: a narrow column wraps the badge and capability rows onto
-  // second lines and the overflow gets clipped silently. The preview page is the
-  // tightest container it renders in, so the minimum is sized for that.
-  if (isDirectorySpotlight.value) return 'lg:grid lg:h-60 lg:grid-cols-[minmax(0,1.1fr)_minmax(300px,1fr)] xl:h-64'
+  // No fixed height: the row is whatever its real Basic companion establishes,
+  // exactly like Premium. The screenshot takes the wide track because the
+  // customer's product is what Featured actually sells.
+  if (isDirectorySpotlight.value) return 'lg:grid lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]'
   // Two of three columns, stretched by h-full to whatever height its real basic
   // companion establishes in the same row.
   if (isWide.value) return 'flex flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'
@@ -85,14 +106,15 @@ const mediaClass = computed(() => {
 
 const contentClass = computed(() => {
   if (isSpotlight.value) return 'gap-3 p-5 md:p-7'
-  if (isDirectorySpotlight.value) return 'gap-2 p-5 lg:gap-2'
+  if (isDirectorySpotlight.value) return 'gap-3 p-5 lg:p-6'
   if (isWide.value) return 'gap-2.5 p-5'
   return 'gap-2 p-4'
 })
 
 const headingClass = computed(() => {
   if (isSpotlight.value) return 'line-clamp-2 text-xl md:text-2xl'
-  if (isDirectorySpotlight.value) return 'line-clamp-2 text-xl'
+  // Display scale is the loudest thing about this card, and it costs no colour.
+  if (isDirectorySpotlight.value) return 'line-clamp-2 text-2xl leading-[1.15] tracking-tight'
   if (isWide.value) return 'line-clamp-2 text-lg'
   return 'truncate'
 })
@@ -130,17 +152,27 @@ const aiChips = computed(() => [
         width="960"
         height="600"
         class="size-full object-cover object-top transition-transform duration-500 group-hover:scale-[1.025] group-focus-visible:scale-[1.025]"
+        :class="isDirectorySpotlight ? 'absolute inset-0' : ''"
         @error="imageFailed = true"
       >
       <ListingShotFallback
         v-else
         :name="listing.name"
         :generating="generating"
+        :neutral="isDirectorySpotlight"
       />
     </div>
 
     <div class="flex min-w-0 flex-1 flex-col" :class="contentClass">
-      <div class="flex flex-wrap items-center gap-2">
+      <!-- Directory Featured wears a register mark under a rule instead of a badge:
+           a masthead reads as editorial selection, a pill reads as a status chip. -->
+      <div v-if="isDirectorySpotlight" class="border-t border-white/35 pt-2.5">
+        <span class="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-brand-fg">
+          Featured
+        </span>
+      </div>
+
+      <div v-else class="flex flex-wrap items-center gap-2">
         <span
           class="inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
           :class="tier.classes"
@@ -148,7 +180,7 @@ const aiChips = computed(() => [
           <Sparkles v-if="listing.tier === 'featured'" class="size-2.5" />
           {{ tier.label }}
         </span>
-        <span v-if="isFeature" class="text-[11px] font-medium text-brand-accent">
+        <span v-if="isSpotlight" class="text-[11px] font-medium text-brand-accent">
           Featured placement
         </span>
         <span v-else-if="isWide" class="text-[11px] font-medium text-brand-fg/70">
@@ -166,19 +198,15 @@ const aiChips = computed(() => [
 
       <p
         class="text-sm leading-6 text-brand-muted"
-        :class="isSpotlight ? 'line-clamp-3' : 'line-clamp-2'"
+        :class="isFeature ? 'line-clamp-3' : 'line-clamp-2'"
       >
         {{ listing.tagline }}
       </p>
 
-      <div v-if="(isFeature || isWide) && aiChips.length" class="flex flex-wrap items-center gap-1.5 pt-1">
-        <!-- The compact directory Featured card has a fixed height, so the label
-             is dropped there to keep the three self-describing chips on one line
-             instead of wrapping a second row into the clipped area. -->
-        <span
-          v-if="!isDirectorySpotlight"
-          class="mr-1 text-[10px] font-semibold uppercase tracking-wider text-brand-muted"
-        >
+      <!-- Not on the directory Featured card: it carries one register line instead,
+           and the capability chips are already on Premium and the listing page. -->
+      <div v-if="(isSpotlight || isWide) && aiChips.length" class="flex flex-wrap items-center gap-1.5 pt-1">
+        <span class="mr-1 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
           AI-readable
         </span>
         <span
@@ -190,8 +218,17 @@ const aiChips = computed(() => [
         </span>
       </div>
 
+      <!-- Wraps rather than truncates: a domain cut mid-word reads as a rendering
+           bug, and the card has no fixed height to protect. -->
+      <p
+        v-if="isDirectorySpotlight && registerLine"
+        class="mt-auto font-mono text-[11px] leading-5 text-brand-muted"
+      >
+        {{ registerLine }}
+      </p>
+
       <span
-        v-if="listing.category"
+        v-else-if="listing.category"
         class="mt-auto inline-flex w-fit rounded-full border border-brand-border bg-black/10 px-2.5 py-0.5 text-xs text-brand-muted"
       >
         {{ listing.category.name }}

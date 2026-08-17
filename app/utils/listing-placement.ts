@@ -39,13 +39,13 @@ const place = <T>(listing: T, variant: ListingCardVariant, span: PlacementSpan):
  * Footprints for a mixed sort=priority directory page.
  *
  * The API owns page membership: it plans thirty visual slots (ten rows of three
- * columns, Featured 3, Premium 2, Basic 1) and returns exactly the real records
- * that fill them, already ordered tier-major and daily-rotated inside each tier.
- * This function therefore only assigns footprints — it must never re-sort,
- * re-rotate, count slots, paginate or invent a card.
+ * columns, each paid card 2 and each Basic 1) and returns exactly the real
+ * records that fill them, already ordered tier-major and daily-rotated inside
+ * each tier. This function therefore only assigns footprints — it must never
+ * re-sort, re-rotate, count slots, paginate or invent a card.
  *
- * Emission order matters: CSS grid auto-placement drops a premium's basic
- * companion into the free third column precisely because it follows the premium
+ * Emission order matters: CSS grid auto-placement drops a paid card's basic
+ * companion into the free third column precisely because it follows that card
  * in the DOM.
  */
 export const packMixedTierPage = <T extends PlacementListing>(
@@ -61,20 +61,30 @@ export const packMixedTierPage = <T extends PlacementListing>(
     else basic.push(listing)
   }
 
-  const packed: PlacedListing<T>[] = featured.map(l => place(l, 'directory-spotlight', 'full-short'))
+  const packed: PlacedListing<T>[] = []
   let cursor = 0
 
-  for (const block of premium) {
-    packed.push(place(block, 'wide', 'double'))
+  // Featured first, then Premium. Both are two columns wide: Featured used to be
+  // a full-width three-slot card and read as a banner against the real cohort,
+  // so it is now differentiated by composition and typography instead of by size.
+  const paid: [T[], ListingCardVariant][] = [
+    [featured, 'directory-spotlight'],
+    [premium, 'wide'],
+  ]
 
-    const companion = basic[cursor]
+  for (const [tier, variant] of paid) {
+    for (const card of tier) {
+      packed.push(place(card, variant, 'double'))
 
-    // A premium without a real companion keeps its two columns and leaves the
-    // third honestly empty. Widening it would show a full-width placement the
-    // buyer did not purchase, and synthesizing a card would fake a listing.
-    if (companion) {
-      packed.push(place(companion, 'standard', 'unit'))
-      cursor += 1
+      const companion = basic[cursor]
+
+      // A paid card without a real companion keeps its two columns and leaves the
+      // third honestly empty. Widening it would show a placement the buyer did not
+      // purchase, and synthesizing a card would fake a listing.
+      if (companion) {
+        packed.push(place(companion, 'standard', 'unit'))
+        cursor += 1
+      }
     }
   }
 
