@@ -143,6 +143,18 @@ describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
     expect(html).toContain('lg:col-span-2')
   })
 
+  test('premium does not span two columns where the grid only has two', async () => {
+    const html = await fetch(`${BASE}/browse-all`).then(response => response.text())
+    const premium = html.match(/<a href="\/listing\/two-premium"[^>]*class="([^"]*)"/)
+
+    expect(premium).not.toBeNull()
+    expect(premium![1]).toContain('lg:col-span-2')
+    // At sm the grid is two columns wide. A 2-wide Premium followed by its 1-wide
+    // companion cannot tile there: the companion takes column 1, the next Premium
+    // wraps, and sparse auto-placement never goes back to fill column 2.
+    expect(premium![1]).not.toContain('sm:col-span-2')
+  })
+
   test('no mixed directory card is two rows tall', async () => {
     const html = await fetch(`${BASE}/browse-all`).then(response => response.text())
 

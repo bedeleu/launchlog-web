@@ -65,7 +65,11 @@ const layoutClass = computed(() => {
   // Fixed 240/256px so a Featured row stays one row of the page instead of the
   // wall of hero cards the two-row version produced in production. It only goes
   // horizontal at lg, where the three-column directory grid exists.
-  if (isDirectorySpotlight.value) return 'lg:grid lg:h-60 lg:grid-cols-[minmax(0,1.4fr)_minmax(240px,0.9fr)] xl:h-64'
+  // The content track is the wide one, because this card's height is fixed while
+  // its text is not: a narrow column wraps the badge and capability rows onto
+  // second lines and the overflow gets clipped silently. The preview page is the
+  // tightest container it renders in, so the minimum is sized for that.
+  if (isDirectorySpotlight.value) return 'lg:grid lg:h-60 lg:grid-cols-[minmax(0,1.1fr)_minmax(300px,1fr)] xl:h-64'
   // Two of three columns, stretched by h-full to whatever height its real basic
   // companion establishes in the same row.
   if (isWide.value) return 'flex flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'
@@ -81,7 +85,7 @@ const mediaClass = computed(() => {
 
 const contentClass = computed(() => {
   if (isSpotlight.value) return 'gap-3 p-5 md:p-7'
-  if (isDirectorySpotlight.value) return 'gap-2 p-5 lg:gap-2.5 lg:p-6'
+  if (isDirectorySpotlight.value) return 'gap-2 p-5 lg:gap-2'
   if (isWide.value) return 'gap-2.5 p-5'
   return 'gap-2 p-4'
 })
@@ -168,7 +172,13 @@ const aiChips = computed(() => [
       </p>
 
       <div v-if="(isFeature || isWide) && aiChips.length" class="flex flex-wrap items-center gap-1.5 pt-1">
-        <span class="mr-1 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
+        <!-- The compact directory Featured card has a fixed height, so the label
+             is dropped there to keep the three self-describing chips on one line
+             instead of wrapping a second row into the clipped area. -->
+        <span
+          v-if="!isDirectorySpotlight"
+          class="mr-1 text-[10px] font-semibold uppercase tracking-wider text-brand-muted"
+        >
           AI-readable
         </span>
         <span

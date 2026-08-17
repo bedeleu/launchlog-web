@@ -34,7 +34,12 @@ const placed = computed<PlacedListing<ListingCardData>[]>(() => {
 // a spanned row would open a blank cell.
 const spanClass: Record<PlacementSpan, string> = {
   'unit': '',
-  'double': 'sm:col-span-2 lg:col-span-2',
+  // Two columns only where there are three. At the sm/md two-column breakpoint a
+  // 2-wide Premium plus its 1-wide companion cannot tile: the companion takes
+  // column 1 and the next Premium wraps, stranding column 2. Sparse auto-placement
+  // never backfills, and grid-flow-dense would reorder cards away from the paid
+  // ordering, so the Premium simply collapses to one column there instead.
+  'double': 'lg:col-span-2',
   'half-tall': 'sm:col-span-2 lg:col-span-2 lg:row-span-2',
   'full-short': 'sm:col-span-2 lg:col-span-3',
 }
