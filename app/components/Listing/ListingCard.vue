@@ -138,7 +138,7 @@ const aiChips = computed(() => [
 
 <template>
   <article
-    class="h-full min-w-0 overflow-hidden rounded-xl border transition-[border-color,transform,box-shadow] duration-200 group-hover:-translate-y-0.5 group-focus-visible:-translate-y-0.5"
+    class="h-full min-w-0 overflow-hidden rounded-xl border transition-[border-color,translate,box-shadow] duration-200 group-hover:-translate-y-0.5 group-focus-visible:-translate-y-0.5"
     :class="[cardClass, layoutClass]"
   >
     <div
