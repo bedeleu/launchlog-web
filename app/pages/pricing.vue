@@ -9,12 +9,12 @@ const ogImageUrl = `${siteUrl}/og-image.jpg`
 useSeoMeta({
   title: 'Pricing | LaunchLog',
   description: 'Simple annual pricing for LaunchLog listings, built for SEO, AI discovery, and launch visibility.',
-  ogTitle: 'LaunchLog Pricing — Basic $24.99, Premium $59.99, Featured $99/year',
+  ogTitle: 'LaunchLog Pricing — Standard $24.99, Featured $99/year',
   ogDescription: 'Annual LaunchLog listing packages. Pay only when you publish. Every plan ships schema.org structured data and AI-readable pages.',
   ogUrl: `${siteUrl}/pricing`,
   ogImage: ogImageUrl,
   twitterCard: 'summary_large_image',
-  twitterTitle: 'LaunchLog Pricing — Basic $24.99, Premium $59.99, Featured $99/year',
+  twitterTitle: 'LaunchLog Pricing — Standard $24.99, Featured $99/year',
   twitterDescription: 'Annual LaunchLog listing packages. Pay only when you publish. Every plan ships schema.org structured data and AI-readable pages.',
   twitterImage: ogImageUrl,
 })
@@ -28,22 +28,16 @@ const { plans } = usePlans()
 
 const planMeta = {
   basic: {
-    eyebrow: 'Start here',
+    eyebrow: 'Get listed',
     summary: 'A polished listing page with real screenshot, structured data, and a direct website link.',
-    cta: 'Start Basic preview',
+    cta: 'Start Standard preview',
     accent: 'border-brand-border bg-white/[0.025]',
   },
-  premium: {
-    eyebrow: 'Priority placement',
-    summary: 'Better placement across browse, category, and tech surfaces for products that need more visibility.',
-    cta: 'Start Premium preview',
-    accent: 'border-white/70 bg-white/[0.045]',
-  },
   featured: {
-    eyebrow: 'Best value',
-    summary: 'Top LaunchLog visibility with homepage placement, a Featured badge, and the launch discount from $149.',
+    eyebrow: 'Promoted placement',
+    summary: 'Everything in Standard, plus the Featured section on directory pages and eligibility for homepage Featured slots.',
     cta: 'Start Featured preview',
-    accent: 'border-brand-accent bg-brand-accent/10 shadow-[0_0_0_1px_rgba(99,102,241,0.2),0_24px_80px_rgba(99,102,241,0.12)]',
+    accent: 'border-white/70 bg-white/[0.05] shadow-[0_0_0_1px_rgba(255,255,255,0.12)]',
   },
 } as const
 
@@ -78,25 +72,24 @@ const discoveryItems = [
 ]
 
 const featureRows = [
-  { label: 'Public directory listing', basic: true, premium: true, featured: true },
-  { label: 'Direct website link', basic: true, premium: true, featured: true },
-  { label: 'Real website screenshot', basic: true, premium: true, featured: true },
-  { label: 'Curated title, tagline, and description', basic: true, premium: true, featured: true },
-  { label: 'Schema.org @graph', basic: true, premium: true, featured: true },
-  { label: 'Markdown listing endpoint', basic: true, premium: true, featured: true },
-  { label: 'Included in /llms.txt surfaces', basic: true, premium: true, featured: true },
-  { label: 'Sitemap + IndexNow submission', basic: true, premium: true, featured: true },
-  { label: 'Browse directory placement', basic: 'Standard card', premium: 'Double-width card', featured: 'Double-width spotlight card' },
-  { label: 'Category / tech visibility', basic: 'Standard card', premium: 'Double-width card', featured: 'Double-width spotlight card' },
-  { label: 'Placed above lower plans on the page', basic: false, premium: true, featured: true },
-  { label: 'Homepage Featured section', basic: false, premium: false, featured: 'Up to 3 slots' },
-  { label: 'Featured badge', basic: false, premium: false, featured: true },
+  { label: 'Public directory listing', basic: true, featured: true },
+  { label: 'Direct website link', basic: true, featured: true },
+  { label: 'Real website screenshot', basic: true, featured: true },
+  { label: 'Curated title, tagline, and description', basic: true, featured: true },
+  { label: 'Schema.org @graph', basic: true, featured: true },
+  { label: 'Markdown listing endpoint', basic: true, featured: true },
+  { label: 'Included in /llms.txt surfaces', basic: true, featured: true },
+  { label: 'Sitemap + IndexNow submission', basic: true, featured: true },
+  { label: 'Directory card', basic: 'Standard 1x1 card', featured: 'Editorial double-width card' },
+  { label: 'Featured section on directory pages', basic: false, featured: 'Up to 3 per page' },
+  { label: 'Featured before Standard on the same page', basic: false, featured: true },
+  { label: 'Homepage Featured section', basic: false, featured: 'Up to 3 slots' },
 ]
 
 const faqs = [
   {
     question: 'Is my position in the directory fixed?',
-    answer: 'Your listing stays published for as long as your subscription is active. Position is not fixed: the order within each plan is re-seeded once per day, so it changes over time rather than following a guaranteed rotation or exposure cadence. Plan order never changes inside a directory page: on any page, Featured cards come before Premium, and Premium before Basic. Pages are laid out by visual slots rather than a fixed record count, so a Basic listing that completes a row on one page can appear before a paid listing that continues on the next page. The homepage Featured section shows up to three Featured listings at a time, so a Featured listing is eligible for one of those slots rather than guaranteed one.',
+    answer: 'Your listing stays published for as long as your subscription is active. Position is not fixed: the order within each plan is re-seeded once per day, so it changes over time rather than following a guaranteed rotation or exposure cadence. Within the same directory page, Featured always comes before Standard. Each page shows at most three Featured listings, so Featured listings beyond that carry onto the following pages — a Standard listing on page one can therefore appear before a Featured listing that continues on page two. The homepage Featured section shows up to three Featured listings at a time, so a Featured listing is eligible for one of those slots rather than guaranteed one.',
   },
   {
     question: 'Do I need an account before paying?',
@@ -108,7 +101,7 @@ const faqs = [
   },
   {
     question: 'Which package should most products choose?',
-    answer: 'Premium is the balanced default. Featured is best when you want the strongest placement and the launch discount from $149 to $99.',
+    answer: 'Standard is the sensible default: a complete, machine-readable listing. Choose Featured when you want promotion — the Featured section on directory pages and eligibility for homepage Featured slots.',
   },
   {
     question: 'Can I preview before paying?',
@@ -176,7 +169,7 @@ useFaqSchema(faqs.map(f => ({ q: f.question, a: f.answer })))
         features row is 1fr, so it absorbs the slack and the CTA always sits on
         the bottom edge.
       -->
-      <div class="grid gap-5 lg:grid-cols-3 lg:grid-rows-[auto_auto_auto_auto_auto_1fr_auto]">
+      <div class="grid gap-5 lg:grid-cols-2 lg:grid-rows-[auto_auto_auto_auto_auto_1fr_auto]">
         <article
           v-for="plan in planCards"
           :key="plan.tier"
@@ -201,7 +194,6 @@ useFaqSchema(faqs.map(f => ({ q: f.question, a: f.answer })))
           </p>
 
           <div class="mt-6 flex items-end gap-2">
-            <span v-if="plan.compareAtLabel" class="pb-1 text-lg text-brand-muted line-through">{{ plan.compareAtLabel }}</span>
             <span class="text-4xl font-bold text-brand-fg">{{ plan.priceLabel }}</span>
             <span class="pb-1 text-sm text-brand-muted">/ year</span>
           </div>

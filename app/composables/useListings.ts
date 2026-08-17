@@ -1,4 +1,4 @@
-export type ListingTier = 'basic' | 'premium' | 'featured'
+export type ListingTier = 'basic' | 'featured'
 
 /** Origin of a listing (D-060) — independent of billing tier. */
 export type ListingSource = 'seed' | 'founding' | 'customer' | 'admin'

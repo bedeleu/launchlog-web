@@ -12,18 +12,17 @@ const props = defineProps<{
 }>()
 
 const isFeatured = computed(() => props.tier === 'featured')
-const isPremium = computed(() => props.tier === 'premium')
 
 /**
  * Three illustrative rows, not a full 30-slot production page: the buyer only
  * needs to see the shape of their own card among neighbours. The buyer's own
- * footprint is subtracted, so both paid tiers need 7 context cards and Basic 8 —
+ * footprint is subtracted, so Featured needs 7 context cards and Standard 8 —
  * each case lands on exactly nine slots.
  */
 const PREVIEW_SLOTS = 9
 const SAMPLE_IMAGES = 5
 
-const buyerWeight = computed(() => (isFeatured.value || isPremium.value ? 2 : 1))
+const buyerWeight = computed(() => (isFeatured.value ? 2 : 1))
 
 /**
  * Preview-only context. These are static illustrations of neighbouring listings
@@ -71,11 +70,11 @@ const buyerCard = computed<ListingCard>(() => ({
 }))
 
 /**
- * The buyer goes first and every context card is `basic`, so packMixedTierPage
- * lands the buyer on exactly the footprint the live directory would give it:
- * featured and premium alike -> 2x1 plus one 1x1 companion, basic -> 1x1.
- * Same packer, same card, same grid as production — the preview cannot drift
- * from what we actually ship because it is not a separate implementation.
+ * The buyer goes first and every context card is `basic`, so the directory
+ * packer lands the buyer on exactly the footprint the live directory would
+ * give it: featured -> 2x1 plus one 1x1 companion, standard -> 1x1. Same
+ * packer, same card, same grid as production — the preview cannot drift from
+ * what we actually ship because it is not a separate implementation.
  */
 const previewListings = computed<ListingCard[]>(() => [buyerCard.value, ...contextCards.value])
 </script>
@@ -120,13 +119,9 @@ const previewListings = computed<ListingCard[]>(() => [buyerCard.value, ...conte
         pages, plus eligibility for one of up to three homepage Featured slots. Order within
         Featured is re-seeded daily — it is not a guaranteed exposure cadence.
       </template>
-      <template v-else-if="isPremium">
-        Premium gets a double-width priority card, placed above the Basic listings on the same
-        directory page. Order within Premium is re-seeded daily — it is not a guaranteed exposure
-        cadence.
-      </template>
       <template v-else>
-        Basic lists you in the directory with a standard card. Order within Basic is re-seeded daily.
+        Standard lists you in the directory with a standard card. Order within Standard is
+        re-seeded daily.
       </template>
     </p>
   </div>

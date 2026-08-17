@@ -93,14 +93,10 @@ const descriptionParagraphs = computed<string[]>(() =>
 const tierMeta: Record<ListingTier, { label: string, classes: string }> = {
   featured: {
     label: 'Featured',
-    classes: 'border-brand-accent/50 bg-brand-accent/10 text-brand-accent shadow-[0_0_24px_rgba(99,102,241,0.25)]',
-  },
-  premium: {
-    label: 'Premium',
-    classes: 'border-brand-border bg-white/[0.04] text-brand-fg',
+    classes: 'border-white/25 bg-white/[0.06] text-brand-fg',
   },
   basic: {
-    label: 'Basic',
+    label: 'Standard',
     classes: 'border-brand-border bg-transparent text-brand-muted',
   },
 }

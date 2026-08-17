@@ -66,14 +66,14 @@ const dashboardEndpoints: Endpoint[] = [
 const listParams = [
   { name: 'category', type: 'string', description: 'Category slug.' },
   { name: 'kind', type: 'tech', description: 'Restricts results to the implemented tech-category set.' },
-  { name: 'tier', type: 'enum', description: 'basic, premium or featured.' },
+  { name: 'tier', type: 'enum', description: 'basic or featured.' },
   { name: 'tech', type: 'string', description: 'Exact tech-stack entry.' },
   { name: 'tag', type: 'string', description: 'Tag slug.' },
   { name: 'q', type: 'string', description: 'Full-text query over name, tagline and description.' },
   { name: 'sort', type: 'enum', description: 'priority (default) or recent.' },
   { name: 'per_page', type: 'integer', description: 'Page size, clamped to 1–100; defaults to 24. Not valid with view=directory.' },
   { name: 'page', type: 'integer', description: 'Pagination page.' },
-  { name: 'view', type: 'directory', description: 'Paginates by the 30 visual slots of a directory page instead of by a fixed record count: Featured spends 3 slots, Premium 2, Basic 1, so the record count per page varies. Adds slot_capacity and slots_used to meta. Requires sort=priority and cannot be combined with tier or per_page — those combinations return 422 on the conflicting field.' },
+  { name: 'view', type: 'directory', description: 'Paginates by the 30 visual slots of a directory page instead of by a fixed record count: a Featured row spends 2 slots for the card plus 1 for its real basic companion, an ordinary basic listing spends 1, and at most three Featured rows open a page. Adds slot_capacity and slots_used to meta. Requires sort=priority and cannot be combined with tier or per_page — those combinations return 422 on the conflicting field.' },
 ]
 
 const publicExample = `curl "${apiBase}/listings?tier=featured&sort=recent"`

@@ -151,8 +151,7 @@ useHead({
             provider: { '@id': `${siteUrl}/#organization` },
             image: ogImageUrl,
             offers: [
-              { '@type': 'Offer', name: 'Basic', price: '24.99', priceCurrency: 'USD' },
-              { '@type': 'Offer', name: 'Premium', price: '59.99', priceCurrency: 'USD' },
+              { '@type': 'Offer', name: 'Standard', price: '24.99', priceCurrency: 'USD' },
               { '@type': 'Offer', name: 'Featured', price: '99.00', priceCurrency: 'USD' },
             ],
           },

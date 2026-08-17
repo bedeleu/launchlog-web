@@ -46,7 +46,6 @@ const { plans } = usePlans()
             {{ plan.monthlyLabel }}<span class="text-xs font-normal text-brand-muted">/mo</span>
           </div>
           <div class="text-[11px] text-brand-muted">
-            <span v-if="plan.compareAtLabel" class="mr-1 line-through">{{ plan.compareAtLabel }}</span>
             {{ plan.priceLabel }} billed yearly
           </div>
         </div>

@@ -26,7 +26,6 @@ const isSpotlight = computed(() => props.variant === 'spotlight')
  * rather than from extra size or a colour the rest of the directory does not use.
  */
 const isDirectorySpotlight = computed(() => props.variant === 'directory-spotlight')
-const isWide = computed(() => props.variant === 'wide')
 
 /** Register host: real product truth, nothing invented. */
 const registerHost = computed(() => {
@@ -41,17 +40,15 @@ const registerHost = computed(() => {
 /**
  * The ledger register (approved Concept C): the tier is disclosed in the bottom
  * register line — FEATURED · category · domain — never as a pill or a mark above
- * the name. Basic entries carry no tier word; being unmarked is the entry tier.
+ * the name. Standard entries carry no tier word; being unmarked is the entry
+ * tier, and an unknown tier value is treated the same rather than trusted.
  * The rule above the line steps down in weight with the tier.
  */
-const registerRuleClass = computed(() => {
-  if (props.listing.tier === 'featured') return 'border-white/35'
-  if (props.listing.tier === 'premium') return 'border-white/20'
-  return 'border-white/15'
-})
+const registerRuleClass = computed(() =>
+  props.listing.tier === 'featured' ? 'border-white/35' : 'border-white/15')
 
 const hasRegisterLine = computed(() =>
-  props.listing.tier !== 'basic' || Boolean(props.listing.category) || registerHost.value !== '')
+  props.listing.tier === 'featured' || Boolean(props.listing.category) || registerHost.value !== '')
 
 const imageFailed = ref(false)
 watch(() => props.listing.screenshot_url, () => {
@@ -73,14 +70,10 @@ const cardClass = computed(() => {
     return 'border-brand-accent/55 bg-[linear-gradient(145deg,rgba(99,102,241,0.12),rgba(12,17,32,0.96)_58%)] shadow-[0_22px_60px_-34px_rgba(99,102,241,0.7)] ring-1 ring-brand-accent/15 group-hover:border-brand-accent/80 group-focus-visible:border-brand-accent/80'
   }
 
-  // Everywhere else the tiers share one flat neutral system: surface value and
-  // hairline weight step with the tier, and no tier is told apart by indigo.
+  // Everywhere else the two tiers share one flat neutral system: surface value
+  // and hairline weight step with the tier, and no tier is told apart by indigo.
   if (props.listing.tier === 'featured') {
     return 'border-white/25 bg-white/[0.03] group-hover:border-white/45 group-focus-visible:border-white/45'
-  }
-
-  if (props.listing.tier === 'premium') {
-    return 'border-white/20 bg-white/[0.045] group-hover:border-white/40 group-focus-visible:border-white/40'
   }
 
   return 'border-brand-border bg-white/[0.02] group-hover:border-white/30 group-focus-visible:border-white/30'
@@ -95,25 +88,19 @@ const layoutClass = computed(() => {
   // below lg, h-full's surplus row height falls below the content, and the
   // ledger rule floats above dead space instead of anchoring to the bottom.
   if (isDirectorySpotlight.value) return 'flex flex-col lg:grid lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]'
-  // Two of three columns, stretched by h-full to whatever height its real basic
-  // companion establishes in the same row. Same split as Featured so both paid
-  // media columns share one aspect and one capture variant fills both edge to
-  // edge; the tiers stay apart through type scale, rule weight and surface.
-  if (isWide.value) return 'flex flex-col lg:grid lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]'
   return 'flex flex-col'
 })
 
 /** Below lg both directory cards stay ordinary stacked cards with a 16/10 shot. */
 const mediaClass = computed(() => {
   if (isSpotlight.value) return 'md:aspect-auto md:min-h-64'
-  if (isDirectorySpotlight.value || isWide.value) return 'lg:aspect-auto lg:h-full'
+  if (isDirectorySpotlight.value) return 'lg:aspect-auto lg:h-full'
   return ''
 })
 
 const contentClass = computed(() => {
   if (isSpotlight.value) return 'gap-3 p-5 md:p-7'
   if (isDirectorySpotlight.value) return 'gap-3 p-5 lg:p-6'
-  if (isWide.value) return 'gap-2.5 p-5'
   return 'gap-2 p-4'
 })
 
@@ -121,7 +108,6 @@ const headingClass = computed(() => {
   if (isSpotlight.value) return 'line-clamp-2 text-xl md:text-2xl'
   // Display scale is the loudest thing about this card, and it costs no colour.
   if (isDirectorySpotlight.value) return 'line-clamp-2 text-3xl leading-[1.1] tracking-tight'
-  if (isWide.value) return 'line-clamp-2 text-lg tracking-tight'
   return 'truncate'
 })
 
@@ -200,10 +186,9 @@ const taglineClass = computed(() => {
         class="mt-auto break-words border-t pt-2.5 font-mono text-[11px] leading-5 text-brand-muted"
         :class="registerRuleClass"
       >
-        <template v-if="listing.tier !== 'basic'">
+        <template v-if="listing.tier === 'featured'">
           <span
-            class="whitespace-nowrap font-medium uppercase tracking-[0.18em]"
-            :class="listing.tier === 'featured' ? 'text-brand-fg' : 'text-brand-fg/75'"
+            class="whitespace-nowrap font-medium uppercase tracking-[0.18em] text-brand-fg"
           >{{ listing.tier }}</span>
           <span v-if="listing.category || registerHost">{{ '\u00A0· ' }}</span>
         </template>
@@ -216,16 +201,23 @@ const taglineClass = computed(() => {
 
     <!-- The directory Featured register runs under image and text alike as a
          tonal band: one surface step brighter than the card, never leaving the
-         dark theme. Structure carries the tier — no other card has a strip. -->
-    <p
+         dark theme. Structure carries the tier — no other card has a strip —
+         and the paid-placement disclosure lives here, on the Featured card
+         itself, so the real Standard companion is never mislabeled. -->
+    <div
       v-if="isDirectorySpotlight && hasRegisterLine"
-      class="break-words border-t border-white/25 bg-white/[0.08] px-5 py-3 font-mono text-[11px] leading-5 text-brand-muted lg:px-6"
+      class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 border-t border-white/25 bg-white/[0.08] px-5 py-3 font-mono text-[11px] leading-5 text-brand-muted lg:px-6"
     >
-      <span class="whitespace-nowrap font-semibold uppercase tracking-[0.3em] text-brand-fg">{{ listing.tier }}</span>
-      <span v-if="listing.category || registerHost">{{ '\u00A0· ' }}</span>
-      <span v-if="listing.category" class="whitespace-nowrap">{{ listing.category.name }}</span>
-      <span v-if="listing.category && registerHost">{{ '\u00A0· ' }}</span>
-      <span v-if="registerHost">{{ registerHost }}</span>
-    </p>
+      <p class="min-w-0 break-words">
+        <span class="whitespace-nowrap font-semibold uppercase tracking-[0.3em] text-brand-fg">{{ listing.tier }}</span>
+        <span v-if="listing.category || registerHost">{{ '\u00A0· ' }}</span>
+        <span v-if="listing.category" class="whitespace-nowrap">{{ listing.category.name }}</span>
+        <span v-if="listing.category && registerHost">{{ '\u00A0· ' }}</span>
+        <span v-if="registerHost">{{ registerHost }}</span>
+      </p>
+      <p class="whitespace-nowrap">
+        Paid placement
+      </p>
+    </div>
   </article>
 </template>

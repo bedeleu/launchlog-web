@@ -82,8 +82,7 @@ function onSubmit() {
       <span class="text-brand-muted">Tier</span>
       <select v-model="form.tier" :class="inputClass">
         <option value="">— none —</option>
-        <option value="basic">Basic</option>
-        <option value="premium">Premium</option>
+        <option value="basic">Standard</option>
         <option value="featured">Featured</option>
       </select>
     </label>

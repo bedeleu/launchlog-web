@@ -19,7 +19,7 @@ const UPSTREAM_PORT = 3199
 const SERVER_PORT = 3198
 const BASE = `http://127.0.0.1:${SERVER_PORT}`
 
-const card = (slug: string, tier: 'basic' | 'premium' | 'featured') => ({
+const card = (slug: string, tier: 'basic' | 'featured') => ({
   slug,
   name: `Product ${slug}`,
   tagline: 'A one-line pitch.',
@@ -37,12 +37,12 @@ const card = (slug: string, tier: 'basic' | 'premium' | 'featured') => ({
   published_at: '2026-08-01T00:00:00Z',
 })
 
-// A production-shaped slot-aware page: 1 Featured (2 slots) + 1 Premium (2) +
-// 26 Basic (26) spends exactly the 30 visual slots a directory page owns.
-// Mirrors the API's tier-major ordering: featured, then premium, then basic.
+// A production-shaped slot-aware page: 2 Featured (4 slots) + 26 Standard (26)
+// spends exactly the 30 visual slots a directory page owns. Mirrors the API's
+// tier-major ordering: featured, then basic.
 const LISTINGS = [
   card('one-featured', 'featured'),
-  card('two-premium', 'premium'),
+  card('two-featured', 'featured'),
   ...Array.from({ length: 26 }, (_, index) =>
     card(`basic-${String(index + 1).padStart(2, '0')}`, 'basic')),
 ]
@@ -135,11 +135,11 @@ describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
     expect(anchors).toHaveLength(LISTINGS.length)
   })
 
-  test('both paid tiers take the same one-row 2x1 footprint', async () => {
+  test('every featured card takes the one-row 2x1 footprint', async () => {
     const html = await fetch(`${BASE}/browse-all`).then(response => response.text())
     const cell = (slug: string) => html.match(new RegExp(`<a href="/listing/${slug}"[^>]*class="([^"]*)"`))?.[1]
 
-    for (const slug of ['one-featured', 'two-premium']) {
+    for (const slug of ['one-featured', 'two-featured']) {
       const classes = cell(slug)
       expect(classes).toBeDefined()
       expect(classes!).toContain('lg:col-span-2')
@@ -151,6 +151,16 @@ describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
 
     // The retired three-slot Featured geometry must not come back.
     expect(html).not.toContain('lg:col-span-3')
+  })
+
+  test('the featured section register renders once, with the disclosure on the card', async () => {
+    const html = await fetch(`${BASE}/browse-all`).then(response => response.text())
+
+    // One register label above the featured rows; "Paid placement" belongs to
+    // the featured cards' own bands, never to the section header, so the real
+    // Standard companions are not mislabeled.
+    expect(html.match(/Featured launches/g) ?? []).toHaveLength(1)
+    expect(html.match(/Paid placement/g) ?? []).toHaveLength(2)
   })
 
   test('no mixed directory card is two rows tall', async () => {
@@ -167,7 +177,7 @@ describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
     const html = await fetch(`${BASE}/browse-all`).then(response => response.text())
 
     // Every retired attempt at sizing Featured by a fixed number. The row height
-    // now comes from the real Basic companion, exactly as it does for Premium.
+    // now comes from the real Standard companion.
     for (const retired of ['lg:h-60', 'xl:h-64', 'lg:h-80']) {
       expect(html).not.toContain(retired)
     }

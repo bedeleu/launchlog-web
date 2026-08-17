@@ -35,7 +35,7 @@ describe('createSession', () => {
 
     const session = await useBilling().createSession({
       preview_token: 't'.repeat(64),
-      tier: 'premium',
+      tier: 'featured',
       email: 'maker@example.com',
     })
 
@@ -44,7 +44,7 @@ describe('createSession', () => {
     expect(calls[0]!.options?.method).toBe('POST')
     expect(calls[0]!.options?.body).toEqual({
       preview_token: 't'.repeat(64),
-      tier: 'premium',
+      tier: 'featured',
       email: 'maker@example.com',
     })
     expect(session).toEqual({

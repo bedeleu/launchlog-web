@@ -1,47 +1,36 @@
-export type PlanTier = 'basic' | 'premium' | 'featured'
+export type PlanTier = 'basic' | 'featured'
 
 export interface Plan {
   tier: PlanTier
   name: string
   /** Annual price, e.g. "$24.99". */
   priceLabel: string
-  /** Optional crossed-out anchor price. */
-  compareAtLabel?: string
   /** Monthly equivalent, e.g. "$2.08". */
   monthlyLabel: string
   features: string[]
-  /** Short marketing badge, e.g. "Best visibility". */
+  /** Short factual badge, e.g. "Promoted placement". */
   badge?: string
-  /** The hero/most-valuable tier. */
+  /** The promoted tier. */
   highlight?: boolean
 }
 
-// Pricing per D-058 (annual, USD). Monthly = annual / 12, for the "just $X/mo" framing.
+// Two plans (locked 2026-08-17): Standard is the sensible listing product,
+// Featured is the promoted product. Internal identifier for Standard stays
+// `basic`; only the display name changes. No crossed-out anchor prices and no
+// artificial urgency — copy states eligibility and daily re-seeding, never
+// guaranteed exposure.
 const PLANS: Plan[] = [
   {
     tier: 'basic',
-    name: 'Basic',
+    name: 'Standard',
     priceLabel: '$24.99',
     monthlyLabel: '$2.08',
     features: [
-      'Standard card in the directory',
+      'Standard listing card in the directory',
       'Real website screenshot',
-      'Included in sitemap, llms.txt and Markdown',
-      'schema.org structured data',
-      'Listed for a full year while your subscription is active',
-    ],
-  },
-  {
-    tier: 'premium',
-    name: 'Premium',
-    priceLabel: '$59.99',
-    monthlyLabel: '$5.00',
-    badge: 'Priority placement',
-    features: [
-      'Everything in Basic',
-      'Double-width priority card in browse and category results',
-      'Placed above the Basic listings on the same directory page',
-      'Order among Premium listings is re-seeded daily',
+      'Dedicated listing page with a direct link to your site',
+      'schema.org structured data, Markdown and llms.txt surfaces',
+      'Included in the sitemap and submitted via IndexNow',
       'Listed for a full year while your subscription is active',
     ],
   },
@@ -49,23 +38,23 @@ const PLANS: Plan[] = [
     tier: 'featured',
     name: 'Featured',
     priceLabel: '$99',
-    compareAtLabel: '$149',
     monthlyLabel: '$8.25',
-    badge: 'Best value',
+    badge: 'Promoted placement',
     highlight: true,
     features: [
-      'Everything in Premium',
-      'Editorial spotlight card, first on eligible browse and category pages',
-      'Eligible for one of up to three Homepage Featured slots',
-      'Dedicated Featured badge',
-      'Launch discount from $149',
+      'Everything in Standard',
+      'Editorial double-width Featured card on directory pages',
+      'Featured before Standard within the same directory page',
+      'Eligible for one of up to three homepage Featured slots',
+      'Included on the Featured page',
+      'Order among Featured listings is re-seeded daily',
     ],
   },
 ]
 
 export const usePlans = () => {
   const findPlan = (tier: string | null | undefined): Plan =>
-    PLANS.find(p => p.tier === tier) ?? PLANS[1]!
+    PLANS.find(p => p.tier === tier) ?? PLANS[0]!
 
   return { plans: PLANS, findPlan }
 }

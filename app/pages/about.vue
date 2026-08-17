@@ -133,14 +133,8 @@ useHead({
             makesOffer: [
               {
                 '@type': 'Offer',
-                name: 'Basic LaunchLog listing',
+                name: 'Standard LaunchLog listing',
                 price: '24.99',
-                priceCurrency: 'USD',
-              },
-              {
-                '@type': 'Offer',
-                name: 'Premium LaunchLog listing',
-                price: '59.99',
                 priceCurrency: 'USD',
               },
               {

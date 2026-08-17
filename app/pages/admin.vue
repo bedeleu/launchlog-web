@@ -96,8 +96,7 @@ const kpis = computed(() => {
 const tierRows = computed<Array<[string, number]>>(() => {
   const counts = data.value?.tier_counts ?? {}
   return [
-    ['Basic', counts.basic ?? 0],
-    ['Premium', counts.premium ?? 0],
+    ['Standard', counts.basic ?? 0],
     ['Featured', counts.featured ?? 0],
   ]
 })

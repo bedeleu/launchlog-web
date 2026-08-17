@@ -7,7 +7,7 @@ const route = useRoute()
 const intake = useIntakeStore()
 
 const isPlanTier = (value: unknown): value is PlanTier =>
-  value === 'basic' || value === 'premium' || value === 'featured'
+  value === 'basic' || value === 'featured'
 
 // Carry the plan picked on /pricing into the preview. Anything unknown or
 // missing falls back to Featured, the default placement (D-058). Set before

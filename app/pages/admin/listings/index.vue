@@ -202,8 +202,7 @@ onMounted(async () => {
         Tier
         <select v-model="filters.tier" class="rounded-md border border-brand-border bg-transparent px-2 py-1.5 text-sm text-brand-fg" @change="load(1)">
           <option value="">All</option>
-          <option value="basic">Basic</option>
-          <option value="premium">Premium</option>
+          <option value="basic">Standard</option>
           <option value="featured">Featured</option>
         </select>
       </label>

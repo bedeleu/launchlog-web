@@ -41,14 +41,14 @@ const pageUrl = computed(() => `${siteUrl}${pageHref(activePage.value)}`)
 
 useSeoMeta({
   title: 'Featured products — LaunchLog',
-  description: 'Featured products on LaunchLog — premium placement for standout launches.',
+  description: 'Featured products on LaunchLog — promoted placement for standout launches.',
   ogTitle: 'Featured products — LaunchLog',
-  ogDescription: 'Featured products on LaunchLog — premium placement for standout launches.',
+  ogDescription: 'Featured products on LaunchLog — promoted placement for standout launches.',
   ogUrl: pageUrl,
   ogImage: ogImageUrl,
   twitterCard: 'summary_large_image',
   twitterTitle: 'Featured products — LaunchLog',
-  twitterDescription: 'Featured products on LaunchLog — premium placement for standout launches.',
+  twitterDescription: 'Featured products on LaunchLog — promoted placement for standout launches.',
   twitterImage: ogImageUrl,
 })
 
@@ -81,7 +81,7 @@ useBreadcrumbs([
         Featured products
       </h1>
       <p class="mt-3 text-lg text-brand-muted">
-        Premium placement for standout launches across LaunchLog browse and category surfaces.
+        Promoted placement for standout launches across LaunchLog browse and category surfaces.
       </p>
     </header>
 

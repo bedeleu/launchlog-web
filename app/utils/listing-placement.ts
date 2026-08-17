@@ -9,7 +9,7 @@ import type { ListingTier } from '../composables/useListings'
  * compact one-row Featured card used inside a directory page. They are separate
  * variants because only the directory one is height-constrained.
  */
-export type ListingCardVariant = 'standard' | 'wide' | 'spotlight' | 'directory-spotlight'
+export type ListingCardVariant = 'standard' | 'spotlight' | 'directory-spotlight'
 
 /**
  * Semantic grid footprint. The grid component maps these onto Tailwind spans;
@@ -18,7 +18,7 @@ export type ListingCardVariant = 'standard' | 'wide' | 'spotlight' | 'directory-
  * unit   1x1                double     2 cols x 1 row
  * full-short 3 cols x 1 row half-tall  2 cols x 2 rows (homepage lead only)
  *
- * Every mixed directory card is one row tall, so the only two-row span left is
+ * Every directory card is one row tall, so the only two-row span left is
  * the homepage editorial one.
  */
 export type PlacementSpan = 'unit' | 'double' | 'half-tall' | 'full-short'
@@ -34,65 +34,64 @@ export interface PlacedListing<T> {
   span: PlacementSpan
 }
 
+/** The two presentation segments of one API directory page (same dataset). */
+export interface DirectoryPageSegments<T> {
+  /** Leading Featured rows: each 2x1 Featured card followed by its real Standard companion. */
+  featured: PlacedListing<T>[]
+  /** The remaining Standard grid. */
+  standard: PlacedListing<T>[]
+}
+
 const place = <T>(listing: T, variant: ListingCardVariant, span: PlacementSpan): PlacedListing<T> =>
   ({ listing, variant, span })
 
 /**
- * Footprints for a mixed sort=priority directory page.
+ * Footprints for a mixed sort=priority directory page, split into the Featured
+ * section and the Standard grid — a presentation boundary over the one page
+ * the API returned, never a second dataset.
  *
- * The API owns page membership: it plans thirty visual slots (ten rows of three
- * columns, each paid card 2 and each Basic 1) and returns exactly the real
- * records that fill them, already ordered tier-major and daily-rotated inside
- * each tier. This function therefore only assigns footprints — it must never
+ * The API owns page membership: it plans thirty visual slots (at most three
+ * Featured rows of 2+1, then Standards) and returns exactly the real records
+ * that fill them, already ordered tier-major and daily-rotated inside each
+ * tier. This function therefore only assigns footprints — it must never
  * re-sort, re-rotate, count slots, paginate or invent a card.
  *
- * Emission order matters: CSS grid auto-placement drops a paid card's basic
- * companion into the free third column precisely because it follows that card
- * in the DOM.
+ * Emission order matters: CSS grid auto-placement drops a Featured card's
+ * Standard companion into the free third column precisely because it follows
+ * that card in the DOM. An unknown tier value (e.g. a stale record from an
+ * older API) is treated as Standard rather than trusted.
  */
-export const packMixedTierPage = <T extends PlacementListing>(
+export const packDirectoryPage = <T extends PlacementListing>(
   listings: readonly T[],
-): PlacedListing<T>[] => {
-  const featured: T[] = []
-  const premium: T[] = []
-  const basic: T[] = []
+): DirectoryPageSegments<T> => {
+  const featuredCards: T[] = []
+  const standardCards: T[] = []
 
   for (const listing of listings) {
-    if (listing.tier === 'featured') featured.push(listing)
-    else if (listing.tier === 'premium') premium.push(listing)
-    else basic.push(listing)
+    if (listing.tier === 'featured') featuredCards.push(listing)
+    else standardCards.push(listing)
   }
 
-  const packed: PlacedListing<T>[] = []
+  const featured: PlacedListing<T>[] = []
   let cursor = 0
 
-  // Featured first, then Premium. Both are two columns wide: Featured used to be
-  // a full-width three-slot card and read as a banner against the real cohort,
-  // so it is now differentiated by composition and typography instead of by size.
-  const paid: [T[], ListingCardVariant][] = [
-    [featured, 'directory-spotlight'],
-    [premium, 'wide'],
-  ]
+  for (const card of featuredCards) {
+    featured.push(place(card, 'directory-spotlight', 'double'))
 
-  for (const [tier, variant] of paid) {
-    for (const card of tier) {
-      packed.push(place(card, variant, 'double'))
+    const companion = standardCards[cursor]
 
-      const companion = basic[cursor]
-
-      // A paid card without a real companion keeps its two columns and leaves the
-      // third honestly empty. Widening it would show a placement the buyer did not
-      // purchase, and synthesizing a card would fake a listing.
-      if (companion) {
-        packed.push(place(companion, 'standard', 'unit'))
-        cursor += 1
-      }
+    // A Featured card without a real companion keeps its two columns and leaves
+    // the third honestly empty. Widening it would show a placement the buyer did
+    // not purchase, and synthesizing a card would fake a listing.
+    if (companion) {
+      featured.push(place(companion, 'standard', 'unit'))
+      cursor += 1
     }
   }
 
-  packed.push(...basic.slice(cursor).map(l => place(l, 'standard', 'unit')))
+  const standard = standardCards.slice(cursor).map(l => place(l, 'standard', 'unit'))
 
-  return packed
+  return { featured, standard }
 }
 
 /** Later pages, /featured and chronological grids: one uniform card per result. */
