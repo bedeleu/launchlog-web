@@ -181,7 +181,10 @@ describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
     // Featured is differentiated by composition and typography. The indigo brand
     // accent belongs to the homepage spotlight, not to this card.
     expect(cell![0]).not.toContain('brand-accent')
-    expect(cell![0]).toContain('Featured')
+    // The tier is disclosed in the bottom ledger register (uppercased by CSS),
+    // never as a pill — rounded-full anywhere in the card is the old chrome.
+    expect(cell![0]).toContain('>featured</span>')
+    expect(cell![0]).not.toContain('rounded-full')
   })
 
   test('browse-all asks the API for a slot-aware directory page', async () => {

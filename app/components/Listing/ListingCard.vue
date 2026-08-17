@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { Sparkles } from '@lucide/vue'
-import type { ListingCard, ListingTier } from '~/composables/useListings'
+import type { ListingCard } from '~/composables/useListings'
 import type { ListingCardVariant } from '~/utils/listing-placement'
 
 const props = withDefaults(defineProps<{
@@ -18,22 +17,6 @@ const props = withDefaults(defineProps<{
   headingLevel: 'h3',
 })
 
-const tierMeta: Record<ListingTier, { label: string, classes: string }> = {
-  featured: {
-    label: 'Featured',
-    classes: 'border-brand-accent/50 bg-brand-accent/15 text-brand-accent shadow-[0_0_24px_rgba(99,102,241,0.2)]',
-  },
-  premium: {
-    label: 'Premium',
-    classes: 'border-white/20 bg-white/[0.07] text-brand-fg',
-  },
-  basic: {
-    label: 'Basic',
-    classes: 'border-brand-border bg-black/10 text-brand-muted',
-  },
-}
-
-const tier = computed(() => tierMeta[props.listing.tier] ?? tierMeta.basic)
 /** Homepage editorial lead: horizontal from md, height driven by its content. */
 const isSpotlight = computed(() => props.variant === 'spotlight')
 /**
@@ -47,18 +30,30 @@ const isDirectorySpotlight = computed(() => props.variant === 'directory-spotlig
 const isFeature = computed(() => isSpotlight.value || isDirectorySpotlight.value)
 const isWide = computed(() => props.variant === 'wide')
 
-/** Register line on the directory Featured card: real product truth, nothing invented. */
-const registerLine = computed(() => {
-  let host = ''
+/** Register host: real product truth, nothing invented. */
+const registerHost = computed(() => {
   try {
-    host = new URL(props.listing.url).hostname.replace(/^www\./, '')
+    return new URL(props.listing.url).hostname.replace(/^www\./, '')
   }
   catch {
-    host = ''
+    return ''
   }
-
-  return [props.listing.category?.name, host].filter(Boolean).join('  ·  ')
 })
+
+/**
+ * The ledger register (approved Concept C): the tier is disclosed in the bottom
+ * register line — FEATURED · category · domain — never as a pill or a mark above
+ * the name. Basic entries carry no tier word; being unmarked is the entry tier.
+ * The rule above the line steps down in weight with the tier.
+ */
+const registerRuleClass = computed(() => {
+  if (props.listing.tier === 'featured') return 'border-white/35'
+  if (props.listing.tier === 'premium') return 'border-white/20'
+  return 'border-white/15'
+})
+
+const hasRegisterLine = computed(() =>
+  props.listing.tier !== 'basic' || Boolean(props.listing.category) || registerHost.value !== '')
 
 const imageFailed = ref(false)
 watch(() => props.listing.screenshot_url, () => {
@@ -74,15 +69,23 @@ const cardClass = computed(() => {
     return 'border-white/25 bg-white/[0.03] group-hover:border-white/45 group-focus-visible:border-white/45'
   }
 
-  if (props.listing.tier === 'featured') {
+  // The homepage editorial lead is the one surface that keeps the accent chrome;
+  // its content still speaks the ledger register like every other card.
+  if (isSpotlight.value) {
     return 'border-brand-accent/55 bg-[linear-gradient(145deg,rgba(99,102,241,0.12),rgba(12,17,32,0.96)_58%)] shadow-[0_22px_60px_-34px_rgba(99,102,241,0.7)] ring-1 ring-brand-accent/15 group-hover:border-brand-accent/80 group-focus-visible:border-brand-accent/80'
   }
 
-  if (props.listing.tier === 'premium') {
-    return 'border-white/20 bg-[linear-gradient(145deg,rgba(255,255,255,0.055),rgba(12,17,32,0.94))] shadow-[0_18px_44px_-34px_rgba(255,255,255,0.38)] group-hover:border-brand-accent/55 group-focus-visible:border-brand-accent/55'
+  // Everywhere else the tiers share one flat neutral system: surface value and
+  // hairline weight step with the tier, and no tier is told apart by indigo.
+  if (props.listing.tier === 'featured') {
+    return 'border-white/25 bg-white/[0.03] group-hover:border-white/45 group-focus-visible:border-white/45'
   }
 
-  return 'border-brand-border bg-white/[0.02] group-hover:border-brand-accent/40 group-focus-visible:border-brand-accent/40'
+  if (props.listing.tier === 'premium') {
+    return 'border-white/20 bg-white/[0.045] group-hover:border-white/40 group-focus-visible:border-white/40'
+  }
+
+  return 'border-brand-border bg-white/[0.02] group-hover:border-white/30 group-focus-visible:border-white/30'
 })
 
 const layoutClass = computed(() => {
@@ -90,7 +93,10 @@ const layoutClass = computed(() => {
   // No fixed height: the row is whatever its real Basic companion establishes,
   // exactly like Premium. The screenshot takes the wide track because the
   // customer's product is what Featured actually sells.
-  if (isDirectorySpotlight.value) return 'lg:grid lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]'
+  // The base flex column is load bearing: without it the article is a block
+  // below lg, h-full's surplus row height falls below the content, and the
+  // ledger rule floats above dead space instead of anchoring to the bottom.
+  if (isDirectorySpotlight.value) return 'flex flex-col lg:grid lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]'
   // Two of three columns, stretched by h-full to whatever height its real basic
   // companion establishes in the same row.
   if (isWide.value) return 'flex flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'
@@ -122,18 +128,9 @@ const headingClass = computed(() => {
   if (isSpotlight.value) return 'line-clamp-2 text-xl md:text-2xl'
   // Display scale is the loudest thing about this card, and it costs no colour.
   if (isDirectorySpotlight.value) return 'line-clamp-2 text-2xl leading-[1.15] tracking-tight'
-  if (isWide.value) return 'line-clamp-2 text-lg'
+  if (isWide.value) return 'line-clamp-2 text-lg tracking-tight'
   return 'truncate'
 })
-
-// Basic capabilities, surfaced wherever the card has room. They are deliberately
-// not gated on tier: showing them only on Featured implies an exclusivity that
-// pricing.vue and usePlans.ts do not sell.
-const aiChips = computed(() => [
-  props.listing.has_schema_org ? 'schema.org' : null,
-  props.listing.has_llms_txt ? 'llms.txt' : null,
-  props.listing.has_markdown_negotiation ? 'markdown' : null,
-].filter((chip): chip is string => chip !== null))
 </script>
 
 <template>
@@ -147,7 +144,7 @@ const aiChips = computed(() => [
     >
       <span
         v-if="listing.source === 'founding'"
-        class="absolute left-2.5 top-2.5 z-10 inline-flex items-center rounded-full border border-brand-border bg-brand-bg/85 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand-fg/85 backdrop-blur"
+        class="absolute left-2.5 top-2.5 z-10 inline-flex items-center rounded-sm border border-white/15 bg-brand-bg/85 px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wider text-brand-fg/85 backdrop-blur"
       >
         Founding
       </span>
@@ -162,39 +159,19 @@ const aiChips = computed(() => [
         :class="isDirectorySpotlight ? 'absolute inset-0' : ''"
         @error="imageFailed = true"
       >
+      <!-- Neutral everywhere the card chrome is neutral; only the homepage
+           editorial lead keeps the accent-tinted fallback with its accent chrome. -->
       <ListingShotFallback
         v-else
         :name="listing.name"
         :generating="generating"
-        :neutral="isDirectorySpotlight"
+        :neutral="!isSpotlight"
       />
     </div>
 
     <div class="flex min-w-0 flex-1 flex-col" :class="contentClass">
-      <!-- Directory Featured wears a register mark under a rule instead of a badge:
-           a masthead reads as editorial selection, a pill reads as a status chip. -->
-      <div v-if="isDirectorySpotlight" class="border-t border-white/35 pt-2.5">
-        <span class="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-brand-fg">
-          Featured
-        </span>
-      </div>
-
-      <div v-else class="flex flex-wrap items-center gap-2">
-        <span
-          class="inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
-          :class="tier.classes"
-        >
-          <Sparkles v-if="listing.tier === 'featured'" class="size-2.5" />
-          {{ tier.label }}
-        </span>
-        <span v-if="isSpotlight" class="text-[11px] font-medium text-brand-accent">
-          Featured placement
-        </span>
-        <span v-else-if="isWide" class="text-[11px] font-medium text-brand-fg/70">
-          Priority placement
-        </span>
-      </div>
-
+      <!-- Nothing above the name, in any tier: the heading carries its own weight
+           and the tier is disclosed in the ledger register at the bottom. -->
       <component
         :is="headingLevel"
         class="min-w-0 font-semibold text-brand-fg"
@@ -210,38 +187,28 @@ const aiChips = computed(() => [
         {{ listing.tagline }}
       </p>
 
-      <!-- Not on the directory Featured card: it carries one register line instead,
-           and the capability chips are already on Premium and the listing page. -->
-      <div v-if="(isSpotlight || isWide) && aiChips.length" class="flex flex-wrap items-center gap-1.5 pt-1">
-        <span class="mr-1 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
-          AI-readable
-        </span>
-        <span
-          v-for="chip in aiChips"
-          :key="chip"
-          class="rounded-md bg-white/5 px-2 py-0.5 font-mono text-[10px] text-brand-muted ring-1 ring-white/10"
-        >
-          {{ chip }}
-        </span>
-      </div>
-
-      <!-- Wraps rather than truncates: a domain cut mid-word reads as a rendering
-           bug, and the card has no fixed height to protect. break-words is load
-           bearing — a hostname is one unbreakable token, so without it a long
-           domain runs past the card and overflow-hidden slices it mid-word. -->
+      <!-- The ledger register. Wraps rather than truncates: a domain cut mid-word
+           reads as a rendering bug, and the card has no fixed height to protect.
+           The tier word and category never break internally; the separators are
+           ordinary spaces so a long domain drops whole to the next line, and
+           break-words stays as the last resort for a hostname wider than the
+           column, which one unbreakable token would otherwise overflow. -->
       <p
-        v-if="isDirectorySpotlight && registerLine"
-        class="mt-auto break-words font-mono text-[11px] leading-5 text-brand-muted"
+        v-if="hasRegisterLine"
+        class="mt-auto break-words border-t pt-2.5 font-mono text-[11px] leading-5 text-brand-muted"
+        :class="registerRuleClass"
       >
-        {{ registerLine }}
+        <template v-if="listing.tier !== 'basic'">
+          <span
+            class="whitespace-nowrap font-medium uppercase tracking-[0.18em]"
+            :class="listing.tier === 'featured' ? 'text-brand-fg' : 'text-brand-fg/75'"
+          >{{ listing.tier }}</span>
+          <span v-if="listing.category || registerHost">{{ '\u00A0· ' }}</span>
+        </template>
+        <span v-if="listing.category" class="whitespace-nowrap">{{ listing.category.name }}</span>
+        <span v-if="listing.category && registerHost">{{ '\u00A0· ' }}</span>
+        <span v-if="registerHost">{{ registerHost }}</span>
       </p>
-
-      <span
-        v-else-if="listing.category"
-        class="mt-auto inline-flex w-fit rounded-full border border-brand-border bg-black/10 px-2.5 py-0.5 text-xs text-brand-muted"
-      >
-        {{ listing.category.name }}
-      </span>
     </div>
   </article>
 </template>

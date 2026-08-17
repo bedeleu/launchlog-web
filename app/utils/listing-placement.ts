@@ -1,7 +1,9 @@
 import type { ListingTier } from '../composables/useListings'
 
 /**
- * Card density. Tier chrome (accent, badge, sparkles) comes from listing.tier.
+ * Card density. The tier is disclosed in the card's bottom ledger register and
+ * steps the neutral surface/hairline values; only the `spotlight` variant
+ * carries accent chrome.
  *
  * `spotlight` is the homepage editorial lead; `directory-spotlight` is the
  * compact one-row Featured card used inside a directory page. They are separate
