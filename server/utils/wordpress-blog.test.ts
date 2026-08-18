@@ -439,3 +439,40 @@ describe('buildBlogArchivePage', () => {
       .not.toThrow(WordPressUpstreamError)
   })
 })
+
+describe('entity decoding in rendered text', () => {
+  const titled = (rendered: string) =>
+    parseWordPressPostList([validPost({ title: { rendered } })], BASE)[0]!.title
+
+  test('decodes decimal astral entities to the real code point', () => {
+    expect(titled('Launch day &#128640;')).toBe('Launch day 🚀')
+  })
+
+  test('decodes hex astral entities to the real code point', () => {
+    expect(titled('Launch day &#x1F680;')).toBe('Launch day 🚀')
+  })
+
+  test('double-encoded entities stay literal after a single pass', () => {
+    expect(titled('She said &amp;quot;ship it&amp;quot;')).toBe('She said &quot;ship it&quot;')
+    expect(titled('Rocket &amp;#128640; entity')).toBe('Rocket &#128640; entity')
+  })
+
+  test('decodes the accepted named and plain numeric entities', () => {
+    expect(titled('Fish &amp; Chips')).toBe('Fish & Chips')
+    expect(titled('A &quot;quote&quot;')).toBe('A "quote"')
+    expect(titled('It&#039;s here, it&apos;s real')).toBe("It's here, it's real")
+    expect(titled('caf&#233; time')).toBe('café time')
+    expect(titled('non&nbsp;breaking')).toBe('non breaking')
+  })
+
+  test('leaves invalid or unknown entities untouched', () => {
+    expect(titled('&#x110000; overflow')).toBe('&#x110000; overflow')
+    expect(titled('&unknown; token')).toBe('&unknown; token')
+  })
+
+  test('rejects surrogate code points, which are not Unicode scalar values', () => {
+    expect(titled('&#xD800; hex-surrogate')).toBe('&#xD800; hex-surrogate')
+    expect(titled('&#55296; decimal-surrogate')).toBe('&#55296; decimal-surrogate')
+    expect(titled('&#xDFFF; upper-bound')).toBe('&#xDFFF; upper-bound')
+  })
+})

@@ -541,15 +541,39 @@ function cleanText(value: string): string {
     .trim()
 }
 
+const NAMED_ENTITIES: Record<string, string> = {
+  nbsp: ' ',
+  amp: '&',
+  quot: '"',
+  apos: "'",
+  lt: '<',
+  gt: '>',
+}
+
+/**
+ * One pass, no rescanning: the output of a replacement is never decoded again, so `&amp;quot;`
+ * yields the literal text `&quot;` instead of `"` and double-encoded input survives intact.
+ * Numeric entities go through `String.fromCodePoint` because `fromCharCode` truncates astral
+ * code points (`&#x1F680;` must become 🚀, not a mangled surrogate half).
+ */
 function decodeHtml(value: string): string {
-  return value
-    .replace(/&#(\d+);/g, (_, code: string) => String.fromCharCode(Number(code)))
-    .replace(/&#x([a-f0-9]+);/gi, (_, code: string) => String.fromCharCode(parseInt(code, 16)))
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#039;/g, "'")
-    .replace(/&apos;/g, "'")
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
+  return value.replace(/&(?:#(\d+)|#x([a-f0-9]+)|([a-z]+));/gi, (match, dec?: string, hex?: string, named?: string) => {
+    if (dec !== undefined || hex !== undefined) {
+      const codePoint = dec !== undefined ? Number(dec) : parseInt(hex!, 16)
+
+      if (
+        !Number.isInteger(codePoint)
+        || codePoint < 0
+        || codePoint > 0x10FFFF
+        // Surrogates are not Unicode scalar values; a lone one corrupts UTF-8 serialization.
+        || (codePoint >= 0xD800 && codePoint <= 0xDFFF)
+      ) {
+        return match
+      }
+
+      return String.fromCodePoint(codePoint)
+    }
+
+    return NAMED_ENTITIES[named!.toLowerCase()] ?? match
+  })
 }

@@ -28,6 +28,18 @@ const VALID_POST = {
   content: { rendered: '<p>Body.</p>' },
 }
 
+// A worst-case upstream payload: astral and double-encoded entities in the title, and a raw
+// closing script tag in a field that reaches the JSON-LD without the tag-stripping text cleaner.
+// Served only through the slug lookup so the paged corpus and its boundary counts stay untouched.
+const HOSTILE_POST = {
+  ...VALID_POST,
+  id: 173,
+  slug: 'a-hostile-article',
+  link: 'https://blog.launchlog.ai/2026/08/15/a-hostile-article/',
+  title: { rendered: 'Rocket &#x1F680; and &#128640; say &amp;quot;go&amp;quot; when Two &lt; Three' },
+  _embedded: { author: [{ name: 'Author </script><script>window.__pwned=1</script>' }] },
+}
+
 // 30 posts at 24 per page = one full page, one partial page and an out-of-range third. That is the
 // smallest corpus that exercises every pagination boundary, including the one WordPress rejects.
 const CORPUS_SIZE = 30
@@ -127,7 +139,7 @@ describe.skipIf(!isBuilt)('/blog SSR', () => {
 
         // Single-post lookup: matched by slug, exactly as WordPress does, and unrelated to paging.
         if (slug !== null) {
-          return json(posts.filter(post => post.slug === slug), posts.length)
+          return json([...posts, HOSTILE_POST].filter(post => post.slug === slug), posts.length)
         }
 
         const perPage = Number(query.get('per_page') ?? PER_PAGE)
@@ -242,6 +254,52 @@ describe.skipIf(!isBuilt)('/blog SSR', () => {
         expect(body).not.toContain('One moment')
         expect(body).not.toContain('checking')
       }
+    })
+  })
+
+  describe('hostile upstream text', () => {
+    test('entities decode once with real code points and JSON-LD cannot be broken out of', async () => {
+      upstreamMode = 'posts'
+
+      const response = await fetch(`${BASE}/blog/a-hostile-article`)
+      const body = await response.text()
+
+      expect(response.status).toBe(200)
+
+      // Astral entities decode to the actual emoji, decimal and hex alike.
+      expect(body).toContain('Rocket 🚀 and 🚀 say')
+      // Double-encoded quotes stay literal after exactly one decoding pass.
+      expect(body).toContain('say &amp;quot;go&amp;quot;')
+      expect(body).not.toContain('say "go"')
+
+      // The upstream's closing script tag never appears literally anywhere in the response.
+      expect(body).not.toContain('window.__pwned=1</script>')
+
+      // EVERY JSON-LD block on the page honours the contract: zero literal `<` in the payload.
+      // The lazy capture would keep any stray `<`, so the assertion actually sees it.
+      const jsonLdBlocks = [...body.matchAll(/<script[^>]+application\/ld\+json[^>]*>(.*?)<\/script>/gs)]
+        .map(match => match[1]!)
+
+      expect(jsonLdBlocks.length).toBeGreaterThanOrEqual(2)
+
+      for (const block of jsonLdBlocks) {
+        expect(block).not.toContain('<')
+        JSON.parse(block)
+      }
+
+      const articleBlock = jsonLdBlocks.find(block => block.includes('BlogPosting')) ?? ''
+
+      expect(articleBlock).toContain('\\u003c/script>')
+
+      // The escaped payload still parses back to the raw upstream string.
+      const parsed = JSON.parse(articleBlock) as { author?: { name?: string } }
+      expect(parsed.author?.name).toContain('</script>')
+
+      // The breadcrumb block carries the decoded `<` from the title, escaped, and round-trips.
+      const breadcrumbBlock = jsonLdBlocks.find(block => block.includes('BreadcrumbList')) ?? ''
+      const breadcrumbs = JSON.parse(breadcrumbBlock) as { itemListElement?: Array<{ name?: string }> }
+
+      expect(breadcrumbs.itemListElement?.some(item => item.name?.includes('Two < Three'))).toBe(true)
     })
   })
 

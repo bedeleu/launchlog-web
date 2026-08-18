@@ -113,7 +113,7 @@ useHead({
     {
       key: 'launchlog-blog-schema',
       type: 'application/ld+json',
-      innerHTML: computed(() => JSON.stringify({
+      innerHTML: computed(() => serializeJsonLd({
         '@context': 'https://schema.org',
         '@graph': [
           {

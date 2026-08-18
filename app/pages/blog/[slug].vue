@@ -63,7 +63,7 @@ useHead({
     {
       key: 'launchlog-blog-post-schema',
       type: 'application/ld+json',
-      innerHTML: computed(() => JSON.stringify({
+      innerHTML: computed(() => serializeJsonLd({
         '@context': 'https://schema.org',
         '@type': 'BlogPosting',
         '@id': `${canonicalUrl.value}#article`,
