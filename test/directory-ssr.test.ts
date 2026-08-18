@@ -88,6 +88,19 @@ describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
       fetch(request) {
         upstreamRequests.push(request.url)
 
+        const url = new URL(request.url)
+
+        // The homepage asks for its Featured cohort separately. Keep this stub
+        // production-shaped so the SSR test can guard the homepage geometry too.
+        if (url.searchParams.get('tier') === 'featured') {
+          const featured = LISTINGS.filter(listing => listing.tier === 'featured')
+
+          return Response.json({
+            data: featured,
+            meta: { ...DIRECTORY_META, per_page: 3, to: featured.length, total: featured.length },
+          })
+        }
+
         // page=5 simulates a deep page whose plan holds no Featured records, so
         // the suite can prove the register renders only when Featured exists.
         if (request.url.includes('page=5')) {
@@ -201,6 +214,24 @@ describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
     expect(html).not.toContain('lg:row-span-2')
   })
 
+  test('homepage featured listings share one aligned 2x1 presentation', async () => {
+    const html = await fetch(BASE).then(response => response.text())
+    const cell = (slug: string) => html.match(new RegExp(`<a href="/listing/${slug}"[^>]*class="([^"]*)"`))?.[1]
+
+    for (const slug of ['one-featured', 'two-featured']) {
+      const classes = cell(slug)
+      expect(classes).toBeDefined()
+      expect(classes!).toContain('sm:col-span-2')
+      expect(classes!).toContain('lg:col-span-3')
+      expect(classes!).not.toContain('row-span-2')
+    }
+
+    // Disclosure now belongs to each real placement band; the duplicate section
+    // register and its misleading one-lead hierarchy are both retired.
+    expect(html.match(/Priority placement/g) ?? []).toHaveLength(2)
+    expect(html).not.toContain('Featured · priority placement')
+  })
+
   test('no directory card carries a fixed desktop height', async () => {
     const html = await fetch(`${BASE}/browse-all`).then(response => response.text())
 
@@ -226,9 +257,12 @@ describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
   })
 
   test('browse-all asks the API for a slot-aware directory page', async () => {
+    const requestStart = upstreamRequests.length
     await fetch(`${BASE}/browse-all`).then(response => response.text())
 
-    const listingCalls = upstreamRequests.filter(url => url.includes('/api/v1/listings'))
+    const listingCalls = upstreamRequests
+      .slice(requestStart)
+      .filter(url => url.includes('/api/v1/listings'))
 
     expect(listingCalls.length).toBeGreaterThan(0)
 

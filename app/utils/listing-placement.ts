@@ -2,12 +2,13 @@ import type { ListingTier } from '../composables/useListings'
 
 /**
  * Card density. The tier is disclosed in the card's bottom ledger register and
- * steps the neutral surface/hairline values; only the `spotlight` variant
- * carries accent chrome.
+ * steps the neutral surface/hairline values. Both Featured variants share one
+ * monochrome placement system.
  *
- * `spotlight` is the homepage editorial lead; `directory-spotlight` is the
- * compact one-row Featured card used inside a directory page. They are separate
- * variants because only the directory one is height-constrained.
+ * `spotlight` is the full-width homepage Featured card;
+ * `directory-spotlight` is the same visual system on the compact two-column
+ * directory footprint. They stay separate because their responsive split
+ * begins at different breakpoints.
  */
 export type ListingCardVariant = 'standard' | 'spotlight' | 'directory-spotlight'
 
@@ -15,13 +16,11 @@ export type ListingCardVariant = 'standard' | 'spotlight' | 'directory-spotlight
  * Semantic grid footprint. The grid component maps these onto Tailwind spans;
  * the packer stays framework-free so it can be unit-tested with bun test.
  *
- * unit   1x1                double     2 cols x 1 row
- * full-short 3 cols x 1 row half-tall  2 cols x 2 rows (homepage lead only)
- *
- * Every directory card is one row tall, so the only two-row span left is
- * the homepage editorial one.
+ * unit       1x1
+ * double     2 cols x 1 row
+ * full-short 3 cols x 1 row
  */
-export type PlacementSpan = 'unit' | 'double' | 'half-tall' | 'full-short'
+export type PlacementSpan = 'unit' | 'double' | 'full-short'
 
 export interface PlacementListing {
   slug: string
@@ -100,21 +99,13 @@ export const packUniform = <T extends PlacementListing>(
 ): PlacedListing<T>[] => listings.map(l => place(l, 'standard', 'unit'))
 
 /**
- * Homepage Featured: an elevated editorial arrangement rather than three stacked
- * directory heroes. Which listing takes the lead slot changes daily, because the
- * API rotates the featured cohort.
+ * Homepage Featured: every buyer receives the same one-row 2x1 presentation.
+ * The API still rotates the cohort daily, but list order never changes the size
+ * of a purchased placement.
  */
 export const packHomepageFeatured = <T extends PlacementListing>(
   listings: readonly T[],
-): PlacedListing<T>[] => {
-  const [lead, ...rest] = listings
-  if (!lead) return []
-
-  return [
-    place(lead, 'spotlight', rest.length ? 'half-tall' : 'full-short'),
-    ...rest.map(l => place(l, 'standard', 'unit')),
-  ]
-}
+): PlacedListing<T>[] => listings.map(l => place(l, 'spotlight', 'full-short'))
 
 /** Homepage recent dedupe: drop slugs already shown above, then fill the limit. */
 export const takeListingsWithoutSlugs = <T extends { slug: string }>(

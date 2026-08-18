@@ -80,22 +80,22 @@ describe('packUniform', () => {
 })
 
 describe('packHomepageFeatured', () => {
-  test('leads with the editorial spotlight and keeps the rest uniform', () => {
+  test('gives every featured listing the same one-row homepage placement', () => {
     const placed = packHomepageFeatured([
       item('f1', 'featured'),
       item('f2', 'featured'),
       item('f3', 'featured'),
     ])
 
-    expect(placed[0]!.variant).toBe('spotlight')
-    expect(placed[0]!.span).toBe('half-tall')
-    expect(placed.slice(1).every(p => p.variant === 'standard' && p.span === 'unit')).toBeTrue()
+    expect(placed.map(p => p.listing.slug)).toEqual(['f1', 'f2', 'f3'])
+    expect(placed.every(p => p.variant === 'spotlight' && p.span === 'full-short')).toBeTrue()
   })
 
-  test('a single listing takes the full short row', () => {
+  test('a single listing uses the same full-width card contract', () => {
     const placed = packHomepageFeatured([item('f1', 'featured')])
 
     expect(placed).toHaveLength(1)
+    expect(placed[0]!.variant).toBe('spotlight')
     expect(placed[0]!.span).toBe('full-short')
   })
 

@@ -51,10 +51,9 @@ const segments = computed<GridSegment[]>(() => {
   return items.length ? [{ key: props.mode, register: false, items }] : []
 })
 
-// Every directory card is one row tall, so the API's 30-slot page and the
-// grid's cells stay the same unit. half-tall is the homepage editorial lead and
-// the only remaining row span; row-span only from lg up, because at two columns
-// a spanned row would open a blank cell.
+// Every card is one row tall, so the API's 30-slot directory page and the grid's
+// cells stay the same unit. Homepage Featured cards take one full-width row;
+// no surface receives a two-row advantage based on list order.
 const spanClass: Record<PlacementSpan, string> = {
   'unit': '',
   // Two columns only where there are three. At the sm/md two-column breakpoint a
@@ -63,7 +62,6 @@ const spanClass: Record<PlacementSpan, string> = {
   // auto-placement never backfills, and grid-flow-dense would reorder cards away
   // from the paid ordering, so the Featured simply collapses to one column there.
   'double': 'lg:col-span-2',
-  'half-tall': 'sm:col-span-2 lg:col-span-2 lg:row-span-2',
   'full-short': 'sm:col-span-2 lg:col-span-3',
 }
 
@@ -99,10 +97,9 @@ const contextual = computed(() => new Set(props.contextualSlugs))
           class="group block min-w-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-bg"
           :class="[
             spanClass[item.span],
-            // Every other card focuses in the brand accent. The directory Featured card
-            // is differentiated without indigo, and that has to hold in its focus state
-            // too, so it takes an equally visible neutral ring instead.
-            item.variant === 'directory-spotlight' ? 'focus-visible:ring-white/70' : 'focus-visible:ring-brand-accent',
+            // Standard cards focus in the brand accent. Featured placements use
+            // the same neutral treatment across public surfaces, including focus.
+            item.variant !== 'standard' ? 'focus-visible:ring-white/70' : 'focus-visible:ring-brand-accent',
             contextual.has(item.listing.slug) ? 'pointer-events-none select-none opacity-55 blur-[1.5px]' : '',
           ]"
         >

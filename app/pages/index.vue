@@ -223,14 +223,7 @@ useHead({
             View all featured
           </NuxtLink>
         </div>
-        <!-- The register the directory grid opens its Featured section with: a
-             label over a hairline, not a container. It also carries the
-             paid-placement disclosure, because the homepage cards have no
-             register band of their own to hold it. -->
-        <p class="mb-4 mt-7 border-b border-white/10 pb-2.5 font-mono text-xs font-medium uppercase tracking-[0.22em] text-brand-fg">
-          Featured · priority placement
-        </p>
-        <ListingGrid :listings="featuredListings" mode="homepage-featured" />
+        <ListingGrid class="mt-7" :listings="featuredListings" mode="homepage-featured" />
       </div>
     </section>
 

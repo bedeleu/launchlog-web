@@ -17,7 +17,7 @@ const props = withDefaults(defineProps<{
   headingLevel: 'h3',
 })
 
-/** Homepage editorial lead: horizontal from md, height driven by its content. */
+/** Homepage Featured: full-width and horizontal from md. */
 const isSpotlight = computed(() => props.variant === 'spotlight')
 /**
  * Directory Featured: an ordinary directory tile on the double-width directory
@@ -26,6 +26,7 @@ const isSpotlight = computed(() => props.variant === 'spotlight')
  * rather than from extra size or a colour the rest of the directory does not use.
  */
 const isDirectorySpotlight = computed(() => props.variant === 'directory-spotlight')
+const isPriorityPlacement = computed(() => isSpotlight.value || isDirectorySpotlight.value)
 
 /** Register host: real product truth, nothing invented. */
 const registerHost = computed(() => {
@@ -57,17 +58,11 @@ watch(() => props.listing.screenshot_url, () => {
 const showImage = computed(() => Boolean(props.listing.screenshot_url) && !imageFailed.value)
 
 const cardClass = computed(() => {
-  // The directory Featured card is monochrome but unmistakable: a double frame
-  // on a lifted surface, closed by the solid register band below. Framed and
-  // stamped — still not a colour the rest of the directory does not use.
-  if (isDirectorySpotlight.value) {
+  // Featured placement uses one monochrome frame-and-register system everywhere.
+  // Composition changes with available width, but the product never changes its
+  // visual status because it happens to be first in a list.
+  if (isPriorityPlacement.value) {
     return 'border-2 border-white/40 bg-white/[0.05] group-hover:border-white/60 group-focus-visible:border-white/60'
-  }
-
-  // The homepage editorial lead is the one surface that keeps the accent chrome;
-  // its content still speaks the ledger register like every other card.
-  if (isSpotlight.value) {
-    return 'border-brand-accent/55 bg-[linear-gradient(145deg,rgba(99,102,241,0.12),rgba(12,17,32,0.96)_58%)] shadow-[0_22px_60px_-34px_rgba(99,102,241,0.7)] ring-1 ring-brand-accent/15 group-hover:border-brand-accent/80 group-focus-visible:border-brand-accent/80'
   }
 
   // Everywhere else the two tiers share one flat neutral system: surface value
@@ -80,7 +75,7 @@ const cardClass = computed(() => {
 })
 
 const layoutClass = computed(() => {
-  if (isSpotlight.value) return 'md:grid md:grid-cols-[minmax(0,1.45fr)_minmax(260px,0.85fr)]'
+  if (isSpotlight.value) return 'md:grid md:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]'
   // No fixed height: the row is whatever its real Basic companion establishes,
   // which matches the double-width spotlight layout. The screenshot takes the
   // wide track because the customer's product is what Featured actually sells.
@@ -93,28 +88,27 @@ const layoutClass = computed(() => {
 
 /** Below lg both directory cards stay ordinary stacked cards with a 16/10 shot. */
 const mediaClass = computed(() => {
-  if (isSpotlight.value) return 'md:aspect-auto md:min-h-64'
+  if (isSpotlight.value) return 'md:aspect-auto md:h-full'
   if (isDirectorySpotlight.value) return 'lg:aspect-auto lg:h-full'
   return ''
 })
 
 const contentClass = computed(() => {
-  if (isSpotlight.value) return 'gap-3 p-5 md:p-7'
+  if (isSpotlight.value) return 'gap-3 p-5 md:p-6'
   if (isDirectorySpotlight.value) return 'gap-3 p-5 lg:p-6'
   return 'gap-2 p-4'
 })
 
 const headingClass = computed(() => {
-  if (isSpotlight.value) return 'line-clamp-2 text-xl md:text-2xl'
+  if (isSpotlight.value) return 'line-clamp-2 text-2xl leading-[1.1] tracking-tight md:text-3xl'
   // Display scale is the loudest thing about this card, and it costs no colour.
   if (isDirectorySpotlight.value) return 'line-clamp-2 text-3xl leading-[1.1] tracking-tight'
   return 'truncate'
 })
 
 const taglineClass = computed(() => {
-  // The directory Featured tagline steps up with its display name.
-  if (isDirectorySpotlight.value) return 'line-clamp-3 text-base leading-7'
-  if (isSpotlight.value) return 'line-clamp-3 text-sm leading-6'
+  // Featured taglines step up with their display names.
+  if (isPriorityPlacement.value) return 'line-clamp-3 text-base leading-7'
   return 'line-clamp-2 text-sm leading-6'
 })
 </script>
@@ -150,13 +144,12 @@ const taglineClass = computed(() => {
         :class="isDirectorySpotlight ? 'absolute inset-0' : ''"
         @error="imageFailed = true"
       >
-      <!-- Neutral everywhere the card chrome is neutral; only the homepage
-           editorial lead keeps the accent-tinted fallback with its accent chrome. -->
+      <!-- Featured placement is monochrome on every surface. -->
       <ListingShotFallback
         v-else
         :name="listing.name"
         :generating="generating"
-        :neutral="!isSpotlight"
+        neutral
       />
     </div>
 
@@ -185,7 +178,7 @@ const taglineClass = computed(() => {
            the lifted Featured surfaces, so Featured metadata reads at fg/70 and
            Standard keeps a quieter fg/60 — both clear WCAG AA with margin. -->
       <p
-        v-if="!isDirectorySpotlight && hasRegisterLine"
+        v-if="!isPriorityPlacement && hasRegisterLine"
         class="mt-auto break-words border-t pt-2.5 font-mono text-xs leading-5"
         :class="[registerRuleClass, listing.tier === 'featured' ? 'text-brand-fg/70' : 'text-brand-fg/60']"
       >
@@ -202,7 +195,7 @@ const taglineClass = computed(() => {
     </div>
     </div>
 
-    <!-- The directory Featured register runs under image and text alike as a
+    <!-- The Featured register runs under image and text alike as a
          tonal band: one surface step brighter than the card, never leaving the
          dark theme. Structure carries the tier — no other card has a strip —
          and the priority-placement disclosure lives here, on the Featured card
@@ -210,8 +203,8 @@ const taglineClass = computed(() => {
          differentiates nothing). Explicit stacked-then-two-column layout: at
          390px flex-wrap dropped the descriptor onto an accidental second row. -->
     <div
-      v-if="isDirectorySpotlight && hasRegisterLine"
-      class="flex flex-col gap-y-1 border-t border-white/25 bg-white/[0.08] px-5 py-3 font-mono text-xs leading-5 text-brand-fg/70 sm:flex-row sm:items-baseline sm:justify-between sm:gap-x-4 lg:px-6"
+      v-if="isPriorityPlacement && hasRegisterLine"
+      class="flex flex-col gap-y-1 border-t border-white/25 bg-white/[0.08] px-5 py-3 font-mono text-xs leading-5 text-brand-fg/70 sm:flex-row sm:items-baseline sm:justify-between sm:gap-x-4 md:px-6"
     >
       <p class="min-w-0 break-words">
         <span class="whitespace-nowrap font-semibold uppercase tracking-[0.3em] text-brand-fg">{{ listing.tier }}</span>
