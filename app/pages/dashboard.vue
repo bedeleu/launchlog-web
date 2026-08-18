@@ -175,9 +175,16 @@ onMounted(async () => {
   authReady.value = true
   await loadListings()
 })
-/** Customer-facing plan names: the internal identifier `basic` sells as Standard. */
-const tierLabel = (tier: string | null | undefined): string =>
-  tier === 'basic' ? 'Standard' : (tier ?? '')
+/**
+ * Customer-facing plan names: the internal identifier `basic` sells as Standard,
+ * `featured` as Featured. An unrecognised tier falls through to its raw value
+ * rather than being renamed into something the customer never bought.
+ */
+const tierLabel = (tier: string | null | undefined): string => {
+  if (tier === 'basic') return 'Standard'
+  if (tier === 'featured') return 'Featured'
+  return tier ?? ''
+}
 </script>
 
 <template>

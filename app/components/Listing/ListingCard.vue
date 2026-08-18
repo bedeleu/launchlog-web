@@ -20,8 +20,8 @@ const props = withDefaults(defineProps<{
 /** Homepage editorial lead: horizontal from md, height driven by its content. */
 const isSpotlight = computed(() => props.variant === 'spotlight')
 /**
- * Directory Featured: an ordinary two-column directory tile, the same footprint
- * and natural row height as Premium. It earns its distinction from composition
+ * Directory Featured: an ordinary directory tile on the double-width directory
+ * footprint, at its natural row height. It earns its distinction from composition
  * and typography — a register rule, a display-scale name, one line of record —
  * rather than from extra size or a colour the rest of the directory does not use.
  */
@@ -82,8 +82,8 @@ const cardClass = computed(() => {
 const layoutClass = computed(() => {
   if (isSpotlight.value) return 'md:grid md:grid-cols-[minmax(0,1.45fr)_minmax(260px,0.85fr)]'
   // No fixed height: the row is whatever its real Basic companion establishes,
-  // exactly like Premium. The screenshot takes the wide track because the
-  // customer's product is what Featured actually sells.
+  // which matches the double-width spotlight layout. The screenshot takes the
+  // wide track because the customer's product is what Featured actually sells.
   // The base flex column is load bearing: without it the article is a block
   // below lg, h-full's surplus row height falls below the content, and the
   // ledger rule floats above dead space instead of anchoring to the bottom.

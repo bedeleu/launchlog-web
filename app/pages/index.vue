@@ -216,19 +216,21 @@ useHead({
     <section v-if="featuredListings.length" class="border-t border-brand-border">
       <div class="mx-auto max-w-6xl px-6 py-14">
         <div class="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-brand-accent">
-              Featured
-            </p>
-            <h2 class="mt-2 text-3xl font-bold text-brand-fg">
-              Featured launches
-            </h2>
-          </div>
+          <h2 class="text-3xl font-bold text-brand-fg">
+            Featured launches
+          </h2>
           <NuxtLink to="/featured" class="text-sm font-medium text-brand-accent transition-colors hover:text-brand-fg">
             View all featured
           </NuxtLink>
         </div>
-        <ListingGrid class="mt-7" :listings="featuredListings" mode="homepage-featured" />
+        <!-- The register the directory grid opens its Featured section with: a
+             label over a hairline, not a container. It also carries the
+             paid-placement disclosure, because the homepage cards have no
+             register band of their own to hold it. -->
+        <p class="mb-4 mt-7 border-b border-white/10 pb-2.5 font-mono text-xs font-medium uppercase tracking-[0.22em] text-brand-fg">
+          Featured · paid placement
+        </p>
+        <ListingGrid :listings="featuredListings" mode="homepage-featured" />
       </div>
     </section>
 

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Sparkles } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import type { ListingPage } from '~/composables/useListings'
 
@@ -73,10 +72,11 @@ useBreadcrumbs([
 <template>
   <main class="mx-auto max-w-6xl px-6 py-12 lg:py-16">
     <header class="max-w-2xl">
-      <span class="inline-flex items-center gap-1.5 rounded-full border border-brand-accent/50 bg-brand-accent/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-brand-accent shadow-[0_0_24px_rgba(99,102,241,0.25)]">
-        <Sparkles class="size-3.5" />
-        Featured
-      </span>
+      <!-- The same register the directory grid and the homepage strip open with:
+           a label over a hairline, not a filled pill. -->
+      <p class="border-b border-white/10 pb-2.5 font-mono text-xs font-medium uppercase tracking-[0.22em] text-brand-fg">
+        Featured · paid placement
+      </p>
       <h1 class="mt-4 text-4xl font-bold tracking-tight text-brand-fg lg:text-5xl">
         Featured products
       </h1>
