@@ -165,18 +165,21 @@ describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
   test('the featured section register renders once, with the disclosure on the card', async () => {
     const html = await fetch(`${BASE}/browse-all`).then(response => response.text())
 
-    // One register label above the featured rows; "Paid placement" belongs to
-    // the featured cards' own bands, never to the section header, so the real
-    // Standard companions are not mislabeled.
+    // One register label above the featured rows (desktop-only via lg:block, but
+    // SSR still emits it once); "Priority placement" belongs to the featured
+    // cards' own bands, never to the section header, so the real Standard
+    // companions are not mislabeled — and it names the purchased benefit, since
+    // both plans are paid.
     expect(html.match(/Featured launches/g) ?? []).toHaveLength(1)
-    expect(html.match(/Paid placement/g) ?? []).toHaveLength(2)
+    expect(html.match(/Priority placement/g) ?? []).toHaveLength(2)
+    expect(html).not.toContain('Paid placement')
   })
 
   test('a page without featured records renders no register and no empty section', async () => {
     const html = await fetch(`${BASE}/browse-all?page=5`).then(response => response.text())
 
     expect(html).not.toContain('Featured launches')
-    expect(html).not.toContain('Paid placement')
+    expect(html).not.toContain('Priority placement')
     expect(html.match(/href="\/listing\//g) ?? []).toHaveLength(26)
   })
 

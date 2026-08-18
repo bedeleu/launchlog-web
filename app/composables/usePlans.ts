@@ -8,7 +8,7 @@ export interface Plan {
   /** Monthly equivalent, e.g. "$2.08". */
   monthlyLabel: string
   features: string[]
-  /** Short factual badge, e.g. "Promoted placement". */
+  /** Short factual badge, e.g. "Priority placement". */
   badge?: string
   /** The promoted tier. */
   highlight?: boolean
@@ -39,7 +39,7 @@ const PLANS: Plan[] = [
     name: 'Featured',
     priceLabel: '$99',
     monthlyLabel: '$8.25',
-    badge: 'Promoted placement',
+    badge: 'Priority placement',
     highlight: true,
     features: [
       'Everything in Standard',

@@ -74,11 +74,14 @@ const contextual = computed(() => new Set(props.contextualSlugs))
   <div>
     <template v-for="(segment, index) in segments" :key="segment.key">
       <!-- The Featured section register: a label over a hairline, not a
-           container. "Paid placement" lives on the Featured card itself so the
-           real Standard companion in each row is never mislabeled. -->
+           container. "Priority placement" lives on the Featured card itself so
+           the real Standard companion in each row is never mislabeled. Below lg
+           the paid span collapses and the companion no longer sits beside its
+           Featured row, so the section register would falsely scope over it —
+           each card's own register carries the tier truth there instead. -->
       <p
         v-if="segment.register"
-        class="mb-4 border-b border-white/10 pb-2.5 font-mono text-xs font-medium uppercase tracking-[0.22em] text-brand-fg"
+        class="mb-4 hidden border-b border-white/10 pb-2.5 font-mono text-xs font-medium uppercase tracking-[0.22em] text-brand-fg lg:block"
       >
         Featured launches
       </p>

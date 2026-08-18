@@ -40,14 +40,14 @@ const pageUrl = computed(() => `${siteUrl}${pageHref(activePage.value)}`)
 
 useSeoMeta({
   title: 'Featured products — LaunchLog',
-  description: 'Featured products on LaunchLog — promoted placement for standout launches.',
+  description: 'Featured products on LaunchLog — priority placement for standout launches.',
   ogTitle: 'Featured products — LaunchLog',
-  ogDescription: 'Featured products on LaunchLog — promoted placement for standout launches.',
+  ogDescription: 'Featured products on LaunchLog — priority placement for standout launches.',
   ogUrl: pageUrl,
   ogImage: ogImageUrl,
   twitterCard: 'summary_large_image',
   twitterTitle: 'Featured products — LaunchLog',
-  twitterDescription: 'Featured products on LaunchLog — promoted placement for standout launches.',
+  twitterDescription: 'Featured products on LaunchLog — priority placement for standout launches.',
   twitterImage: ogImageUrl,
 })
 
@@ -75,13 +75,13 @@ useBreadcrumbs([
       <!-- The same register the directory grid and the homepage strip open with:
            a label over a hairline, not a filled pill. -->
       <p class="border-b border-white/10 pb-2.5 font-mono text-xs font-medium uppercase tracking-[0.22em] text-brand-fg">
-        Featured · paid placement
+        Featured · priority placement
       </p>
       <h1 class="mt-4 text-4xl font-bold tracking-tight text-brand-fg lg:text-5xl">
         Featured products
       </h1>
       <p class="mt-3 text-lg text-brand-muted">
-        Promoted placement for standout launches across LaunchLog browse and category surfaces.
+        Priority placement for standout launches across LaunchLog browse and category surfaces.
       </p>
     </header>
 

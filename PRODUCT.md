@@ -29,7 +29,7 @@ try, and founders measurably discovered because they listed.
 The invisible tech edge no neighboring directory truthfully offers as a package: schema.org
 JSON-LD `@graph` on every listing page, dynamic `/llms.txt` and `/llms-full.txt`, and
 content-negotiated markdown for `/listing/{slug}` via `Accept: text/markdown`. Human-reviewed
-descriptions, not scraped dumps. Paid placement is disclosed honestly in the card's ledger
+descriptions, not scraped dumps. Featured priority placement is disclosed honestly in the card's ledger
 register, never hidden.
 
 ## Operating Context
@@ -51,9 +51,9 @@ DECISIONS-LOG.md (D-001…D-064) and bind this repo's work.
   Featured ahead of Standard, overflow carrying onto following numeric pages inside the same
   truthful pagination; every Featured row gets one real Standard companion when enough exist;
   the paid span starts only at `lg`; no fixed card heights; never 2×2, `row-span-2`, or
-  full-width Featured. Pages that contain Featured results render them under a restrained
-  "FEATURED / Paid placement" section register — a presentation boundary over the same page
-  data, never a second dataset or an unbounded shelf.
+  full-width Featured. Pages containing Featured results use a "FEATURED / Priority placement"
+  card register and a desktop-only "Featured launches" section register — a presentation
+  boundary over the same page data, never a second dataset or an unbounded shelf.
 - Missing screenshots render the neutral fallback card — never filter listings by screenshot.
 - Production thumbs are 800×500 (16:10); a taller capture variant for wide media columns is an
   approved open follow-up on the API enrichment pipeline.

@@ -180,11 +180,14 @@ const taglineClass = computed(() => {
            The tier word and category never break internally; the separators are
            ordinary spaces so a long domain drops whole to the next line, and
            break-words stays as the last resort for a hostname wider than the
-           column, which one unbreakable token would otherwise overflow. -->
+           column, which one unbreakable token would otherwise overflow.
+           12px/20px with fg-opacity neutrals: brand-muted measured under 4.5:1 on
+           the lifted Featured surfaces, so Featured metadata reads at fg/70 and
+           Standard keeps a quieter fg/60 — both clear WCAG AA with margin. -->
       <p
         v-if="!isDirectorySpotlight && hasRegisterLine"
-        class="mt-auto break-words border-t pt-2.5 font-mono text-[11px] leading-5 text-brand-muted"
-        :class="registerRuleClass"
+        class="mt-auto break-words border-t pt-2.5 font-mono text-xs leading-5"
+        :class="[registerRuleClass, listing.tier === 'featured' ? 'text-brand-fg/70' : 'text-brand-fg/60']"
       >
         <template v-if="listing.tier === 'featured'">
           <span
@@ -202,11 +205,13 @@ const taglineClass = computed(() => {
     <!-- The directory Featured register runs under image and text alike as a
          tonal band: one surface step brighter than the card, never leaving the
          dark theme. Structure carries the tier — no other card has a strip —
-         and the paid-placement disclosure lives here, on the Featured card
-         itself, so the real Standard companion is never mislabeled. -->
+         and the priority-placement disclosure lives here, on the Featured card
+         itself, naming the purchased benefit (both plans are paid, so "paid"
+         differentiates nothing). Explicit stacked-then-two-column layout: at
+         390px flex-wrap dropped the descriptor onto an accidental second row. -->
     <div
       v-if="isDirectorySpotlight && hasRegisterLine"
-      class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 border-t border-white/25 bg-white/[0.08] px-5 py-3 font-mono text-[11px] leading-5 text-brand-muted lg:px-6"
+      class="flex flex-col gap-y-1 border-t border-white/25 bg-white/[0.08] px-5 py-3 font-mono text-xs leading-5 text-brand-fg/70 sm:flex-row sm:items-baseline sm:justify-between sm:gap-x-4 lg:px-6"
     >
       <p class="min-w-0 break-words">
         <span class="whitespace-nowrap font-semibold uppercase tracking-[0.3em] text-brand-fg">{{ listing.tier }}</span>
@@ -216,7 +221,7 @@ const taglineClass = computed(() => {
         <span v-if="registerHost">{{ registerHost }}</span>
       </p>
       <p class="whitespace-nowrap">
-        Paid placement
+        Priority placement
       </p>
     </div>
   </article>

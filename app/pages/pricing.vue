@@ -34,7 +34,7 @@ const planMeta = {
     accent: 'border-brand-border bg-white/[0.025]',
   },
   featured: {
-    eyebrow: 'Promoted placement',
+    eyebrow: 'Priority placement',
     summary: 'Everything in Standard, plus the Featured section on directory pages and eligibility for homepage Featured slots.',
     cta: 'Start Featured preview',
     accent: 'border-white/70 bg-white/[0.05] shadow-[0_0_0_1px_rgba(255,255,255,0.12)]',
