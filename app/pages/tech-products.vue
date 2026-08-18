@@ -61,12 +61,12 @@ useSeoMeta({
 
 useHead(() => ({
   link: [
-    { rel: 'canonical', href: pageUrl.value },
+    { rel: 'canonical' as const, href: pageUrl.value },
     ...(activePage.value > 1
-      ? [{ rel: 'prev', href: `${siteUrl}${pageHref(activePage.value - 1)}` }]
+      ? [{ rel: 'prev' as const, href: `${siteUrl}${pageHref(activePage.value - 1)}` }]
       : []),
     ...(activePage.value < meta.value.last_page
-      ? [{ rel: 'next', href: `${siteUrl}${pageHref(activePage.value + 1)}` }]
+      ? [{ rel: 'next' as const, href: `${siteUrl}${pageHref(activePage.value + 1)}` }]
       : []),
   ],
 }))

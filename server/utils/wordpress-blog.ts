@@ -48,6 +48,19 @@ export interface BlogPost {
   categories: string[]
 }
 
+/** Pagination envelope for one blog archive page. */
+export interface BlogArchiveMeta {
+  current_page: number
+  last_page: number
+  per_page: number
+  total: number
+}
+
+export interface BlogArchivePage {
+  posts: BlogPost[]
+  meta: BlogArchiveMeta
+}
+
 /** Slug + lastmod pair used to build the blog half of the sitemap. */
 export interface WordPressPostRef {
   slug: string
@@ -66,6 +79,15 @@ const WORDPRESS_TIMEOUT_MS = 8000
 /** WordPress REST caps `per_page` at 100 and answers 400 for a page beyond the last one. */
 export const WORDPRESS_MAX_PER_PAGE = 100
 
+/**
+ * Posts per blog archive page. Before pagination existed the archive rendered a fixed newest-24
+ * window, so every older post was reachable only from the sitemap and had no internal link path.
+ */
+export const BLOG_ARCHIVE_PER_PAGE = 24
+
+/** The code WordPress returns when the requested page number is past the last one. */
+const WORDPRESS_INVALID_PAGE_CODE = 'rest_post_invalid_page_number'
+
 /** Backstop so a malformed x-wp-totalpages header cannot drive an unbounded fetch loop. */
 const MAX_WORDPRESS_PAGES = 50
 
@@ -78,6 +100,91 @@ export class WordPressUpstreamError extends Error {
   constructor(reason: string) {
     super(`WordPress upstream returned an unusable response: ${reason}`)
     this.name = 'WordPressUpstreamError'
+  }
+}
+
+/**
+ * Raised when the requested archive page cannot exist. Deliberately NOT a WordPressUpstreamError:
+ * that one means "the origin is unusable" and maps to 503, while this means "there is no such page"
+ * and maps to 404. Answering 503 for `?page=999` would keep an unbounded set of junk URLs alive in
+ * every crawl queue that ever saw one.
+ */
+export class WordPressPageOutOfRangeError extends Error {
+  constructor(page: number, lastPage?: number) {
+    super(lastPage === undefined
+      ? `Blog archive page ${page} does not exist`
+      : `Blog archive page ${page} does not exist; the archive has ${lastPage} page(s)`)
+    this.name = 'WordPressPageOutOfRangeError'
+  }
+}
+
+/**
+ * `?page=` -> a real page number, or `null` when the value can never be one.
+ *
+ * An absent parameter is page 1; anything present must be the *canonical* decimal form of a
+ * positive safe integer. Two classes of near-miss are rejected on purpose:
+ *
+ * - aliases (`01`, `0002`, ` 2`, `+2`, `2.0`) address exactly the posts that `1` and `2` already
+ *   address, so accepting them mints extra indexable URLs for content that has one;
+ * - anything past `Number.MAX_SAFE_INTEGER` stops round-tripping through `Number`, so it cannot
+ *   name a page at all — rejected here rather than forwarded to WordPress.
+ */
+export function parseBlogPageParam(raw: unknown): number | null {
+  if (raw === undefined || raw === null) {
+    return 1
+  }
+
+  if (typeof raw === 'number') {
+    return Number.isSafeInteger(raw) && raw >= 1 ? raw : null
+  }
+
+  if (typeof raw !== 'string' || !/^\d+$/.test(raw)) {
+    return null
+  }
+
+  const page = Number(raw)
+
+  return Number.isSafeInteger(page) && page >= 1 && String(page) === raw ? page : null
+}
+
+/** True only when WordPress rejected the page number itself, rather than failing to answer. */
+export function isWordPressInvalidPageNumberError(error: unknown): boolean {
+  if (!isRecord(error)) {
+    return false
+  }
+
+  const response = error.response
+  const bodies = [error.data, isRecord(response) ? response._data : undefined]
+
+  return bodies.some(body => isRecord(body) && body.code === WORDPRESS_INVALID_PAGE_CODE)
+}
+
+/**
+ * Assembles one archive page from an upstream body plus its `x-wp-total` header. Pure, so the
+ * pagination arithmetic is testable without a WordPress origin.
+ */
+export function buildBlogArchivePage(
+  body: unknown,
+  total: unknown,
+  page: number,
+  perPage: number,
+  baseUrl: string,
+): BlogArchivePage {
+  const totalPosts = parsePostTotal(total)
+  const lastPage = totalPosts === 0 ? 1 : Math.ceil(totalPosts / perPage)
+
+  if (page > lastPage) {
+    throw new WordPressPageOutOfRangeError(page, lastPage)
+  }
+
+  return {
+    posts: parseWordPressPostList(body, baseUrl),
+    meta: {
+      current_page: page,
+      last_page: lastPage,
+      per_page: perPage,
+      total: totalPosts,
+    },
   }
 }
 
@@ -180,6 +287,47 @@ export async function fetchWordPressPosts(limit = 24): Promise<BlogPost[]> {
   })
 
   return parseWordPressPostList(body, baseUrl)
+}
+
+/**
+ * One archive page plus its pagination meta. Posts stay in WordPress' default `date desc` order so
+ * the visible "latest first" archive is unchanged; all 76 published dates are currently distinct, so
+ * that order is total and no post can straddle a page boundary. (The sitemap orders by id instead
+ * because it walks the whole corpus, where a tie would silently drop a slug.)
+ */
+export async function fetchWordPressPostsPage(
+  page: number,
+  perPage: number = BLOG_ARCHIVE_PER_PAGE,
+): Promise<BlogArchivePage> {
+  const baseUrl = wordpressBlogBaseUrl()
+
+  const response = await $fetch.raw<unknown>(`${baseUrl}/wp-json/wp/v2/posts`, {
+    query: {
+      _embed: 1,
+      page,
+      per_page: perPage,
+      status: 'publish',
+    },
+    headers: {
+      'User-Agent': WORDPRESS_USER_AGENT,
+    },
+    timeout: WORDPRESS_TIMEOUT_MS,
+  }).catch((cause: unknown) => {
+    // A page past the last one is the archive saying "no such page", not the origin failing.
+    if (isWordPressInvalidPageNumberError(cause)) {
+      throw new WordPressPageOutOfRangeError(page)
+    }
+
+    throw cause
+  })
+
+  return buildBlogArchivePage(
+    response._data,
+    response.headers.get('x-wp-total'),
+    page,
+    perPage,
+    baseUrl,
+  )
 }
 
 export async function fetchWordPressPostBySlug(slug: string): Promise<BlogPost | null> {
@@ -313,6 +461,27 @@ function requiredString(record: Record<string, unknown>, key: string): string {
   }
 
   return value
+}
+
+/**
+ * `x-wp-total` is the only thing that distinguishes "this is the last page" from "there are more".
+ * Guessing when it is missing is how the archive lost 52 posts from its link graph, so an unusable
+ * value is treated as an unusable upstream rather than silently collapsing to a single page.
+ */
+function parsePostTotal(value: unknown): number {
+  const total = typeof value === 'number'
+    ? value
+    : typeof value === 'string' && value.trim() !== ''
+      ? Number(value)
+      : Number.NaN
+
+  if (!Number.isInteger(total) || total < 0) {
+    throw new WordPressUpstreamError(
+      `expected an "x-wp-total" post count, received ${describeShape(value)}`,
+    )
+  }
+
+  return total
 }
 
 function clampPageCount(totalPages: number): number {

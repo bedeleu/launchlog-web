@@ -1,10 +1,15 @@
 import { describe, expect, test } from 'bun:test'
 import {
+  BLOG_ARCHIVE_PER_PAGE,
   WORDPRESS_MAX_PER_PAGE,
+  WordPressPageOutOfRangeError,
   WordPressUpstreamError,
   attachFeaturedImages,
+  buildBlogArchivePage,
   chunkIds,
   collectWordPressPostRefs,
+  isWordPressInvalidPageNumberError,
+  parseBlogPageParam,
   parseWordPressPostBySlug,
   parseWordPressPostList,
 } from './wordpress-blog'
@@ -276,5 +281,161 @@ describe('attachFeaturedImages', () => {
     const joined = attachFeaturedImages(refs, [{ id: 172, source_url: '' }, { id: 999 }])
 
     expect(joined.every(r => r.featuredImage === null)).toBe(true)
+  })
+})
+
+describe('parseBlogPageParam', () => {
+  test('an absent page parameter is page 1', () => {
+    expect(parseBlogPageParam(undefined)).toBe(1)
+    expect(parseBlogPageParam(null)).toBe(1)
+  })
+
+  test('accepts positive integer strings and numbers', () => {
+    expect(parseBlogPageParam('1')).toBe(1)
+    expect(parseBlogPageParam('2')).toBe(2)
+    expect(parseBlogPageParam('40')).toBe(40)
+    expect(parseBlogPageParam(3)).toBe(3)
+  })
+
+  // Every rejected value below would otherwise render page 1 under a second URL, which is the
+  // duplicate-archive problem this route exists to avoid.
+  test('rejects anything that cannot be a real page number', () => {
+    for (const value of ['', ' ', '0', '-1', '1.5', 'abc', '1abc', '01x', 'NaN', 'Infinity', '1e3', '+2', true, {}, []]) {
+      expect(parseBlogPageParam(value)).toBeNull()
+    }
+  })
+
+  // "01" and "0002" resolve to the same posts as "1" and "2". Accepting them mints a second
+  // indexable URL per page, which is the duplicate-archive problem in a different shape.
+  test('rejects zero-padded aliases of a valid page', () => {
+    expect(parseBlogPageParam('01')).toBeNull()
+    expect(parseBlogPageParam('0002')).toBeNull()
+    expect(parseBlogPageParam('001')).toBeNull()
+    expect(parseBlogPageParam('0000000002')).toBeNull()
+  })
+
+  test('accepts only the canonical representation of a page number', () => {
+    for (const value of ['1', '2', '9', '10', '40', '1000']) {
+      expect(parseBlogPageParam(value)).toBe(Number(value))
+    }
+  })
+
+  // Rejected in the parser, before any WordPress request: past MAX_SAFE_INTEGER the value stops
+  // round-tripping through Number at all, so it can never name a real page.
+  test('rejects page numbers beyond the safe integer range before any upstream call', () => {
+    expect(parseBlogPageParam(String(Number.MAX_SAFE_INTEGER + 1))).toBeNull()
+    expect(parseBlogPageParam(String(Number.MAX_SAFE_INTEGER + 2))).toBeNull()
+    expect(parseBlogPageParam(Number.MAX_SAFE_INTEGER + 1)).toBeNull()
+    expect(parseBlogPageParam('9'.repeat(50))).toBeNull()
+    expect(parseBlogPageParam('1'.repeat(400))).toBeNull()
+  })
+
+  test('still accepts the largest page number that is a safe integer', () => {
+    expect(parseBlogPageParam(String(Number.MAX_SAFE_INTEGER))).toBe(Number.MAX_SAFE_INTEGER)
+  })
+
+  test('rejects a repeated page parameter instead of picking one', () => {
+    expect(parseBlogPageParam(['1', '2'])).toBeNull()
+  })
+})
+
+describe('isWordPressInvalidPageNumberError', () => {
+  // The exact production payload: WordPress answers 400 for a page past the last one.
+  const invalidPageError = () => Object.assign(new Error('400 Bad Request'), {
+    status: 400,
+    statusCode: 400,
+    data: {
+      code: 'rest_post_invalid_page_number',
+      message: 'The page number requested is larger than the number of pages available.',
+      data: { status: 400 },
+    },
+  })
+
+  test('recognises the WordPress out-of-range page response', () => {
+    expect(isWordPressInvalidPageNumberError(invalidPageError())).toBe(true)
+  })
+
+  test('reads the code from a raw response body too', () => {
+    const error = Object.assign(new Error('400'), {
+      status: 400,
+      response: { _data: { code: 'rest_post_invalid_page_number' } },
+    })
+
+    expect(isWordPressInvalidPageNumberError(error)).toBe(true)
+  })
+
+  test('does not treat a generic upstream failure as an out-of-range page', () => {
+    for (const error of [
+      new Error('cURL error 28'),
+      Object.assign(new Error('500'), { status: 500, data: { code: 'internal_server_error' } }),
+      Object.assign(new Error('400'), { status: 400, data: { code: 'rest_forbidden' } }),
+      Object.assign(new Error('400'), { status: 400 }),
+      new WordPressUpstreamError('expected a JSON array of posts, received string'),
+      null,
+      undefined,
+      CHALLENGE_HTML,
+    ]) {
+      expect(isWordPressInvalidPageNumberError(error)).toBe(false)
+    }
+  })
+})
+
+describe('buildBlogArchivePage', () => {
+  const posts = (count: number) =>
+    Array.from({ length: count }, (_, index) => validPost({ id: 100 + index, slug: `post-${index + 1}` }))
+
+  test('exposes the pagination meta the archive needs', () => {
+    const page = buildBlogArchivePage(posts(24), '76', 1, BLOG_ARCHIVE_PER_PAGE, BASE)
+
+    expect(page.meta).toEqual({ current_page: 1, last_page: 4, per_page: 24, total: 76 })
+    expect(page.posts).toHaveLength(24)
+    expect(page.posts[0]!.slug).toBe('post-1')
+  })
+
+  test('the default page size is 24', () => {
+    expect(BLOG_ARCHIVE_PER_PAGE).toBe(24)
+  })
+
+  test('a partial last page still reports the full total', () => {
+    const page = buildBlogArchivePage(posts(4), '76', 4, BLOG_ARCHIVE_PER_PAGE, BASE)
+
+    expect(page.meta).toEqual({ current_page: 4, last_page: 4, per_page: 24, total: 76 })
+    expect(page.posts).toHaveLength(4)
+  })
+
+  test('an exact multiple does not invent a trailing empty page', () => {
+    expect(buildBlogArchivePage(posts(24), '48', 2, BLOG_ARCHIVE_PER_PAGE, BASE).meta.last_page).toBe(2)
+  })
+
+  // A published blog with zero posts is a real, indexable state; it is not an error.
+  test('an empty archive is one page, not zero', () => {
+    const page = buildBlogArchivePage([], '0', 1, BLOG_ARCHIVE_PER_PAGE, BASE)
+
+    expect(page.meta).toEqual({ current_page: 1, last_page: 1, per_page: 24, total: 0 })
+    expect(page.posts).toEqual([])
+  })
+
+  test('a page past the end is absence, not unavailability', () => {
+    expect(() => buildBlogArchivePage([], '76', 5, BLOG_ARCHIVE_PER_PAGE, BASE))
+      .toThrow(WordPressPageOutOfRangeError)
+  })
+
+  // Without a usable total we cannot tell "last page" from "more pages exist", and silently
+  // guessing is exactly how 52 posts fell out of the internal link graph in the first place.
+  test('an unusable total is an upstream failure, not a silent single page', () => {
+    for (const total of [null, '', 'abc', '-1', undefined]) {
+      expect(() => buildBlogArchivePage(posts(24), total, 1, BLOG_ARCHIVE_PER_PAGE, BASE))
+        .toThrow(WordPressUpstreamError)
+    }
+  })
+
+  test('a non-array body is still an upstream failure', () => {
+    expect(() => buildBlogArchivePage(CHALLENGE_HTML, '76', 1, BLOG_ARCHIVE_PER_PAGE, BASE))
+      .toThrow(WordPressUpstreamError)
+  })
+
+  test('an out-of-range page is not reported as an upstream failure', () => {
+    expect(() => buildBlogArchivePage([], '76', 5, BLOG_ARCHIVE_PER_PAGE, BASE))
+      .not.toThrow(WordPressUpstreamError)
   })
 })

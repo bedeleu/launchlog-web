@@ -54,10 +54,12 @@ jobs:
 
       # SSR tests need .output, so they run after the build. SSR_TESTS=required turns the
       # "no build present" skip into a failure, so they cannot silently pass by not running.
+      # Every SSR suite must be listed here: a suite left out would auto-skip in the pre-build
+      # `bun run test` step and CI would stay green while the behaviour it guards regressed.
       - name: SSR tests
         env:
           SSR_TESTS: required
-        run: bun test test/blog-ssr.test.ts
+        run: bun test test/blog-ssr.test.ts test/private-routes-ssr.test.ts
 
       - name: Directory SSR tests
         env:

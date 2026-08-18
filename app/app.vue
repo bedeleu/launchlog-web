@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { defineLink } from '@unhead/vue'
+
 const route = useRoute()
 const config = useRuntimeConfig()
 
@@ -19,11 +21,19 @@ const canonicalUrl = computed(() => {
   return `${siteUrl.value}${path}`
 })
 
-const noindexPaths = new Set([
+/**
+ * Matched as prefixes and case-insensitively, on purpose. Exact-case routing already turns a
+ * mis-cased request into a 404 and the server middleware redirects the private ones, but this is
+ * the last line: if either of those is ever bypassed, the page must still declare itself noindex
+ * rather than fall through to the indexable default. Prefix matching also covers the nested paths
+ * an exact-match set silently missed, `/checkout/success` and `/admin/listings` among them.
+ */
+const noindexPrefixes = [
   '/admin',
   '/dashboard',
   '/login',
   '/checkout',
+  '/preview',
   '/contact',
   '/cookies',
   '/dmca',
@@ -33,16 +43,17 @@ const noindexPaths = new Set([
   '/terms',
   '/seo-guide',
   '/status',
-])
+]
 
 const shouldNoindex = computed(() => {
-  return noindexPaths.has(normalizedPath.value) || normalizedPath.value.startsWith('/preview/')
+  const path = normalizedPath.value.toLowerCase()
+
+  return noindexPrefixes.some(prefix => path === prefix || path.startsWith(`${prefix}/`))
 })
 
 useSeoMeta({
   title: defaultTitle,
   description: defaultDescription,
-  keywords: defaultKeywords,
   applicationName: siteName,
   author: 'LaunchLog',
   creator: 'LaunchLog',
@@ -90,16 +101,21 @@ useHead({
       hreflang: 'x-default',
       href: canonicalUrl,
     },
-    {
+    // `image_src` is a legacy non-standard rel, so unhead 3's strict `rel` union rejects it.
+    // defineLink is the documented escape hatch. It takes a plain string rather than a ref, which
+    // is fine here: the URL is derived from runtime config and never changes after setup.
+    defineLink({
       rel: 'image_src',
-      href: ogImageUrl,
-    },
+      href: ogImageUrl.value,
+    }),
     { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
     { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/favicon-32x32.png' },
     { rel: 'icon', type: 'image/png', sizes: '16x16', href: '/favicon-16x16.png' },
     { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' },
   ],
   meta: [
+    // Moved off the useSeoMeta shorthand, which unhead 3 removed. Same rendered tag.
+    { name: 'keywords', content: defaultKeywords },
     { name: 'language', content: 'English' },
     { name: 'content-language', content: 'en' },
     { name: 'theme-color', content: '#0A0E1A' },

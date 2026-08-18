@@ -28,11 +28,70 @@ const VALID_POST = {
   content: { rendered: '<p>Body.</p>' },
 }
 
+// 30 posts at 24 per page = one full page, one partial page and an out-of-range third. That is the
+// smallest corpus that exercises every pagination boundary, including the one WordPress rejects.
+const CORPUS_SIZE = 30
+const PER_PAGE = 24
+
+const buildCorpus = (size: number) => [
+  VALID_POST,
+  ...Array.from({ length: size - 1 }, (_, index) => ({
+    ...VALID_POST,
+    id: 200 + index,
+    slug: `archived-article-${index + 1}`,
+    title: { rendered: `Archived Article ${index + 1}` },
+  })),
+]
+
+// Raised by the long-archive test so the page-number window has a gap to collapse. LaunchLog is at
+// 4 pages today and grows past the 5-page window within months, so that branch needs cover now.
+let corpusSize = CORPUS_SIZE
+
 type UpstreamMode = 'challenge' | 'empty' | 'posts'
 
 let upstreamMode: UpstreamMode = 'challenge'
 let upstream: ReturnType<typeof Bun.serve> | undefined
 let server: ReturnType<typeof Bun.spawn> | undefined
+
+function json(body: unknown, total: number): Response {
+  return new Response(JSON.stringify(body), {
+    headers: {
+      'content-type': 'application/json',
+      'x-wp-total': String(total),
+      'x-wp-totalpages': String(Math.max(1, Math.ceil(total / PER_PAGE))),
+    },
+  })
+}
+
+function canonicalsIn(html: string): string[] {
+  return [...html.matchAll(/<link[^>]+rel="canonical"[^>]*>/g)]
+    .map(match => match[0].match(/href="([^"]+)"/)?.[1] ?? '')
+}
+
+function articleSlugsIn(html: string): string[] {
+  return [...new Set([...html.matchAll(/href="\/blog\/([a-z0-9-]+)"/g)].map(match => match[1]!))]
+}
+
+function pageLinksIn(html: string): number[] {
+  return [...new Set([...html.matchAll(/<a[^>]+href="\/blog\?page=(\d+)"/g)].map(match => Number(match[1])))]
+    .sort((a, b) => a - b)
+}
+
+function titleIn(html: string): string {
+  return html.match(/<title[^>]*>([^<]*)<\/title>/)?.[1] ?? ''
+}
+
+function metaContentIn(html: string, property: string): string {
+  const pattern = new RegExp(`<meta[^>]+(?:property|name)="${property}"[^>]*>`)
+
+  return html.match(pattern)?.[0].match(/content="([^"]*)"/)?.[1] ?? ''
+}
+
+function itemListPositionsIn(html: string): number[] {
+  const block = html.match(/"@type":"ItemList".*?"itemListElement":\[(.*?)\]/)?.[1] ?? ''
+
+  return [...block.matchAll(/"position":(\d+)/g)].map(match => Number(match[1]))
+}
 
 async function waitForServer(timeoutMs = 60_000): Promise<void> {
   const deadline = Date.now() + timeoutMs
@@ -52,21 +111,43 @@ async function waitForServer(timeoutMs = 60_000): Promise<void> {
   throw new Error('Nitro server did not become ready in time')
 }
 
-describe.skipIf(!isBuilt)('/blog SSR behaviour under upstream failure', () => {
+describe.skipIf(!isBuilt)('/blog SSR', () => {
   beforeAll(async () => {
     upstream = Bun.serve({
       port: UPSTREAM_PORT,
-      fetch() {
+      fetch(request) {
         if (upstreamMode === 'challenge') {
           // The exact production failure: an anti-bot page served with HTTP 200 text/html.
           return new Response(CHALLENGE_BODY, { headers: { 'content-type': 'text/html' } })
         }
 
-        const body = upstreamMode === 'empty' ? [] : [VALID_POST]
+        const query = new URL(request.url).searchParams
+        const posts = upstreamMode === 'empty' ? [] : buildCorpus(corpusSize)
+        const slug = query.get('slug')
 
-        return new Response(JSON.stringify(body), {
-          headers: { 'content-type': 'application/json', 'x-wp-totalpages': '1' },
-        })
+        // Single-post lookup: matched by slug, exactly as WordPress does, and unrelated to paging.
+        if (slug !== null) {
+          return json(posts.filter(post => post.slug === slug), posts.length)
+        }
+
+        const perPage = Number(query.get('per_page') ?? PER_PAGE)
+        const page = Number(query.get('page') ?? 1)
+        const lastPage = posts.length === 0 ? 1 : Math.ceil(posts.length / perPage)
+
+        // WordPress answers 400 for a page past the last one. The archive has to read that as
+        // absence, not as the origin being unavailable.
+        if (page > lastPage) {
+          return new Response(
+            JSON.stringify({
+              code: 'rest_post_invalid_page_number',
+              message: 'The page number requested is larger than the number of pages available.',
+              data: { status: 400 },
+            }),
+            { status: 400, headers: { 'content-type': 'application/json' } },
+          )
+        }
+
+        return json(posts.slice((page - 1) * perPage, page * perPage), posts.length)
       },
     })
 
@@ -90,75 +171,321 @@ describe.skipIf(!isBuilt)('/blog SSR behaviour under upstream failure', () => {
     upstream?.stop(true)
   })
 
-  test('an upstream challenge makes /blog answer 503 instead of a false empty state', async () => {
-    upstreamMode = 'challenge'
+  describe('behaviour under upstream failure', () => {
+    test('an upstream challenge makes /blog answer 503 instead of a false empty state', async () => {
+      upstreamMode = 'challenge'
 
-    const response = await fetch(`${BASE}/blog`)
-    const body = await response.text()
+      const response = await fetch(`${BASE}/blog`)
+      const body = await response.text()
 
-    expect(response.status).toBe(503)
-    expect(body).not.toContain('No articles published yet')
+      expect(response.status).toBe(503)
+      expect(body).not.toContain('No articles published yet')
+    })
+
+    test('an upstream challenge never marks /blog as indexable-empty', async () => {
+      upstreamMode = 'challenge'
+
+      const response = await fetch(`${BASE}/blog`)
+
+      expect(response.status).toBe(503)
+      expect(response.headers.get('x-robots-tag')).toBeNull()
+    })
+
+    test('a successful empty response is the only way to show the empty state', async () => {
+      upstreamMode = 'empty'
+
+      const response = await fetch(`${BASE}/blog`)
+      const body = await response.text()
+
+      expect(response.status).toBe(200)
+      expect(body).toContain('No articles published yet')
+    })
+
+    test('a successful response with posts renders them', async () => {
+      upstreamMode = 'posts'
+
+      const response = await fetch(`${BASE}/blog`)
+      const body = await response.text()
+
+      expect(response.status).toBe(200)
+      expect(body).toContain('/blog/a-published-article')
+      expect(body).not.toContain('No articles published yet')
+    })
+
+    test('an upstream challenge makes a real post URL answer 503 without a deindex directive', async () => {
+      upstreamMode = 'challenge'
+
+      const response = await fetch(`${BASE}/blog/a-published-article`)
+      const body = await response.text()
+
+      expect(response.status).toBe(503)
+      expect(response.headers.get('x-robots-tag')).toBeNull()
+      expect(body).not.toContain('/blog/undefined')
+      expect(body).not.toContain('Untitled')
+    })
+
+    test('a genuinely missing post still answers 404 with a deindex directive', async () => {
+      upstreamMode = 'empty'
+
+      const response = await fetch(`${BASE}/blog/no-such-post`)
+
+      expect(response.status).toBe(404)
+      expect(response.headers.get('x-robots-tag')).toBe('noindex, nofollow')
+    })
+
+    test('the upstream body never reaches a client response', async () => {
+      upstreamMode = 'challenge'
+
+      for (const path of ['/blog', '/blog/a-published-article', '/api/blog/posts']) {
+        const body = await fetch(`${BASE}${path}`).then(response => response.text())
+
+        expect(body).not.toContain('One moment')
+        expect(body).not.toContain('checking')
+      }
+    })
   })
 
-  test('an upstream challenge never marks /blog as indexable-empty', async () => {
-    upstreamMode = 'challenge'
+  describe('archive pagination', () => {
+    test('page 1 renders a full page of posts and a crawlable link to page 2', async () => {
+      upstreamMode = 'posts'
 
-    const response = await fetch(`${BASE}/blog`)
+      const html = await fetch(`${BASE}/blog`).then(response => response.text())
 
-    expect(response.status).toBe(503)
-    expect(response.headers.get('x-robots-tag')).toBeNull()
-  })
+      expect(articleSlugsIn(html)).toHaveLength(PER_PAGE)
+      expect(pageLinksIn(html)).toContain(2)
+    })
 
-  test('a successful empty response is the only way to show the empty state', async () => {
-    upstreamMode = 'empty'
+    test('page 2 renders the remaining posts and links back', async () => {
+      upstreamMode = 'posts'
 
-    const response = await fetch(`${BASE}/blog`)
-    const body = await response.text()
+      const response = await fetch(`${BASE}/blog?page=2`)
+      const html = await response.text()
 
-    expect(response.status).toBe(200)
-    expect(body).toContain('No articles published yet')
-  })
+      expect(response.status).toBe(200)
+      expect(articleSlugsIn(html)).toHaveLength(CORPUS_SIZE - PER_PAGE)
+      // Page 1 is linked as /blog, never as ?page=1, so the archive has one first-page URL.
+      expect(html).toMatch(/<a[^>]+href="\/blog"/)
+      expect(pageLinksIn(html)).not.toContain(1)
+    })
 
-  test('a successful response with posts renders them', async () => {
-    upstreamMode = 'posts'
+    // The regression this unit exists for: before pagination, 52 of 76 published posts had no
+    // internal link path at all and were reachable only from the sitemap.
+    test('every published post is reachable by following archive links alone', async () => {
+      upstreamMode = 'posts'
 
-    const response = await fetch(`${BASE}/blog`)
-    const body = await response.text()
+      const seen = new Set<string>()
+      const visited = new Set<string>()
+      const queue = ['/blog']
 
-    expect(response.status).toBe(200)
-    expect(body).toContain('/blog/a-published-article')
-    expect(body).not.toContain('No articles published yet')
-  })
+      while (queue.length > 0) {
+        const path = queue.shift()!
+        if (visited.has(path)) continue
+        visited.add(path)
 
-  test('an upstream challenge makes a real post URL answer 503 without a deindex directive', async () => {
-    upstreamMode = 'challenge'
+        const html = await fetch(`${BASE}${path}`).then(response => response.text())
+        articleSlugsIn(html).forEach(slug => seen.add(slug))
+        pageLinksIn(html).forEach((page) => {
+          const next = page === 1 ? '/blog' : `/blog?page=${page}`
+          if (!visited.has(next)) queue.push(next)
+        })
+      }
 
-    const response = await fetch(`${BASE}/blog/a-published-article`)
-    const body = await response.text()
+      expect(seen.size).toBe(CORPUS_SIZE)
+    })
 
-    expect(response.status).toBe(503)
-    expect(response.headers.get('x-robots-tag')).toBeNull()
-    expect(body).not.toContain('/blog/undefined')
-    expect(body).not.toContain('Untitled')
-  })
+    test('pagination controls are real anchors present in the server-rendered HTML', async () => {
+      upstreamMode = 'posts'
 
-  test('a genuinely missing post still answers 404 with a deindex directive', async () => {
-    upstreamMode = 'empty'
+      const html = await fetch(`${BASE}/blog`).then(response => response.text())
 
-    const response = await fetch(`${BASE}/blog/no-such-post`)
+      expect(html).toMatch(/<a[^>]+href="\/blog\?page=2"/)
+    })
 
-    expect(response.status).toBe(404)
-    expect(response.headers.get('x-robots-tag')).toBe('noindex, nofollow')
-  })
+    // Vue Router marks a link active on path alone, so every `/blog?page=N` link is "exact active"
+    // while on /blog and RouterLink stamps aria-current="page" on all of them. A screen reader
+    // would then announce every page in the pagination as the current one.
+    test('only the current page is marked aria-current, not every page link', async () => {
+      upstreamMode = 'posts'
 
-  test('the upstream body never reaches a client response', async () => {
-    upstreamMode = 'challenge'
+      const html = await fetch(`${BASE}/blog`).then(response => response.text())
+      const nav = html.match(/<nav[^>]+aria-label="Blog archive pagination"[\s\S]*?<\/nav>/)?.[0] ?? ''
 
-    for (const path of ['/blog', '/blog/a-published-article', '/api/blog/posts']) {
-      const body = await fetch(`${BASE}${path}`).then(response => response.text())
+      expect(nav).not.toBe('')
+      expect([...nav.matchAll(/aria-current="page"/g)]).toHaveLength(1)
+    })
 
-      expect(body).not.toContain('One moment')
-      expect(body).not.toContain('checking')
-    }
+    test('page 1 emits exactly one canonical, pointing at /blog', async () => {
+      upstreamMode = 'posts'
+
+      const canonicals = canonicalsIn(await fetch(`${BASE}/blog`).then(response => response.text()))
+
+      expect(canonicals).toEqual(['https://launchlog.ai/blog'])
+    })
+
+    test('?page=1 canonicalises to /blog rather than to itself', async () => {
+      upstreamMode = 'posts'
+
+      const canonicals = canonicalsIn(await fetch(`${BASE}/blog?page=1`).then(response => response.text()))
+
+      expect(canonicals).toEqual(['https://launchlog.ai/blog'])
+    })
+
+    // Cross-canonicalising every page to page 1 tells search engines the deeper pages are
+    // duplicates, which would undo the crawl path this unit adds.
+    test('page 2 self-canonicalises to its own URL', async () => {
+      upstreamMode = 'posts'
+
+      const canonicals = canonicalsIn(await fetch(`${BASE}/blog?page=2`).then(response => response.text()))
+
+      expect(canonicals).toEqual(['https://launchlog.ai/blog?page=2'])
+    })
+
+    test('hreflang alternates follow the canonical instead of pinning every page to /blog', async () => {
+      upstreamMode = 'posts'
+
+      const html = await fetch(`${BASE}/blog?page=2`).then(response => response.text())
+      const alternates = [...html.matchAll(/<link[^>]+rel="alternate"[^>]*>/g)]
+        .map(match => match[0].match(/href="([^"]+)"/)?.[1] ?? '')
+
+      expect(alternates.length).toBeGreaterThan(0)
+      expect(alternates.every(href => href === 'https://launchlog.ai/blog?page=2')).toBe(true)
+    })
+
+    test('page 2 has a differentiated title, og:title and og:url', async () => {
+      upstreamMode = 'posts'
+
+      const first = await fetch(`${BASE}/blog`).then(response => response.text())
+      const second = await fetch(`${BASE}/blog?page=2`).then(response => response.text())
+
+      expect(titleIn(second)).not.toBe(titleIn(first))
+      expect(titleIn(second)).toContain('Page 2')
+      expect(metaContentIn(second, 'og:title')).not.toBe(metaContentIn(first, 'og:title'))
+      expect(metaContentIn(second, 'og:url')).toBe('https://launchlog.ai/blog?page=2')
+    })
+
+    test('ItemList holds only the current page and continues its positions', async () => {
+      upstreamMode = 'posts'
+
+      const first = itemListPositionsIn(await fetch(`${BASE}/blog`).then(response => response.text()))
+      const second = itemListPositionsIn(await fetch(`${BASE}/blog?page=2`).then(response => response.text()))
+
+      expect(first).toEqual(Array.from({ length: PER_PAGE }, (_, index) => index + 1))
+      expect(second).toEqual(
+        Array.from({ length: CORPUS_SIZE - PER_PAGE }, (_, index) => PER_PAGE + index + 1),
+      )
+    })
+
+    test('a long archive collapses the middle and still links the first and last pages', async () => {
+      upstreamMode = 'posts'
+      corpusSize = 240 // 10 pages
+
+      try {
+        const html = await fetch(`${BASE}/blog?page=5`).then(response => response.text())
+        const nav = html.match(/<nav[^>]+aria-label="Blog archive pagination"[\s\S]*?<\/nav>/)?.[0] ?? ''
+
+        expect(nav).toContain('…')
+        expect(pageLinksIn(html)).toContain(10)
+        expect(html).toMatch(/<a[^>]+href="\/blog"/)
+        expect([...nav.matchAll(/aria-current="page"/g)]).toHaveLength(1)
+      }
+      finally {
+        corpusSize = CORPUS_SIZE
+      }
+    })
+
+    test('a page past the last one is 404 with a deindex directive, not an empty 200', async () => {
+      upstreamMode = 'posts'
+
+      const response = await fetch(`${BASE}/blog?page=3`)
+      const html = await response.text()
+
+      expect(response.status).toBe(404)
+      expect(response.headers.get('x-robots-tag')).toBe('noindex, nofollow')
+      expect(html).not.toContain('No articles published yet')
+    })
+
+    test('a malformed page parameter is 404 with a deindex directive', async () => {
+      upstreamMode = 'posts'
+
+      for (const value of ['abc', '0', '-1', '1.5', '']) {
+        const response = await fetch(`${BASE}/blog?page=${value}`)
+
+        expect(response.status).toBe(404)
+        expect(response.headers.get('x-robots-tag')).toBe('noindex, nofollow')
+      }
+    })
+
+    // Absence and unavailability must not collapse into each other on the paged route either.
+    test('an upstream failure on a deeper page is still 503, never 404', async () => {
+      upstreamMode = 'challenge'
+
+      const response = await fetch(`${BASE}/blog?page=2`)
+      const html = await response.text()
+
+      expect(response.status).toBe(503)
+      expect(response.headers.get('x-robots-tag')).toBeNull()
+      expect(html).not.toContain('Untitled')
+      expect(html).not.toContain('/blog/undefined')
+    })
+
+    // Client-side navigation re-runs only the API request, so the endpoint alone decides whether the
+    // archive shows 404 or 503 after a click. These lock that contract independently of the page.
+    test('the api route answers 503 for a deeper page when the upstream fails', async () => {
+      upstreamMode = 'challenge'
+
+      const response = await fetch(`${BASE}/api/blog/posts?page=2`)
+
+      expect(response.status).toBe(503)
+      expect(await response.text()).not.toContain('checking')
+    })
+
+    test('the api route answers 404 for a page past the last one', async () => {
+      upstreamMode = 'posts'
+
+      expect((await fetch(`${BASE}/api/blog/posts?page=3`)).status).toBe(404)
+      expect((await fetch(`${BASE}/api/blog/posts?page=99`)).status).toBe(404)
+    })
+
+    // A zero-padded page renders identical posts under a second URL.
+    test('a zero-padded page alias is 404 with a deindex directive', async () => {
+      upstreamMode = 'posts'
+
+      for (const value of ['01', '0002', '001']) {
+        const response = await fetch(`${BASE}/blog?page=${value}`)
+
+        expect(response.status).toBe(404)
+        expect(response.headers.get('x-robots-tag')).toBe('noindex, nofollow')
+      }
+
+      expect((await fetch(`${BASE}/api/blog/posts?page=01`)).status).toBe(404)
+    })
+
+    test('an unsafe integer page is rejected without reaching WordPress', async () => {
+      upstreamMode = 'posts'
+
+      for (const value of [String(Number.MAX_SAFE_INTEGER + 1), '9'.repeat(50)]) {
+        const response = await fetch(`${BASE}/blog?page=${value}`)
+
+        expect(response.status).toBe(404)
+        expect(response.headers.get('x-robots-tag')).toBe('noindex, nofollow')
+      }
+    })
+
+    test('the api route reports pagination meta alongside the posts', async () => {
+      upstreamMode = 'posts'
+
+      const body = await fetch(`${BASE}/api/blog/posts?page=2`).then(response => response.json()) as {
+        posts: unknown[]
+        meta: Record<string, number>
+      }
+
+      expect(body.meta).toEqual({
+        current_page: 2,
+        last_page: 2,
+        per_page: PER_PAGE,
+        total: CORPUS_SIZE,
+      })
+      expect(body.posts).toHaveLength(CORPUS_SIZE - PER_PAGE)
+    })
   })
 })
