@@ -29,7 +29,7 @@ const mark = computed(() => {
     />
     <div class="absolute inset-0 opacity-30 [background-image:linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] [background-size:28px_28px]" />
 
-    <div class="relative flex max-w-[80%] flex-col items-center gap-2.5">
+    <div class="relative flex w-full max-w-[80%] min-w-0 flex-col items-center gap-2.5">
       <AppSpinner v-if="generating" size="size-6" label="Generating screenshot" />
       <span
         v-else
@@ -38,8 +38,8 @@ const mark = computed(() => {
       >
         {{ mark }}
       </span>
-      <div class="min-w-0">
-        <p class="truncate text-sm font-medium text-brand-fg/90">
+      <div class="w-full min-w-0">
+        <p class="line-clamp-2 break-words text-sm font-medium leading-5 text-brand-fg/90">
           {{ name }}
         </p>
         <p class="mt-0.5 text-[11px] text-brand-muted">

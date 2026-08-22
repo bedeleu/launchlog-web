@@ -1,16 +1,19 @@
 <script setup lang="ts">
 import { useIntervalFn } from '@vueuse/core'
+import { CheckCircle2 } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { PlanTier } from '~/composables/usePlans'
 import type { Preview } from '~/composables/usePreviews'
 import { toErrorLike } from '~/utils/error-like'
+import { resolveCheckoutEmail } from '~/utils/checkout-customer'
 
 const route = useRoute()
 const token = route.params.token as string
 const { getPreview, updatePreview, recapturePreview } = usePreviews()
 const { createSession } = useBilling()
+const { user, waitForAuthReady } = useAuth()
 const { findPlan } = usePlans()
 const intake = useIntakeStore()
 
@@ -51,6 +54,9 @@ const showEdit = ref(false)
 const account = reactive({
   email: draft.value?.email ?? preview.value?.email ?? '',
 })
+const authReady = ref(false)
+const authenticatedEmail = computed(() => authReady.value ? user.value?.email?.trim() || null : null)
+const isAuthenticatedBuyer = computed(() => authenticatedEmail.value !== null)
 
 // Featured is the default selection — the most valuable placement (D-058).
 const selectedTier = ref<PlanTier>(draft.value?.tier ?? 'featured')
@@ -112,9 +118,14 @@ const recapture = async () => {
 
 onMounted(() => {
   if (isGenerating.value) startPolling()
+
+  void waitForAuthReady().finally(() => {
+    authReady.value = true
+    if (user.value?.email) account.email = user.value.email
+  })
 })
 
-const emailValue = computed(() => account.email.trim())
+const emailValue = computed(() => resolveCheckoutEmail(authenticatedEmail.value, account.email))
 const emailLooksValid = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue.value))
 const attemptedPublish = ref(false)
 const emailShowsInvalid = computed(() => attemptedPublish.value && !emailLooksValid.value)
@@ -132,7 +143,8 @@ const checkoutError = ref<string | null>(null)
 // or failed screenshot never blocks it — the API decides whether the remaining
 // data can be published, and the screenshot can be recaptured afterwards.
 const canPay = computed(() =>
-  !isGenerating.value
+  authReady.value
+  && !isGenerating.value
   && emailLooksValid.value
   && !checkoutPending.value,
 )
@@ -160,6 +172,9 @@ const payAndPublish = async () => {
       tier,
     })
 
+    // The resolved address always travels to useBilling; useBilling alone
+    // decides what reaches the wire, so the page's view of "signed in" and the
+    // token actually sent can never disagree and strand the buyer.
     const session = await createSession({
       preview_token: token,
       tier,
@@ -200,7 +215,7 @@ watch(
 </script>
 
 <template>
-  <main class="mx-auto max-w-6xl px-6 py-12 lg:py-16">
+  <main class="mx-auto max-w-[90rem] px-6 py-12 lg:py-16">
     <!-- Not found / expired -->
     <div v-if="error || !preview" class="py-16 text-center">
       <h1 class="text-3xl font-bold text-brand-fg">
@@ -239,7 +254,7 @@ watch(
           <AppSpinner class="shrink-0" />
           <p>Generating your preview — capturing the screenshot and details…</p>
         </div>
-        <div class="grid gap-10 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start">
+        <div class="grid gap-10 xl:grid-cols-[minmax(0,1fr)_400px] xl:items-start">
           <!-- left: browser-framed screenshot skeleton -->
           <div class="min-w-0">
             <div class="overflow-hidden rounded-2xl border border-brand-border bg-[#0c1120]">
@@ -269,9 +284,9 @@ watch(
 
       <!-- ORDER PAGE — live preview left, order form right. Shown for ready AND
            failed previews: a missing screenshot never blocks checkout. -->
-      <div v-else class="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start">
+      <div v-else class="mt-8 grid gap-10 xl:grid-cols-[minmax(0,1fr)_400px] xl:items-start">
         <!-- LEFT: the WOW live preview, sticky; plan switches are instant (v-show in the component) -->
-        <div class="min-w-0 lg:sticky lg:top-8">
+        <div class="min-w-0 xl:sticky xl:top-8">
           <IntakePlacementPreview
             class="min-w-0"
             :preview="preview"
@@ -369,12 +384,40 @@ watch(
             <IntakePlanSelector v-model="selectedTier" :disabled="checkoutPending" />
           </section>
 
-          <!-- 02 — Email -->
+          <!-- 02 — Publishing identity -->
           <section class="space-y-4">
             <h2 class="text-sm font-semibold uppercase tracking-[0.2em] text-brand-muted">
-              02 — Where should we send your listing?
+              {{ isAuthenticatedBuyer ? '02 — Publishing account' : '02 — Where should we send your listing?' }}
             </h2>
-            <div class="space-y-1.5">
+            <div
+              v-if="!authReady"
+              class="flex min-h-20 items-center gap-3 rounded-xl border border-brand-border bg-white/[0.02] px-4 py-3"
+              aria-busy="true"
+              aria-live="polite"
+            >
+              <AppSpinner class="shrink-0" label="Checking your LaunchLog account" />
+              <p class="text-sm text-brand-muted">
+                Checking your LaunchLog account…
+              </p>
+            </div>
+            <div
+              v-else-if="isAuthenticatedBuyer"
+              class="flex items-start gap-3 rounded-xl border border-white/15 bg-white/[0.035] px-4 py-3.5"
+            >
+              <CheckCircle2 class="mt-0.5 size-5 shrink-0 text-brand-success" aria-hidden="true" />
+              <div class="min-w-0">
+                <p class="text-xs font-medium uppercase tracking-[0.14em] text-brand-muted">
+                  Publishing as
+                </p>
+                <p class="mt-1 break-words text-sm font-semibold text-brand-fg">
+                  {{ authenticatedEmail }}
+                </p>
+                <p class="mt-1 text-xs leading-5 text-brand-muted">
+                  This listing will be added directly to your signed-in account.
+                </p>
+              </div>
+            </div>
+            <div v-else class="space-y-1.5">
               <div class="flex min-h-5 items-center justify-between gap-3">
                 <Label for="a-email">Email address</Label>
                 <span

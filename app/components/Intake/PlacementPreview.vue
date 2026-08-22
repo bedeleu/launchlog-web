@@ -12,6 +12,8 @@ const props = defineProps<{
 }>()
 
 const isFeatured = computed(() => props.tier === 'featured')
+const displayTitle = computed(() => props.title || props.preview.domain || 'Your product')
+const displayTagline = computed(() => props.tagline || 'Your one-line pitch goes here')
 
 /**
  * Three illustrative rows, not a full 30-slot production page: the buyer only
@@ -53,8 +55,8 @@ const contextCards = computed<ListingCard[]>(() => contextSlugs.value.map((slug,
 
 const buyerCard = computed<ListingCard>(() => ({
   slug: 'preview-buyer',
-  name: props.title || props.preview.domain || 'Your product',
-  tagline: props.tagline || 'Your one-line pitch goes here',
+  name: displayTitle.value,
+  tagline: displayTagline.value,
   url: `https://${props.preview.domain}`,
   screenshot_url: props.preview.screenshot_url ?? null,
   tier: props.tier as ListingTier,
@@ -112,6 +114,33 @@ const previewListings = computed<ListingCard[]>(() => [buyerCard.value, ...conte
         />
       </div>
     </div>
+
+    <dl class="mt-4 grid gap-x-8 gap-y-4 border-y border-white/10 py-4 sm:grid-cols-2">
+      <div class="min-w-0">
+        <dt class="text-xs font-medium text-brand-muted">
+          Listing title
+        </dt>
+        <dd class="mt-1 break-words text-base font-semibold leading-6 text-white">
+          {{ displayTitle }}
+        </dd>
+      </div>
+      <div class="min-w-0">
+        <dt class="text-xs font-medium text-brand-muted">
+          Website
+        </dt>
+        <dd class="mt-1 break-all font-mono text-sm leading-6 text-white/90">
+          {{ preview.domain }}
+        </dd>
+      </div>
+      <div class="min-w-0 sm:col-span-2">
+        <dt class="text-xs font-medium text-brand-muted">
+          Short description
+        </dt>
+        <dd class="mt-1 break-words text-sm leading-6 text-white/80">
+          {{ displayTagline }}
+        </dd>
+      </div>
+    </dl>
 
     <p class="mt-3 text-xs text-brand-muted">
       <template v-if="isFeatured">

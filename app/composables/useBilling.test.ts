@@ -18,6 +18,7 @@ beforeEach(() => {
   calls = []
   respond = () => ({ data: {} })
   globals.useRuntimeConfig = () => ({ public: { apiUrl: API } })
+  globals.useAuth = () => ({ getIdToken: () => Promise.resolve(null) })
   globals.$fetch = (url: string, options?: Record<string, unknown>) => {
     calls.push({ url, options })
     return Promise.resolve(respond(url))
@@ -27,6 +28,7 @@ beforeEach(() => {
 afterEach(() => {
   delete globals.$fetch
   delete globals.useRuntimeConfig
+  delete globals.useAuth
 })
 
 describe('createSession', () => {
@@ -61,6 +63,26 @@ describe('createSession', () => {
       tier: 'basic',
       email: 'maker@example.com',
     })).rejects.toThrow('checkout unavailable')
+  })
+
+  test('uses verified Firebase identity instead of sending an editable email when signed in', async () => {
+    globals.useAuth = () => ({ getIdToken: () => Promise.resolve('firebase-id-token') })
+    respond = () => ({ data: { session_id: 'cs_test_auth', url: 'https://checkout.stripe.com/c/pay/cs_test_auth' } })
+
+    await useBilling().createSession({
+      preview_token: 'a'.repeat(64),
+      tier: 'basic',
+      email: 'typed-different@example.com',
+    })
+
+    expect(calls).toHaveLength(1)
+    expect(calls[0]!.options?.headers).toEqual({
+      Authorization: 'Bearer firebase-id-token',
+    })
+    expect(calls[0]!.options?.body).toEqual({
+      preview_token: 'a'.repeat(64),
+      tier: 'basic',
+    })
   })
 })
 

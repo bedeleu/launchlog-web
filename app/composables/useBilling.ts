@@ -13,6 +13,12 @@ export type ConversionStatus = {
 export type CreateSessionInput = {
   preview_token: string
   tier: PlanTier
+  /**
+   * Always supplied by the caller. Whether it reaches the wire is decided here
+   * and only here: a signed-in buyer's request carries the Firebase token and
+   * no email, so the API resolves identity server-side and the body can never
+   * name a different account.
+   */
   email: string
 }
 
@@ -24,17 +30,27 @@ export type CreateSessionInput = {
  */
 export const useBilling = () => {
   const config = useRuntimeConfig()
+  const { getIdToken } = useAuth()
   // apiUrl is host-only; routes/api.php is mounted under /api (D-051).
   const base = `${config.public.apiUrl}/api/v1`
 
   const createSession = async (input: CreateSessionInput): Promise<CheckoutSession> => {
+    const idToken = await getIdToken()
+    const body = idToken
+      ? {
+          preview_token: input.preview_token,
+          tier: input.tier,
+        }
+      : {
+          preview_token: input.preview_token,
+          tier: input.tier,
+          email: input.email,
+        }
+
     const { data } = await $fetch<{ data: CheckoutSession }>(`${base}/checkout/session`, {
       method: 'POST',
-      body: {
-        preview_token: input.preview_token,
-        tier: input.tier,
-        email: input.email,
-      },
+      body,
+      headers: idToken ? { Authorization: `Bearer ${idToken}` } : undefined,
     })
     return data
   }
