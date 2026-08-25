@@ -53,6 +53,10 @@ export default defineNuxtConfig({
       supportEmail: process.env.NUXT_PUBLIC_SUPPORT_EMAIL || '',
       dmcaEmail: process.env.NUXT_PUBLIC_DMCA_EMAIL || '',
       statusPageUrl: process.env.NUXT_PUBLIC_STATUS_PAGE_URL || '',
+      // One accountant-approved sentence on how tax is treated, rendered
+      // identically on Pricing, Help and Terms. Empty renders nothing: a
+      // fallback here would be the application guessing at tax treatment.
+      taxNotice: process.env.NUXT_PUBLIC_TAX_NOTICE || '',
       firebase: {
         // 6 fields — no measurementId (D-032 — Plausible, not GA4).
         // storageBucket/messagingSenderId/appId kept for future App Check + headers, harmless if unused.

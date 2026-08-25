@@ -4,7 +4,7 @@ const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
 const pageUrl = `${siteUrl}/terms`
 // One source of truth for the date: the visible line and the JSON-LD dateModified drifted
 // apart before, so the human-readable form is derived rather than written twice.
-const updatedIso = '2026-08-16'
+const updatedIso = '2026-08-25'
 const updated = new Date(`${updatedIso}T00:00:00Z`).toLocaleDateString('en-US', {
   year: 'numeric',
   month: 'long',
@@ -14,6 +14,7 @@ const updated = new Date(`${updatedIso}T00:00:00Z`).toLocaleDateString('en-US', 
 const legalName = config.public.legalName.trim()
 const legalEmail = config.public.legalEmail.trim()
 const supportEmail = config.public.supportEmail.trim()
+const taxNotice = config.public.taxNotice.trim()
 const description
   = 'The terms for using LaunchLog, including accounts, listings, acceptable use, annual subscriptions, manual refund requests and moderation.'
 
@@ -78,6 +79,7 @@ const sections = [
         'Prices may change; any change applies from your next renewal, not retroactively.',
         'You authorise us and Stripe to charge your payment method for the plan you select and its renewals.',
       ] },
+      ...(taxNotice ? [{ type: 'p', text: taxNotice }] : []),
     ],
   },
   {

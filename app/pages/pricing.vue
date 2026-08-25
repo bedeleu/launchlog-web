@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ArrowRight, Bot, Check, FileJson2, Image, Minus, Search, ShieldCheck, Sparkles, Zap } from '@lucide/vue'
+import { ArrowRight, Bot, Check, FileJson2, Image, Minus, Receipt, Search, ShieldCheck, Sparkles, Zap } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 
 const config = useRuntimeConfig()
 const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
 const ogImageUrl = `${siteUrl}/og-image.jpg`
+const taxNotice = config.public.taxNotice.trim()
 
 useSeoMeta({
   title: 'Pricing | LaunchLog',
@@ -155,6 +156,15 @@ useFaqSchema(faqs.map(f => ({ q: f.question, a: f.answer })))
             </div>
             <p class="mt-2 text-brand-muted">
               Annual packages, no hidden fees, easy refund window.
+            </p>
+          </div>
+          <div v-if="taxNotice" class="rounded-xl border border-brand-border bg-white/[0.025] p-4">
+            <div class="flex items-center gap-2 font-semibold text-brand-fg">
+              <Receipt class="size-4 text-brand-muted" />
+              Tax
+            </div>
+            <p class="mt-2 text-brand-muted">
+              {{ taxNotice }}
             </p>
           </div>
         </div>

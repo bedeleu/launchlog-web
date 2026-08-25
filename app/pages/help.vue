@@ -5,6 +5,7 @@ const pageUrl = `${siteUrl}/help`
 const description
   = 'Answers to common questions about LaunchLog listings, private previews, pricing, billing, discovery and account access.'
 const supportEmail = config.public.supportEmail.trim()
+const taxNotice = config.public.taxNotice.trim()
 const legalEmail = config.public.legalEmail.trim()
 
 interface Faq { q: string, a: string }
@@ -39,6 +40,7 @@ const categories: Category[] = [
     faqs: [
       { q: 'How much does it cost?', a: 'Standard is $24.99/year and Featured is $99/year. Both plans are annual and in USD.' },
       { q: 'Is billing monthly or annual?', a: 'Annual only. Plans renew automatically each year unless you cancel before the renewal date.' },
+      ...(taxNotice ? [{ q: 'Is tax added to the price?', a: taxNotice }] : []),
       { q: 'Do you offer refunds?', a: supportEmail ? `LaunchLog has a 7-day money-back guarantee for the initial payment. Requests are reviewed and processed manually in Stripe; email ${supportEmail} within 7 days of purchase.` : 'LaunchLog has a 7-day money-back guarantee for the initial payment. Requests are reviewed and processed manually in Stripe. A public request mailbox has not yet been configured; check the Contact page for current channels.' },
       { q: 'How do I cancel?', a: 'Use your billing settings to manage or cancel the subscription. The listing remains published while Stripe reports the subscription active and is archived when Stripe reports it canceled.' },
     ],
