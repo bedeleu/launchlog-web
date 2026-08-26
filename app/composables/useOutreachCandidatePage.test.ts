@@ -2664,7 +2664,7 @@ describe('disposal and privacy cleanup', () => {
   })
 
   test('wipe contact, source, draft, suppression, error, confirmation, and Blob sentinels', async () => {
-    const piiCandidate = candidate({
+    const piiCandidate = approved({
       prospect: {
         ...candidate().prospect,
         company_name: 'PII_COMPANY_SENTINEL',
