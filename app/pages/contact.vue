@@ -187,7 +187,7 @@ useHead({
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-brand-accent">Send a request</p>
             <h2 class="mt-2 text-2xl font-semibold text-white">How can we help?</h2>
           </div>
-          <span class="rounded-full border border-brand-border bg-black/20 px-3 py-1 font-mono text-[11px] text-brand-muted">Human-reviewed</span>
+          <span class="rounded-full border border-brand-border bg-black/20 px-3 py-1 font-mono text-[11px] text-brand-muted">Manual claim review</span>
         </div>
 
         <fieldset class="mt-7">
