@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
+import { effectScope, isReactive, onScopeDispose as vueOnScopeDispose, watch } from 'vue'
 
 type CampaignStatus = 'draft' | 'active' | 'archived'
 type PersistedStatus = 'draft' | 'ready_for_review' | 'approved' | 'exported'
@@ -238,8 +239,9 @@ interface CandidatePageModule {
     setTimeout: (callback: () => void, delay: number) => number
     clearTimeout: (handle: number) => void
     createAbortController: () => AbortController
+    createState?: (initial: ControllerState) => ControllerState
   }) => Controller
-  useOutreachCandidatePage: (publicId: string) => unknown
+  useOutreachCandidatePage: (publicId: string) => Controller
 }
 
 interface ApiCall {
@@ -419,6 +421,71 @@ function candidate(overrides: Partial<Candidate> = {}): Candidate {
   return { ...base, ...overrides }
 }
 
+function richCandidate(overrides: Partial<Candidate> = {}): Candidate {
+  return candidate({
+    failure: { code: 'preview_fetch_failed', message: 'Preview capture failed safely.' },
+    preview: {
+      ...fixturePreview(),
+      error: { code: 'preview_fetch_failed', message: 'Preview capture failed safely.' },
+    },
+    validation_errors: { email_body: ['Check this field.'] },
+    suppressions: [{
+      kind: 'email',
+      value: 'ada@acme.test',
+      reason: 'Requested opt out',
+      source: 'opt_out',
+      created_by: { name: 'Admin', email: 'admin@launchlog.ai' },
+      created_at: '2026-08-26T09:00:00.000Z',
+      updated_at: '2026-08-26T09:00:00.000Z',
+      matched_targets: ['email', 'email_domain'],
+    }],
+    audit: {
+      approved_at: '2026-08-26T10:00:00.000Z',
+      approved_by: { name: 'Admin', email: 'admin@launchlog.ai' },
+      exported_at: '2026-08-26T11:00:00.000Z',
+      exported_by: { name: 'Admin', email: 'admin@launchlog.ai' },
+      export_count: 1,
+      last_export_hash: 'b'.repeat(64),
+    },
+    ...overrides,
+  })
+}
+
+function withForbiddenCandidateExtras(source: Candidate): Candidate {
+  const response = structuredClone(source)
+  Object.assign(response, { forbidden_top: 'RAW_TOP_LEVEL_PII' })
+  Object.assign(response, {
+    validation_errors: {
+      email_body: ['RAW_SERVER_VALIDATION_PII'],
+      arbitrary_private_field: ['RAW_PRIVATE_VALIDATION_PII'],
+    },
+  })
+  Object.assign(response.campaign, { forbidden_campaign: 'RAW_CAMPAIGN_SECRET' })
+  Object.assign(response.prospect, { forbidden_prospect: 'RAW_PROSPECT_SECRET' })
+  Object.assign(response.prospect.source_attested_by, { forbidden_actor: 'RAW_ACTOR_SECRET' })
+  if (response.failure !== null) Object.assign(response.failure, { forbidden_failure: 'RAW_FAILURE_SECRET' })
+  if (response.preview !== null) {
+    Object.assign(response.preview, { forbidden_preview: 'RAW_PREVIEW_SECRET' })
+    Object.assign(response.preview.capabilities, { forbidden_capability: 'RAW_CAPABILITY_SECRET' })
+    if (response.preview.error !== null) Object.assign(response.preview.error, { forbidden_error: 'RAW_ERROR_SECRET' })
+  }
+  if (response.draft !== null) Object.assign(response.draft, { forbidden_draft: 'RAW_DRAFT_SECRET' })
+  for (const suppression of response.suppressions) {
+    Object.assign(suppression, { forbidden_suppression: 'RAW_SUPPRESSION_SECRET' })
+    if (suppression.created_by !== null) Object.assign(suppression.created_by, { forbidden_actor: 'RAW_SUPPRESSION_ACTOR_SECRET' })
+  }
+  Object.assign(response.audit, { forbidden_audit: 'RAW_AUDIT_SECRET' })
+  if (response.audit.approved_by !== null) Object.assign(response.audit.approved_by, { forbidden_actor: 'RAW_APPROVER_SECRET' })
+  if (response.audit.exported_by !== null) Object.assign(response.audit.exported_by, { forbidden_actor: 'RAW_EXPORTER_SECRET' })
+  return response
+}
+
+function malformedCandidate(mutator: (value: Candidate) => void): Candidate {
+  const value = structuredClone(candidate())
+  mutator(value)
+  return value
+}
+
 function generating(overrides: Partial<Candidate> = {}): Candidate {
   const base = candidate()
   if (base.preview === null) throw new Error('Fixture requires a preview.')
@@ -575,7 +642,7 @@ function createApi(): Api {
   }
 }
 
-function createController(): Controller {
+function createController(createState?: (initial: ControllerState) => ControllerState): Controller {
   return subject.createOutreachCandidatePageController(ULID, {
     api,
     now: () => nowMs,
@@ -593,6 +660,7 @@ function createController(): Controller {
       abortControllers.push(abortController)
       return abortController
     },
+    createState,
   })
 }
 
@@ -708,6 +776,188 @@ describe('candidate load and fixed-window polling', () => {
     for (const blockers of Object.values(controller.state.view.blockers)) {
       expect(blockers).toContain('not_loaded')
     }
+  })
+
+  test('expose reactive wrapper state and notify Vue watchers for async load transitions', async () => {
+    const runtimeDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'useRuntimeConfig')
+    const authDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'useAuth')
+    const fetchDescriptor = Object.getOwnPropertyDescriptor(globalThis, '$fetch')
+    const scopeDisposeDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'onScopeDispose')
+    Object.defineProperty(globalThis, 'useRuntimeConfig', {
+      value: () => ({ public: { apiUrl: 'https://api.launchlog.test' } }),
+      configurable: true,
+    })
+    Object.defineProperty(globalThis, 'useAuth', {
+      value: () => ({ getIdToken: async () => 'wrapper-token' }),
+      configurable: true,
+    })
+    Object.defineProperty(globalThis, '$fetch', {
+      value: async () => ({ data: candidate() }),
+      configurable: true,
+    })
+    Object.defineProperty(globalThis, 'onScopeDispose', { value: vueOnScopeDispose, configurable: true })
+
+    const scope = effectScope()
+    const transitions: ControllerState['load'][] = []
+    try {
+      const operation = scope.run(async () => {
+        const wrapped = subject.useOutreachCandidatePage(ULID)
+        const stateIsReactive = isReactive(wrapped.state)
+        watch(() => wrapped.state.load, value => transitions.push(value), { flush: 'sync' })
+
+        await wrapped.load()
+
+        expect(stateIsReactive).toBeTrue()
+        expect(wrapped.state.candidate).toEqual(candidate())
+      })
+      if (operation === undefined) throw new Error('Expected an active Vue effect scope.')
+      await operation
+      expect(transitions).toEqual(['loading', 'ready'])
+    }
+    finally {
+      scope.stop()
+      if (runtimeDescriptor === undefined) Reflect.deleteProperty(globalThis, 'useRuntimeConfig')
+      else Object.defineProperty(globalThis, 'useRuntimeConfig', runtimeDescriptor)
+      if (authDescriptor === undefined) Reflect.deleteProperty(globalThis, 'useAuth')
+      else Object.defineProperty(globalThis, 'useAuth', authDescriptor)
+      if (fetchDescriptor === undefined) Reflect.deleteProperty(globalThis, '$fetch')
+      else Object.defineProperty(globalThis, '$fetch', fetchDescriptor)
+      if (scopeDisposeDescriptor === undefined) Reflect.deleteProperty(globalThis, 'onScopeDispose')
+      else Object.defineProperty(globalThis, 'onScopeDispose', scopeDisposeDescriptor)
+    }
+  })
+
+  test('project exact full candidate shapes from GET, poll, mutation, and recovery paths', async () => {
+    let expected = richCandidate()
+    getQueue.push(async () => withForbiddenCandidateExtras(expected))
+    await controller.load()
+    expect(controller.state.candidate).toEqual(expected)
+
+    expected = richCandidate({
+      persisted_status: 'draft',
+      effective_status: 'preview_generating',
+      revision: 8,
+      preview: { ...fixturePreview(), status: 'generating' },
+    })
+    resetHarness(generating())
+    await controller.load()
+    getQueue.push(async () => withForbiddenCandidateExtras(expected))
+    await fireNextTimer()
+    expect(controller.state.candidate).toEqual(expected)
+
+    expected = richCandidate({
+      revision: 8,
+      prospect: { ...candidate().prospect, company_name: 'Projected prospect' },
+    })
+    resetHarness()
+    await controller.load()
+    controller.setProspectField('company_name', 'Projected prospect')
+    prospectQueue.push(async () => withForbiddenCandidateExtras(expected))
+    await controller.saveProspect()
+    expect(controller.state.candidate).toEqual(expected)
+
+    expected = richCandidate({
+      revision: 8,
+      draft: { ...fixtureDraft(), subject_line: 'Projected recovery draft' },
+    })
+    resetHarness()
+    await controller.load()
+    controller.setDraftField('subject_line', 'Projected recovery draft')
+    draftQueue.push(async () => ({
+      public_id: ULID,
+      persistence_status: 'committed',
+      recovery_url: `/api/v1/admin/outreach/candidates/${ULID}`,
+    }))
+    getQueue.push(async () => withForbiddenCandidateExtras(expected))
+    await controller.saveDraft()
+    expect(controller.state.candidate).toEqual(expected)
+    expect(JSON.stringify(controller.state.candidate)).not.toContain('RAW_')
+    expect(JSON.stringify(controller.state.candidate)).not.toContain('forbidden_')
+  })
+
+  test('reject malformed candidate literals, nullability, nested actors, audit, and capabilities', async () => {
+    const malformedResponses: Array<[string, Candidate]> = [
+      ['campaign status', malformedCandidate(value => Object.assign(value.campaign, { status: 'paused' }))],
+      ['persisted status', malformedCandidate(value => Object.assign(value, { persisted_status: 'contacted' }))],
+      ['effective status', malformedCandidate(value => Object.assign(value, { effective_status: 'sent' }))],
+      ['nullable prospect', malformedCandidate(value => Object.assign(value.prospect, { founder_first_name: 42 }))],
+      ['source actor', malformedCandidate(value => Object.assign(value.prospect, { source_attested_by: { name: false, email: null } }))],
+      ['failure shape', malformedCandidate(value => Object.assign(value, { failure: { code: 'failed', message: null } }))],
+      ['preview status', malformedCandidate(value => {
+        if (value.preview !== null) Object.assign(value.preview, { status: 'complete' })
+      })],
+      ['preview literals', malformedCandidate(value => {
+        if (value.preview !== null) Object.assign(value.preview.capabilities, { edit: true, recapture: false, checkout: true })
+      })],
+      ['draft nullability', malformedCandidate(value => {
+        if (value.draft !== null) Object.assign(value.draft, { opening_line: null })
+      })],
+      ['suppression enum', malformedCandidate(value => Object.assign(value, {
+        suppressions: [{
+          kind: 'address',
+          value: 'ada@acme.test',
+          reason: 'Invalid literal',
+          source: 'manual',
+          created_by: null,
+          created_at: '2026-08-26T09:00:00.000Z',
+          updated_at: '2026-08-26T09:00:00.000Z',
+          matched_targets: ['email'],
+        }],
+      }))],
+      ['audit bounds', malformedCandidate(value => Object.assign(value.audit, { export_count: -1 }))],
+      ['audit actor', malformedCandidate(value => Object.assign(value.audit, { approved_by: { name: 'Admin', email: 42 } }))],
+      ['timestamp nullability', malformedCandidate(value => Object.assign(value, { updated_at: null }))],
+    ]
+
+    for (const [name, malformed] of malformedResponses) {
+      resetHarness()
+      getQueue.push(async () => malformed)
+
+      await expect(controller.load(), name).rejects.toMatchObject({ kind: 'server' })
+      expect(controller.state.candidate, name).toBeNull()
+      expect(controller.state.load, name).toBe('load_error')
+      expect(controller.state.load_error, name).toMatchObject({ kind: 'server' })
+    }
+  })
+
+  test('reuse strict candidate validation for poll, full mutation, and committed recovery GET', async () => {
+    resetHarness(generating())
+    await controller.load()
+    const lastGoodPoll = structuredClone(controller.state.candidate)
+    getQueue.push(async () => malformedCandidate(value => Object.assign(value.prospect, {
+      source_attested_by: { name: 'Admin', email: 42 },
+    })))
+    await fireNextTimer()
+    expect(controller.state.candidate).toEqual(lastGoodPoll)
+    expect(controller.state.poll_error).toMatchObject({ kind: 'server' })
+    expect(controller.state.refresh_required).toBeFalse()
+
+    resetHarness()
+    await controller.load()
+    const lastGoodMutation = structuredClone(controller.state.candidate)
+    controller.setProspectField('company_name', 'Malformed full response')
+    prospectQueue.push(async () => malformedCandidate(value => {
+      if (value.preview !== null) Object.assign(value.preview.capabilities, { edit: true })
+    }))
+    await expect(controller.saveProspect()).rejects.toMatchObject({ kind: 'server' })
+    expect(controller.state.candidate).toEqual(lastGoodMutation)
+    expect(controller.state.refresh_required).toBeTrue()
+
+    resetHarness()
+    await controller.load()
+    const lastGoodRecovery = structuredClone(controller.state.candidate)
+    controller.setDraftField('subject_line', 'Malformed recovery response')
+    draftQueue.push(async () => ({
+      public_id: ULID,
+      persistence_status: 'committed',
+      recovery_url: `/api/v1/admin/outreach/candidates/${ULID}`,
+    }))
+    getQueue.push(async () => malformedCandidate(value => Object.assign(value.audit, { export_count: -1 })))
+    await expect(controller.saveDraft()).rejects.toMatchObject({ kind: 'server' })
+    expect(controller.state.candidate).toEqual(lastGoodRecovery)
+    expect(controller.state.refresh_required).toBeTrue()
+    expect(controller.state.prospect_edit).toBe('stale')
+    expect(controller.state.draft_edit).toBe('stale')
   })
 
   test('keep every controller operation inside the injected API and scheduler seams', async () => {
@@ -1288,6 +1538,51 @@ describe('dirty forms, confirmation binding, and full refresh', () => {
     expect(controller.state.reexport_confirmed).toBeFalse()
   })
 
+  test('keep poll-stale prospect and draft forms immutable until an explicit full reload', async () => {
+    const scenarios: Array<{
+      section: 'prospect' | 'draft'
+      prepare: () => void
+      response: Candidate
+      editAgain: () => void
+      value: () => string
+      save: () => Promise<void>
+    }> = [
+      {
+        section: 'prospect',
+        prepare: () => controller.setProspectField('company_name', 'STALE_PROSPECT_SENTINEL'),
+        response: generating({ revision: 8, prospect: { ...candidate().prospect, company_name: 'SERVER_PROSPECT' } }),
+        editAgain: () => controller.setProspectField('company_name', 'MUST_NOT_REPLACE_STALE_PROSPECT'),
+        value: () => controller.state.prospect_form.company_name,
+        save: () => controller.saveProspect(),
+      },
+      {
+        section: 'draft',
+        prepare: () => controller.setDraftField('email_body', 'STALE_DRAFT_SENTINEL'),
+        response: generating({ revision: 8, draft: { ...fixtureDraft(), email_body: 'SERVER_DRAFT' } }),
+        editAgain: () => controller.setDraftField('email_body', 'MUST_NOT_REPLACE_STALE_DRAFT'),
+        value: () => controller.state.draft_form.email_body,
+        save: () => controller.saveDraft(),
+      },
+    ]
+
+    for (const scenario of scenarios) {
+      resetHarness(generating())
+      await controller.load()
+      scenario.prepare()
+      getQueue.push(async () => scenario.response)
+      await fireNextTimer()
+
+      const staleValue = scenario.value()
+      const callsBefore = apiCalls.length
+      scenario.editAgain()
+
+      expect(scenario.section === 'prospect' ? controller.state.prospect_edit : controller.state.draft_edit).toBe('stale')
+      expect(scenario.value()).toBe(staleValue)
+      await expect(scenario.save()).rejects.toBeDefined()
+      expect(apiCalls).toHaveLength(callsBefore)
+    }
+  })
+
   test('synchronize each clean form independently while preserving the dirty form during polling', async () => {
     const scenarios: Array<{
       dirty: 'prospect' | 'draft'
@@ -1563,6 +1858,77 @@ describe('revision-bound mutations and recovery', () => {
     expect(controller.state.draft_edit).toBe('clean')
   })
 
+  test('keep recovery-stale prospect and draft forms immutable and mutation-blocked', async () => {
+    const committed: Recovery = {
+      public_id: ULID,
+      persistence_status: 'committed',
+      recovery_url: `/api/v1/admin/outreach/candidates/${ULID}`,
+    }
+    const scenarios: Array<{
+      section: 'prospect' | 'draft'
+      prepare: () => void
+      enqueueMutation: () => void
+      recovered: Candidate
+      invokeSubmittedSave: () => Promise<void>
+      editAgain: () => void
+      value: () => string
+      saveStale: () => Promise<void>
+    }> = [
+      {
+        section: 'prospect',
+        prepare: () => {
+          controller.setProspectField('company_name', 'RECOVERY_STALE_PROSPECT')
+          controller.setDraftField('subject_line', 'Saved draft')
+        },
+        enqueueMutation: () => draftQueue.push(async () => committed),
+        recovered: candidate({
+          revision: 8,
+          prospect: { ...candidate().prospect, company_name: 'SERVER_RECOVERED_PROSPECT' },
+          draft: { ...fixtureDraft(), subject_line: 'Saved draft' },
+        }),
+        invokeSubmittedSave: () => controller.saveDraft(),
+        editAgain: () => controller.setProspectField('company_name', 'MUST_NOT_REPLACE_RECOVERY_STALE_PROSPECT'),
+        value: () => controller.state.prospect_form.company_name,
+        saveStale: () => controller.saveProspect(),
+      },
+      {
+        section: 'draft',
+        prepare: () => {
+          controller.setDraftField('email_body', 'RECOVERY_STALE_DRAFT')
+          controller.setProspectField('company_name', 'Saved prospect')
+        },
+        enqueueMutation: () => prospectQueue.push(async () => committed),
+        recovered: candidate({
+          revision: 8,
+          prospect: { ...candidate().prospect, company_name: 'Saved prospect' },
+          draft: { ...fixtureDraft(), email_body: 'SERVER_RECOVERED_DRAFT' },
+        }),
+        invokeSubmittedSave: () => controller.saveProspect(),
+        editAgain: () => controller.setDraftField('email_body', 'MUST_NOT_REPLACE_RECOVERY_STALE_DRAFT'),
+        value: () => controller.state.draft_form.email_body,
+        saveStale: () => controller.saveDraft(),
+      },
+    ]
+
+    for (const scenario of scenarios) {
+      resetHarness()
+      await controller.load()
+      scenario.prepare()
+      scenario.enqueueMutation()
+      getQueue.push(async () => scenario.recovered)
+      await scenario.invokeSubmittedSave()
+
+      const staleValue = scenario.value()
+      const callsBefore = apiCalls.length
+      scenario.editAgain()
+
+      expect(scenario.section === 'prospect' ? controller.state.prospect_edit : controller.state.draft_edit).toBe('stale')
+      expect(scenario.value()).toBe(staleValue)
+      await expect(scenario.saveStale()).rejects.toBeDefined()
+      expect(apiCalls).toHaveLength(callsBefore)
+    }
+  })
+
   test('handle full and committed recovery exactly once for every Task 8 mutation', async () => {
     const scenarios: Array<{
       initial: () => Candidate
@@ -1785,6 +2151,178 @@ describe('revision-bound mutations and recovery', () => {
     expect(controller.state.prospect_edit).toBe('stale')
     expect(controller.state.draft_edit).toBe('stale')
     expect(controller.state.candidate?.revision).toBe(7)
+  })
+
+  test('preserve save-error validation through same-revision polls and permit an exact-base retry', async () => {
+    const scenarios: Array<{
+      section: 'prospect' | 'draft'
+      prepare: () => void
+      enqueueValidation: () => void
+      retrySuccess: Candidate
+      enqueueRetry: () => void
+      save: () => Promise<void>
+      fieldErrors: Record<string, string[]>
+    }> = [
+      {
+        section: 'prospect',
+        prepare: () => controller.setProspectField('company_name', 'SAVE_ERROR_PROSPECT'),
+        enqueueValidation: () => prospectQueue.push(async () => { throw safeError('validation', { company_name: ['Check this field.'] }) }),
+        retrySuccess: generating({ revision: 8, prospect: { ...candidate().prospect, company_name: 'SAVE_ERROR_PROSPECT' } }),
+        enqueueRetry: () => prospectQueue.push(async () => generating({
+          revision: 8,
+          prospect: { ...candidate().prospect, company_name: 'SAVE_ERROR_PROSPECT' },
+        })),
+        save: () => controller.saveProspect(),
+        fieldErrors: { company_name: ['Check this field.'] },
+      },
+      {
+        section: 'draft',
+        prepare: () => controller.setDraftField('email_body', 'SAVE_ERROR_DRAFT'),
+        enqueueValidation: () => draftQueue.push(async () => { throw safeError('validation', { email_body: ['Check this field.'] }) }),
+        retrySuccess: generating({ revision: 8, draft: { ...fixtureDraft(), email_body: 'SAVE_ERROR_DRAFT' } }),
+        enqueueRetry: () => draftQueue.push(async () => generating({
+          revision: 8,
+          draft: { ...fixtureDraft(), email_body: 'SAVE_ERROR_DRAFT' },
+        })),
+        save: () => controller.saveDraft(),
+        fieldErrors: { email_body: ['Check this field.'] },
+      },
+    ]
+
+    for (const scenario of scenarios) {
+      resetHarness(generating())
+      await controller.load()
+      scenario.prepare()
+      scenario.enqueueValidation()
+      await expect(scenario.save()).rejects.toMatchObject({ kind: 'validation' })
+
+      getQueue.push(async () => generating({ revision: 7, validation_errors: scenario.fieldErrors }))
+      await fireNextTimer()
+
+      expect(scenario.section === 'prospect' ? controller.state.prospect_edit : controller.state.draft_edit).toBe('save_error')
+      expect(controller.state.validation_errors).toEqual(scenario.fieldErrors)
+
+      scenario.enqueueRetry()
+      await scenario.save()
+      expect(controller.state.candidate).toEqual(scenario.retrySuccess)
+      expect(scenario.section === 'prospect' ? controller.state.prospect_edit : controller.state.draft_edit).toBe('clean')
+    }
+  })
+
+  test('promote save-error forms to stale on poll revision drift and block any retry', async () => {
+    const scenarios: Array<{
+      section: 'prospect' | 'draft'
+      prepare: () => void
+      enqueueValidation: () => void
+      save: () => Promise<void>
+    }> = [
+      {
+        section: 'prospect',
+        prepare: () => controller.setProspectField('company_name', 'DRIFTED_SAVE_ERROR_PROSPECT'),
+        enqueueValidation: () => prospectQueue.push(async () => { throw safeError('validation', { company_name: ['Check this field.'] }) }),
+        save: () => controller.saveProspect(),
+      },
+      {
+        section: 'draft',
+        prepare: () => controller.setDraftField('email_body', 'DRIFTED_SAVE_ERROR_DRAFT'),
+        enqueueValidation: () => draftQueue.push(async () => { throw safeError('validation', { email_body: ['Check this field.'] }) }),
+        save: () => controller.saveDraft(),
+      },
+    ]
+
+    for (const scenario of scenarios) {
+      resetHarness(generating())
+      await controller.load()
+      scenario.prepare()
+      scenario.enqueueValidation()
+      await expect(scenario.save()).rejects.toMatchObject({ kind: 'validation' })
+
+      getQueue.push(async () => generating({ revision: 8 }))
+      await fireNextTimer()
+
+      const callsBefore = apiCalls.length
+      expect(scenario.section === 'prospect' ? controller.state.prospect_edit : controller.state.draft_edit).toBe('stale')
+      await expect(scenario.save()).rejects.toBeDefined()
+      expect(apiCalls).toHaveLength(callsBefore)
+    }
+  })
+
+  test('sanitize structural validation errors before they enter controller state', async () => {
+    const allowed = [
+      'name',
+      'key',
+      'status',
+      'sender_identity_label',
+      'campaign_key',
+      'company_name',
+      'product_name',
+      'product_url',
+      'founder_first_name',
+      'business_email',
+      'country_code',
+      'source_url',
+      'source_context',
+      'notes',
+      'source_attested',
+      'expected_revision',
+      'subject_line',
+      'opening_line',
+      'email_body',
+      'confirm_english_plain_text',
+      'confirm_public_source',
+      'prospect_public_id',
+      'target',
+      'reason',
+      'source',
+      'confirm',
+      'prospect_public_ids',
+      'confirm_reexport',
+      'domain',
+      'suppressed',
+      'page',
+      'prospect_public_ids.0',
+      'prospect_public_ids.1',
+    ]
+    const remoteFields: Record<string, string[]> = {}
+    for (const field of [...allowed].reverse()) remoteFields[field] = [`RAW_${field}_PII`]
+    remoteFields.arbitrary_private_field = ['RAW_ARBITRARY_PII']
+    const structuralDetails: {
+      name: string
+      kind: ErrorKind
+      status: number
+      fieldErrors: Record<string, string[]>
+      cause: { name: string, message: string }
+      request: { authorization: string }
+    } = {
+      name: 'FetchError',
+      kind: 'validation',
+      status: 422,
+      fieldErrors: remoteFields,
+      cause: { name: 'RemoteCause', message: 'RAW_CAUSE_PII' },
+      request: { authorization: 'RAW_TOKEN_PII' },
+    }
+    const structuralError: SafeError & {
+      cause: { name: string, message: string }
+      request: { authorization: string }
+    } = Object.assign(new Error('RAW_TOP_LEVEL_PII'), structuralDetails)
+
+    await controller.load()
+    controller.setProspectField('company_name', 'Invalid company')
+    prospectQueue.push(async () => { throw structuralError })
+
+    await expect(controller.saveProspect()).rejects.toMatchObject({
+      kind: 'validation',
+      message: 'Check the highlighted fields.',
+    })
+
+    expect(Object.keys(controller.state.validation_errors)).toEqual(allowed.slice(0, 32))
+    expect(controller.state.action_error?.fieldErrors).toEqual(controller.state.validation_errors)
+    for (const messages of Object.values(controller.state.validation_errors)) {
+      expect(messages).toEqual(['Check this field.'])
+    }
+    const serialized = JSON.stringify(controller.state)
+    expect(serialized).not.toContain('RAW_')
+    expect(serialized).not.toContain('arbitrary_private_field')
   })
 
   test('allow only suppression after archive or conversion and keep every other candidate mutation local', async () => {
@@ -2369,6 +2907,17 @@ describe('approval, lifecycle, suppression, and export actions', () => {
     await expect(controller.approve()).rejects.toBeDefined()
     expect(apiCalls).toHaveLength(callsBefore)
 
+    resetHarness(candidate({ effective_status: 'failed' }))
+    await controller.load()
+    controller.setApprovalEnglishPlainText(true)
+    controller.setApprovalPublicSource(true)
+    const beforeNonReadyApproval = apiCalls.length
+    expect(controller.state.view.blockers.approve).toContain('approval_not_available')
+    await expect(controller.approve()).rejects.toBeDefined()
+    expect(apiCalls).toHaveLength(beforeNonReadyApproval)
+
+    resetHarness()
+    await controller.load()
     controller.setApprovalEnglishPlainText(true)
     controller.setApprovalPublicSource(true)
     approveQueue.push(async () => approved({ revision: 8 }))
@@ -2417,6 +2966,28 @@ describe('approval, lifecycle, suppression, and export actions', () => {
     })
     expect(controller.state.candidate?.revision).toBe(7)
     expect(controller.state.campaign_activation_confirmed).toBeFalse()
+  })
+
+  test('reject malformed campaign literals without projecting uncertain mutation data', async () => {
+    const initial = candidate({ campaign: { ...candidate().campaign, status: 'draft' } })
+    resetHarness(initial)
+    await controller.load()
+    controller.setCampaignActivationConfirmed(true)
+    campaignQueue.push(async () => ({
+      name: 'Invalid campaign response',
+      key: 'founders-2026',
+      status: 'paused',
+      sender_identity_label: 'Warmed founder domain',
+      candidate_count: 1,
+      created_at: '2026-08-25T10:00:00.000Z',
+      updated_at: '2026-08-26T12:00:00.000Z',
+      forbidden_campaign: 'RAW_CAMPAIGN_PII',
+    }))
+
+    await expect(controller.activateCampaign()).rejects.toMatchObject({ kind: 'server' })
+    expect(controller.state.candidate?.campaign).toEqual(initial.campaign)
+    expect(controller.state.refresh_required).toBeTrue()
+    expect(JSON.stringify(controller.state)).not.toContain('RAW_CAMPAIGN_PII')
   })
 
   test('recapture and renew with exact empty transport-only calls', async () => {
@@ -2565,6 +3136,28 @@ describe('approval, lifecycle, suppression, and export actions', () => {
     })
     expect(controller.state.suppression_dirty).toBeFalse()
     expect(controller.state.candidate?.effective_status).toBe('suppressed')
+  })
+
+  test('reject malformed suppression literals before follow-up GET and retain no response extras', async () => {
+    await controller.load()
+    controller.setSuppressionTarget('email')
+    controller.setSuppressionReason('Suppress invalid response')
+    controller.setSuppressionConfirmed(true)
+    suppressionQueue.push(async () => ({
+      kind: 'address',
+      value: 'ada@acme.test',
+      reason: 'Suppress invalid response',
+      source: 'manual',
+      created_by: null,
+      created_at: '2026-08-26T12:00:00.000Z',
+      updated_at: '2026-08-26T12:00:00.000Z',
+      forbidden_suppression: 'RAW_SUPPRESSION_PII',
+    }))
+
+    await expect(controller.suppress()).rejects.toMatchObject({ kind: 'server' })
+    expect(apiCalls.map(call => call.name)).toEqual(['getCandidate', 'createSuppression'])
+    expect(controller.state.refresh_required).toBeTrue()
+    expect(JSON.stringify(controller.state)).not.toContain('RAW_SUPPRESSION_PII')
   })
 
   test('return an export Blob even when the one audit GET fails and latch refresh', async () => {

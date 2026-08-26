@@ -498,6 +498,27 @@ describe('validation, confirmation, and concurrency blockers', () => {
     for (const candidate of [approvedCandidate(), approvedCandidate({ persisted_status: 'exported', effective_status: 'exported' })]) {
       expect(subject.outreachViewState(input(candidate)).blockers.approve).toContain('approval_not_available')
     }
+
+    const nonReadyEffectiveStatuses: EffectiveStatus[] = [
+      'draft',
+      'preview_generating',
+      'approved',
+      'exported',
+      'failed',
+      'expired',
+      'suppressed',
+      'converted',
+    ]
+    for (const effective_status of nonReadyEffectiveStatuses) {
+      const state = subject.outreachViewState(input(readyCandidate({ effective_status }), {
+        confirmations: {
+          approval_english_plain_text: true,
+          approval_public_source: true,
+          reexport: false,
+        },
+      }))
+      expect(state.blockers.approve, effective_status).toContain('approval_not_available')
+    }
   })
 
   test('allow first export after approval and bind every later export to explicit confirmation', () => {

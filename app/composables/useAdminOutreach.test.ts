@@ -1367,6 +1367,48 @@ describe('safe outreach errors', () => {
     })
     expect(calls).toHaveLength(1)
   })
+
+  test('map already-aborted JSON and raw transports without retaining a transient cause', async () => {
+    const remoteAbort = {
+      name: 'FetchError',
+      message: 'RAW_ABORT_MESSAGE_PII',
+      cause: { name: 'AbortError', message: 'RAW_ABORT_CAUSE_PII' },
+      request: { authorization: 'RAW_ABORT_TOKEN_PII' },
+    }
+    const jsonAbort = new AbortController()
+    jsonAbort.abort()
+    rejectJson(remoteAbort)
+
+    const jsonFailure = client.listCampaigns({ signal: jsonAbort.signal })
+    await expect(jsonFailure).rejects.toMatchObject({
+      kind: 'aborted',
+      status: null,
+      message: 'The request was cancelled.',
+    })
+    await jsonFailure.catch((error: unknown) => {
+      expect(ownReachableText(error)).not.toContain('RAW_ABORT')
+      expect(error).not.toHaveProperty('cause')
+    })
+
+    const rawAbort = new AbortController()
+    rawAbort.abort()
+    rejectRaw(remoteAbort)
+    const rawFailure = client.exportCandidates({
+      campaign_key: 'founders-2026',
+      prospect_public_ids: [ULID],
+      confirm_reexport: false,
+    }, { signal: rawAbort.signal })
+    await expect(rawFailure).rejects.toMatchObject({
+      kind: 'aborted',
+      status: null,
+      message: 'The request was cancelled.',
+    })
+    await rawFailure.catch((error: unknown) => {
+      expect(ownReachableText(error)).not.toContain('RAW_ABORT')
+      expect(error).not.toHaveProperty('cause')
+    })
+    expect(calls).toHaveLength(2)
+  })
 })
 
 describe('network-free CSV browser seam', () => {
