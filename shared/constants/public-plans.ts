@@ -52,7 +52,7 @@ export const PUBLIC_PLANS: readonly PublicPlan[] = [
 ] as const
 
 export const findPublicPlan = (tier: string | null | undefined): PublicPlan =>
-  PUBLIC_PLANS.find(plan => plan.tier === tier) ?? PUBLIC_PLANS[1]!
+  PUBLIC_PLANS.find(plan => plan.tier === tier) ?? PUBLIC_PLANS[0]!
 
 export const annualPrice = (plan: PublicPlan): string =>
   (plan.annualPriceCents / 100).toFixed(2)
