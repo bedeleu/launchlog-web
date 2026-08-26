@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { defineLink } from '@unhead/vue'
+import geistMonoLatinUrl from '@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2?url'
+import geistLatinUrl from '@fontsource-variable/geist/files/geist-latin-wght-normal.woff2?url'
 
 const route = useRoute()
 const config = useRuntimeConfig()
@@ -41,7 +43,6 @@ const noindexPrefixes = [
   '/api-docs',
   '/privacy',
   '/terms',
-  '/seo-guide',
   '/status',
 ]
 
@@ -65,10 +66,6 @@ useSeoMeta({
   ogSiteName: siteName,
   ogLocale: 'en_US',
   ogImage: ogImageUrl,
-  ogImageSecureUrl: ogImageUrl,
-  ogImageType: 'image/jpeg',
-  ogImageWidth: 1200,
-  ogImageHeight: 630,
   ogImageAlt: 'LaunchLog — The log of what just shipped',
   twitterCard: 'summary_large_image',
   twitterTitle: defaultTitle,
@@ -88,17 +85,21 @@ useHead({
   },
   link: [
     {
+      rel: 'preload',
+      href: geistLatinUrl,
+      as: 'font',
+      type: 'font/woff2',
+      crossorigin: 'anonymous',
+    },
+    {
+      rel: 'preload',
+      href: geistMonoLatinUrl,
+      as: 'font',
+      type: 'font/woff2',
+      crossorigin: 'anonymous',
+    },
+    {
       rel: 'canonical',
-      href: canonicalUrl,
-    },
-    {
-      rel: 'alternate',
-      hreflang: 'en',
-      href: canonicalUrl,
-    },
-    {
-      rel: 'alternate',
-      hreflang: 'x-default',
       href: canonicalUrl,
     },
     // `image_src` is a legacy non-standard rel, so unhead 3's strict `rel` union rejects it.

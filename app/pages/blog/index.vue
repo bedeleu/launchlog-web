@@ -106,8 +106,6 @@ useHead({
   // tell search engines the deeper pages are duplicates of the first one.
   link: [
     { rel: 'canonical', href: canonicalUrl },
-    { rel: 'alternate', hreflang: 'en', href: canonicalUrl },
-    { rel: 'alternate', hreflang: 'x-default', href: canonicalUrl },
   ],
   script: [
     {

@@ -2,35 +2,35 @@
 const config = useRuntimeConfig()
 const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
 const pageUrl = `${siteUrl}/seo-guide`
-const updated = 'May 31, 2026'
+const updated = 'August 26, 2026'
 const description
-  = 'A practical 2026 guide to getting your product discovered across Google and AI answer engines, with SEO fundamentals and a machine-readable launch checklist.'
+  = 'A practical 2026 guide to making SaaS launch pages crawlable, indexable, useful and machine-readable without relying on unsupported AEO or GEO hacks.'
 
 const pillars = [
   {
     n: '01',
-    title: 'Schema.org @graph',
-    body: 'Every listing ships a connected JSON-LD @graph — Organization, WebSite, WebPage and Product nodes — so crawlers and LLMs understand what your product is, not just that a page exists.',
+    title: 'Visible facts + matching schema',
+    body: 'Every listing presents the product facts in visible HTML and emits matching schema.org JSON-LD. Structured data describes the page; it does not guarantee ranking, indexing or an AI citation.',
   },
   {
     n: '02',
-    title: 'Dynamic llms.txt',
-    body: 'LaunchLog generates llms.txt and llms-full.txt automatically, giving AI systems a clean, machine-readable map of the directory and your listing within it.',
+    title: 'Crawl and discovery signals',
+    body: 'Published listings have canonical URLs, sitemap entries and IndexNow notifications. LaunchLog also maintains llms.txt for compatible non-Google consumers; Google states that it ignores this file.',
   },
   {
     n: '03',
-    title: 'Content-negotiated markdown',
-    body: 'Request a listing with Accept: text/markdown and you get a clean markdown version of the page — the format LLMs read best, served straight from the canonical URL.',
+    title: 'Consistent alternate output',
+    body: 'A request with Accept: text/markdown returns the same listing facts in markdown from the canonical URL. It is an optional machine-readable representation, not a replacement for useful public HTML.',
   },
 ]
 
 const technicalChecklist = [
-  'Fast, mobile-first pages that pass Core Web Vitals',
+  'Responsive pages with Core Web Vitals measured in field data',
   'HTTPS everywhere with a valid certificate',
   'Clean, canonical URLs (no duplicate-content traps)',
   'An XML sitemap that search engines can crawl',
   'Structured data (schema.org) on key pages',
-  'Fixed crawl errors in Search Console / Bing',
+  'Crawl and indexing issues monitored in Search Console and Bing Webmaster Tools',
 ]
 
 const contentChecklist = [
@@ -43,7 +43,7 @@ const contentChecklist = [
 ]
 
 const discovery = [
-  { title: 'Curated directories', body: 'A listing in a legitimate, human-reviewed directory is a credibility signal to both users and search engines — and now a citable source for AI answers.' },
+  { title: 'Relevant directories', body: 'A dedicated listing can add durable product context and a discoverable link outside launch-day feeds. Relevance and factual quality matter more than submitting to every directory.' },
   { title: 'Content & community', body: 'Write, ship in public, and show up where your audience already is. Earned mentions compound over time.' },
   { title: 'Technical hygiene', body: 'Speed, structure and crawlability are the boring fundamentals that make everything else you do actually count.' },
 ]
@@ -53,21 +53,48 @@ const comparison = {
     label: 'A row in a generic directory',
     points: [
       'A link and a name in a long table',
-      'No structured data — invisible to machines',
-      'Rotational placement that disappears',
-      'Nothing an AI can confidently cite',
+      'Product facts spread across several destinations',
+      'Little context after the launch-day feed moves on',
+      'No alternate machine-readable representation',
     ],
   },
   launchlog: {
     label: 'A LaunchLog listing',
     points: [
-      'A dedicated, permanent product page',
-      'schema.org @graph + llms.txt + markdown',
+      'A dedicated product page while the plan is active',
+      'Visible facts + schema.org + markdown output',
       'Permanent placement while your plan is active',
-      'A clean, citable source for ChatGPT, Perplexity, Claude & Gemini',
+      'Sitemap inclusion and IndexNow notification',
     ],
   },
 }
+
+const officialSources = [
+  {
+    label: 'Google: Optimizing for generative AI features',
+    href: 'https://developers.google.com/search/docs/fundamentals/ai-optimization-guide',
+  },
+  {
+    label: 'Google: Pagination and incremental page loading',
+    href: 'https://developers.google.com/search/docs/specialty/ecommerce/pagination-and-incremental-page-loading',
+  },
+  {
+    label: 'Google: Creating helpful, reliable, people-first content',
+    href: 'https://developers.google.com/search/docs/fundamentals/creating-helpful-content',
+  },
+  {
+    label: 'OpenAI: Overview of OpenAI crawlers',
+    href: 'https://developers.openai.com/api/docs/bots',
+  },
+  {
+    label: 'IndexNow: Protocol documentation',
+    href: 'https://www.indexnow.org/documentation',
+  },
+  {
+    label: 'web.dev: Build agent-friendly websites',
+    href: 'https://web.dev/articles/ai-agent-site-ux',
+  },
+]
 
 useSeoMeta({
   title: 'The 2026 SEO & AI Discovery Guide — LaunchLog',
@@ -99,11 +126,18 @@ useHead({
         '@context': 'https://schema.org',
         '@type': 'Article',
         '@id': `${pageUrl}#article`,
-        headline: 'The 2026 SEO & AI Discovery Guide',
+        headline: 'The 2026 SEO & AI Discovery Guide for SaaS Launches',
         description,
         url: pageUrl,
         inLanguage: 'en-US',
-        dateModified: '2026-05-31',
+        datePublished: '2026-05-31',
+        dateModified: '2026-08-26',
+        author: {
+          '@type': 'Person',
+          name: 'Alexandru Bedeleu',
+          url: `${siteUrl}/about`,
+        },
+        mainEntityOfPage: pageUrl,
         isPartOf: { '@id': `${siteUrl}/#website` },
         publisher: { '@id': `${siteUrl}/#organization` },
       }),
@@ -120,13 +154,13 @@ useHead({
         SEO Guide · {{ updated }}
       </p>
       <h1 class="mt-5 text-4xl font-bold leading-[1.1] tracking-normal text-white md:text-6xl">
-        Get discovered — by search engines <span class="text-brand-accent">and AI.</span>
+        Make your launch useful, crawlable <span class="text-brand-accent">and machine-readable.</span>
       </h1>
       <p class="mt-6 text-lg leading-8 text-brand-muted">
-        Search isn’t just ten blue links anymore. People ask ChatGPT, Perplexity,
-        Claude and Gemini — and those systems cite sources they can read and trust.
-        This guide covers the fundamentals that still matter, plus what LaunchLog
-        builds into every listing to make your product citable.
+        AI search starts with the same web fundamentals as search: useful public
+        content, crawl access, correct indexing signals and a stable source of
+        product facts. This guide separates those foundations from unsupported
+        AEO and GEO shortcuts.
       </p>
     </section>
 
@@ -137,21 +171,19 @@ useHead({
           The shift
         </p>
         <h2 class="mt-4 text-3xl font-bold tracking-normal text-white md:text-4xl">
-          Two audiences read every page now.
+          One public source, several kinds of readers.
         </h2>
       </div>
       <div class="space-y-6 leading-8 text-brand-muted">
         <p>
-          Around 90% of web journeys still start with search, but a growing share
-          of answers are now generated, not listed. An AI answer engine doesn’t
-          rank a page — it reads it, decides whether it’s trustworthy, and quotes
-          it. If your page is thin or unstructured, it gets skipped.
+          A launch page may be read by a founder, a buyer, a search crawler or a
+          user-triggered browser agent. Each system has its own discovery and
+          selection rules, but all benefit from stable URLs and clear public facts.
         </p>
         <p>
-          That means a modern launch page has to satisfy two readers at once: a
-          human who wants to understand your product in seconds, and a machine
-          that needs structure to cite you with confidence. LaunchLog is designed
-          around exactly that.
+          Keep the visible copy, canonical metadata, structured data and alternate
+          representations consistent. That reduces ambiguity without pretending
+          that markup can force a crawler to index or select the page.
         </p>
       </div>
     </section>
@@ -163,7 +195,7 @@ useHead({
           The tech edge
         </p>
         <h2 class="mt-4 text-3xl font-bold tracking-normal text-white md:text-4xl">
-          Three things we build into every listing.
+          Three things LaunchLog builds into every listing.
         </h2>
       </div>
       <div class="mt-8 grid gap-4 md:grid-cols-3">
@@ -305,6 +337,38 @@ useHead({
                 <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
               </svg>
               <span>{{ point }}</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="mt-16 border-t border-brand-border pt-10">
+      <div class="grid gap-8 md:grid-cols-[0.7fr_1fr]">
+        <div>
+          <p class="text-sm font-semibold uppercase tracking-[0.18em] text-brand-muted">
+            Primary references
+          </p>
+          <h2 class="mt-4 text-3xl font-bold tracking-normal text-white md:text-4xl">
+            Check the source, not an AEO score.
+          </h2>
+        </div>
+        <div>
+          <p class="leading-8 text-brand-muted">
+            This guide is maintained against first-party documentation. Search
+            and crawler behavior changes, so these sources take precedence over
+            any summary on this page.
+          </p>
+          <ul class="mt-6 space-y-3">
+            <li v-for="source in officialSources" :key="source.href">
+              <a
+                :href="source.href"
+                target="_blank"
+                rel="noopener"
+                class="font-medium text-brand-accent transition-colors hover:text-white hover:underline"
+              >
+                {{ source.label }}
+              </a>
             </li>
           </ul>
         </div>

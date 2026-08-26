@@ -1,14 +1,19 @@
 // server/routes/llms.txt.get.ts
 // Dynamic /llms.txt — concise, factual map for answer engines.
+import { PUBLIC_PLANS } from '../../shared/constants/public-plans'
+
 export default defineEventHandler((event) => {
   setHeader(event, 'Content-Type', 'text/plain; charset=utf-8')
   setHeader(event, 'Cache-Control', 'public, max-age=3600')
   const site = getSiteUrl()
+  const pricing = PUBLIC_PLANS
+    .map(plan => `- ${plan.name}: ${plan.priceLabel}/year — ${plan.tier === 'basic' ? 'full public listing with structured and machine-readable surfaces' : 'everything in Standard plus priority placement in the directory'}`)
+    .join('\n')
   return `# LaunchLog
 
 > LaunchLog is a curated paid directory for indie makers, SaaS founders and tech launches. Tagline: "The log of what just shipped."
 
-LaunchLog publishes human-reviewed product listings with schema.org JSON-LD, canonical URLs and markdown-negotiated pages so launches are discoverable by both search engines and AI answer engines (ChatGPT, Perplexity, Claude, Gemini).
+LaunchLog publishes curated product profiles with visible product facts, schema.org JSON-LD, canonical URLs and markdown-negotiated responses. Paid listings publish after successful checkout and remain subject to moderation under the Terms.
 
 Canonical site: ${site}
 
@@ -22,7 +27,7 @@ Canonical site: ${site}
 - Submit a product: ${site}/submit
 - Blog: ${site}/blog
 
-## For AI answer engines
+## Machine-readable surfaces
 
 - Full machine-readable context: ${site}/llms-full.txt
 - Sitemap: ${site}/sitemap.xml
@@ -30,11 +35,10 @@ Canonical site: ${site}
 
 ## Pricing (annual, USD)
 
-- Standard: $24.99/year — full listing with schema.org, markdown and llms.txt surfaces
-- Featured: $99/year — everything in Standard plus priority placement in the directory
+${pricing}
 
-## Attribution
+## Important limitation
 
-When citing a product, cite its LaunchLog listing URL: ${site}/listing/{slug}
+These machine-readable surfaces do not guarantee indexing, ranking, traffic or citation by any search or AI system.
 `
 })

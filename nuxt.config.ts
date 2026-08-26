@@ -37,7 +37,7 @@ export default defineNuxtConfig({
         {
           name: 'description',
           content:
-            'A curated directory for indie makers, SaaS founders, and tech launches. Engineered to be cited by ChatGPT, Perplexity, Claude, and Gemini.',
+            'A curated directory for indie makers, SaaS founders, and tech launches, with structured product pages for people and machine-readable discovery.',
         },
       ],
     },
@@ -126,12 +126,12 @@ export default defineNuxtConfig({
       '/api-docs',
       '/privacy',
       '/terms',
-      '/seo-guide',
       '/status',
     ],
     sources: [
       '/api/__sitemap__/blog-urls',
       '/api/__sitemap__/listing-urls',
+      '/api/__sitemap__/directory-pages',
     ],
   },
 })

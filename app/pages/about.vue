@@ -1,17 +1,20 @@
 <script setup lang="ts">
+import { SITE_IDENTITY } from '#shared/constants/site-identity'
+
 const config = useRuntimeConfig()
 const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
 const aboutUrl = `${siteUrl}/about`
-const aboutDescription = 'Learn who runs LaunchLog, how the curated SaaS launch directory works, and how its editorial process supports search and AI discovery.'
+const aboutDescription = 'Learn who runs LaunchLog, how paid listings are published and moderated, and how the SaaS launch directory supports web discovery.'
+const { plans } = usePlans()
 
 const principles = [
   {
-    title: 'Human-reviewed launches',
-    body: 'LaunchLog is built around curated product profiles, not scraped or auto-approved listings. The goal is to make every page useful to founders, buyers, search crawlers and AI answer engines.',
+    title: 'Curated product profiles',
+    body: 'Paid submissions publish after successful checkout and remain subject to LaunchLog moderation. The goal is to keep every public page useful to founders, buyers and compatible discovery systems.',
   },
   {
     title: 'Structured by default',
-    body: 'Listing pages are designed with schema.org, canonical metadata, llms.txt support and clean summaries so products are easier to understand, cite and index.',
+    body: 'Listing pages combine visible product facts with schema.org, canonical metadata, markdown output and concise summaries so the same information is easier to parse and reference.',
   },
   {
     title: 'Practical visibility',
@@ -23,7 +26,7 @@ const editorialStandards = [
   'We avoid guaranteed ranking claims, fake metrics and spammy backlink language.',
   'We prefer clear product descriptions, specific use cases and verifiable company information.',
   'We write for both humans and machines: concise summaries, structured metadata and useful context.',
-  'We keep sponsored placement separate from whether a product is accepted into the directory.',
+  'We disclose paid placement separately from moderation and do not promise a fixed position.',
 ]
 
 const steps = [
@@ -35,12 +38,12 @@ const steps = [
   {
     number: '02',
     title: 'We shape the listing',
-    body: 'LaunchLog turns the submission into a clean profile with description, metadata, category context and AI-readable structure.',
+    body: 'LaunchLog prepares an editable profile with a description, metadata, category context and machine-readable output.',
   },
   {
     number: '03',
     title: 'Your page goes live',
-    body: 'The listing gets a dedicated public URL, appears in the directory and becomes part of the sitemap and LLM-facing surfaces.',
+    body: 'After successful checkout, the listing gets a public URL, appears in the directory and is included in the sitemap and optional machine-readable feeds.',
   },
 ]
 
@@ -50,7 +53,7 @@ const listingIncludes = [
   'Human-readable product summary',
   'Category, launch and discovery context',
   'Schema.org JSON-LD for structured understanding',
-  'Sitemap inclusion and AI-friendly metadata',
+  'Sitemap inclusion and machine-readable metadata',
 ]
 
 useSeoMeta({
@@ -104,8 +107,9 @@ useHead({
           {
             '@type': 'Person',
             '@id': `${aboutUrl}#alexandru-bedeleu`,
-            name: 'Alexandru Bedeleu',
+            name: SITE_IDENTITY.founder.name,
             url: aboutUrl,
+            sameAs: [SITE_IDENTITY.founder.profileUrl],
             jobTitle: 'Founder and full-stack developer',
             worksFor: {
               '@type': 'Organization',
@@ -123,27 +127,22 @@ useHead({
           {
             '@type': 'Organization',
             '@id': `${siteUrl}/#organization`,
-            name: 'LaunchLog',
+            name: SITE_IDENTITY.brandName,
             url: `${siteUrl}/`,
-            slogan: 'The log of what just shipped.',
+            slogan: SITE_IDENTITY.slogan,
+            email: SITE_IDENTITY.publicEmail,
+            logo: `${siteUrl}${SITE_IDENTITY.logoPath}`,
+            sameAs: SITE_IDENTITY.socialProfiles,
             founder: {
               '@id': `${aboutUrl}#alexandru-bedeleu`,
             },
-            description: 'LaunchLog is a curated directory for indie makers, SaaS founders and tech launches.',
-            makesOffer: [
-              {
-                '@type': 'Offer',
-                name: 'Standard LaunchLog listing',
-                price: '24.99',
-                priceCurrency: 'USD',
-              },
-              {
-                '@type': 'Offer',
-                name: 'Featured LaunchLog listing',
-                price: '99.00',
-                priceCurrency: 'USD',
-              },
-            ],
+            description: SITE_IDENTITY.description,
+            makesOffer: plans.map(plan => ({
+              '@type': 'Offer',
+              name: `${plan.name} LaunchLog listing`,
+              price: (plan.annualPriceCents / 100).toFixed(2),
+              priceCurrency: plan.currency,
+            })),
           },
         ],
       }),
@@ -179,6 +178,14 @@ useHead({
           19+ years of experience building production web products, automation
           systems and SEO-focused software.
         </p>
+        <a
+          :href="SITE_IDENTITY.founder.profileUrl"
+          target="_blank"
+          rel="me noopener"
+          class="mt-4 inline-flex text-sm font-medium text-brand-accent transition-colors hover:text-white hover:underline"
+        >
+          Alexandru on LinkedIn
+        </a>
       </aside>
     </section>
 
@@ -216,8 +223,8 @@ useHead({
         <p>
           That is why the platform focuses on human-readable descriptions,
           structured data, canonical URLs, markdown-friendly summaries and
-          product context that can support citations in Google, Bing,
-          Perplexity, ChatGPT, Claude and Gemini.
+          product context that gives search engines and compatible AI systems a
+          consistent public source to parse.
         </p>
       </div>
     </section>
@@ -228,7 +235,7 @@ useHead({
           How it works
         </p>
         <h2 class="mt-4 text-3xl font-bold tracking-normal text-white md:text-4xl">
-          From submitted product to indexed launch profile.
+          From submitted product to public launch profile.
         </h2>
       </div>
 
@@ -320,7 +327,7 @@ useHead({
         <p class="text-brand-muted mt-4 leading-7">
           Browse LaunchLog to find recently shipped SaaS products and understand
           what each product does without digging through vague landing pages.
-          Every serious listing is shaped to be scannable, structured and easy
+          Every published listing is shaped to be scannable, structured and easy
           to reference.
         </p>
         <NuxtLink
@@ -339,7 +346,7 @@ useHead({
             Ready to list your SaaS launch?
           </h2>
           <p class="text-brand-muted mt-4 max-w-2xl leading-7">
-            Choose a listing tier and get a permanent, structured product page
+            Choose a listing tier and get a dedicated, structured product page
             built for discovery across search and AI answer engines.
           </p>
         </div>

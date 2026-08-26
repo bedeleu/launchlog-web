@@ -133,8 +133,8 @@ function truncateDescription(value: string): string {
           Get your product listed on LaunchLog
         </p>
         <p class="text-brand-muted mt-2 text-sm leading-6">
-          LaunchLog publishes human-reviewed listings with schema.org structured data and AI-readable
-          pages built for search and machine-readable discovery.
+          LaunchLog publishes curated product profiles with schema.org structured data, sitemap
+          discovery and machine-readable output alongside the visible page.
         </p>
         <div class="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold">
           <NuxtLink to="/submit" class="text-brand-accent hover:underline">

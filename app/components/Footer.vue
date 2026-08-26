@@ -1,10 +1,17 @@
 <script setup lang="ts">
+import { SITE_IDENTITY } from '#shared/constants/site-identity'
 import { safeExternalHttpUrl } from '~/utils/safe-public-url'
 
 const year = new Date().getFullYear()
 const config = useRuntimeConfig()
 const legalName = config.public.legalName.trim()
 const statusPageUrl = safeExternalHttpUrl(config.public.statusPageUrl)
+const socialLinks = [
+  { label: 'X', href: SITE_IDENTITY.socialProfiles[3] },
+  { label: 'LinkedIn', href: SITE_IDENTITY.socialProfiles[2] },
+  { label: 'Instagram', href: SITE_IDENTITY.socialProfiles[1] },
+  { label: 'Facebook', href: SITE_IDENTITY.socialProfiles[0] },
+]
 
 const columns = [
   {
@@ -61,6 +68,24 @@ const columns = [
           <p class="mt-3 text-sm text-brand-muted">
             The log of what just shipped — structured for people, search engines, and AI discovery.
           </p>
+          <a
+            :href="`mailto:${SITE_IDENTITY.publicEmail}`"
+            class="mt-4 inline-flex text-sm font-medium text-brand-fg transition-colors hover:text-brand-accent"
+          >
+            {{ SITE_IDENTITY.publicEmail }}
+          </a>
+          <div class="mt-4 flex flex-wrap gap-x-4 gap-y-2" aria-label="LaunchLog social profiles">
+            <a
+              v-for="social in socialLinks"
+              :key="social.href"
+              :href="social.href"
+              target="_blank"
+              rel="noopener"
+              class="text-xs font-medium text-brand-muted transition-colors hover:text-brand-fg"
+            >
+              {{ social.label }}
+            </a>
+          </div>
         </div>
 
         <div v-for="col in columns" :key="col.title">

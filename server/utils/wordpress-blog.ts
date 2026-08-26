@@ -69,6 +69,13 @@ export interface WordPressPostRef {
   featuredImage: string | null
 }
 
+export interface WordPressPostSummary {
+  slug: string
+  title: string
+  excerpt: string
+  modified: string
+}
+
 /** Fetches one page of posts and reports how many pages the upstream says exist. */
 export type WordPressPageFetcher = (page: number, perPage: number) => Promise<{ body: unknown, totalPages: number }>
 
@@ -287,6 +294,52 @@ export async function fetchWordPressPosts(limit = 24): Promise<BlogPost[]> {
   })
 
   return parseWordPressPostList(body, baseUrl)
+}
+
+/**
+ * Every published article summary for machine-readable indexes. Unlike the
+ * archive fetch, this deliberately omits full content and embedded media.
+ */
+export async function fetchAllWordPressPostSummaries(): Promise<WordPressPostSummary[]> {
+  const baseUrl = wordpressBlogBaseUrl()
+  const summaries: WordPressPostSummary[] = []
+  const seenSlugs = new Set<string>()
+  let totalPages = 1
+
+  for (let page = 1; page <= totalPages; page += 1) {
+    const response = await $fetch.raw<unknown>(`${baseUrl}/wp-json/wp/v2/posts`, {
+      query: {
+        page,
+        per_page: WORDPRESS_MAX_PER_PAGE,
+        status: 'publish',
+        orderby: 'id',
+        order: 'desc',
+        _fields: 'id,date,modified,slug,link,title,excerpt',
+      },
+      headers: {
+        'User-Agent': WORDPRESS_USER_AGENT,
+      },
+      timeout: WORDPRESS_TIMEOUT_MS,
+    })
+
+    if (page === 1) {
+      totalPages = clampPageCount(Number(response.headers.get('x-wp-totalpages') ?? 1))
+    }
+
+    for (const post of parseWordPressPostList(response._data, baseUrl)) {
+      if (seenSlugs.has(post.slug)) continue
+
+      seenSlugs.add(post.slug)
+      summaries.push({
+        slug: post.slug,
+        title: post.title,
+        excerpt: post.excerpt,
+        modified: post.modified,
+      })
+    }
+  }
+
+  return summaries
 }
 
 /**

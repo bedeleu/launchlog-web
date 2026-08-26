@@ -1,7 +1,5 @@
 // server/routes/llms-full.txt.get.ts
-// Dynamic /llms-full.txt — full context dump for AI answer engines.
-// Fetches live published listings from the Laravel API and recent blog posts from WordPress.
-// fetchWordPressPosts is auto-imported from server/utils/wordpress-blog.ts (Nitro server utils).
+// Dynamic /llms-full.txt — complete listing and article index for compatible consumers.
 
 interface PublicListing {
   slug: string
@@ -27,17 +25,17 @@ export default defineEventHandler(async (event) => {
 
   let posts: Array<{ slug: string; title: string; excerpt: string }>
   try {
-    const blog = await fetchWordPressPosts(20)
+    const blog = await fetchAllWordPressPostSummaries()
     posts = (blog ?? []).map((p) => ({ slug: p.slug, title: p.title, excerpt: p.excerpt }))
   } catch {
     posts = []
   }
 
   const lines: string[] = []
-  lines.push('# LaunchLog — full context')
+  lines.push('# LaunchLog — complete directory index')
   lines.push('')
   lines.push('> Curated paid directory for indie makers, SaaS founders and tech launches.')
-  lines.push('> Each listing is human-reviewed and exposes schema.org JSON-LD + markdown.')
+  lines.push('> Paid listings publish after successful checkout, remain subject to moderation, and expose schema.org JSON-LD plus markdown.')
   lines.push('')
   lines.push(`Canonical site: ${site}`)
   lines.push('')
@@ -55,15 +53,20 @@ export default defineEventHandler(async (event) => {
     }
   }
   lines.push('')
-  lines.push('## Recent blog articles')
+  lines.push('## Published blog articles')
   lines.push('')
   if (posts.length === 0) {
     lines.push('(No articles available.)')
   } else {
     for (const p of posts) {
-      lines.push(`- ${p.title} — ${site}/blog/${p.slug}`)
+      const title = p.title.replace(/[\r\n]+/g, ' ').trim()
+      const excerpt = p.excerpt.replace(/[\r\n]+/g, ' ').trim()
+      lines.push(`- ${title}${excerpt ? ` — ${excerpt}` : ''}`)
+      lines.push(`  ${site}/blog/${p.slug}`)
     }
   }
+  lines.push('')
+  lines.push('This index is an optional representation for compatible non-Google consumers. It does not guarantee indexing, ranking, traffic or citation.')
   lines.push('')
   return lines.join('\n')
 })

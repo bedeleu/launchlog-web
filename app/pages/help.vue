@@ -7,6 +7,10 @@ const description
 const supportEmail = config.public.supportEmail.trim()
 const taxNotice = config.public.taxNotice.trim()
 const legalEmail = config.public.legalEmail.trim()
+const { plans } = usePlans()
+const planPriceSummary = plans
+  .map(plan => `${plan.name} is ${plan.priceLabel}/year`)
+  .join(' and ')
 
 interface Faq { q: string, a: string }
 interface Category { id: string, title: string, summary: string, faqs: Faq[] }
@@ -17,7 +21,7 @@ const categories: Category[] = [
     title: 'Getting started',
     summary: 'What LaunchLog is and how to get on it.',
     faqs: [
-      { q: 'What is LaunchLog?', a: 'LaunchLog is a curated paid directory for indie makers, SaaS founders and tech launches. Every listing is a clean, structured product page built to be understood by people, search engines and AI answer engines like ChatGPT, Perplexity, Claude and Gemini.' },
+      { q: 'What is LaunchLog?', a: 'LaunchLog is a curated paid directory for indie makers, SaaS founders and tech launches. Every published listing is a visible product page with structured metadata and machine-readable output.' },
       { q: 'How do I get listed?', a: 'Paste your product URL to generate a free private preview, edit the details, then choose a plan. A successful Stripe payment converts that preview into a published listing.' },
       { q: 'Is there a free listing?', a: 'There is no free public listing, but there is a free private preview so you can see exactly how your listing will look before you pay anything. You only pay when you decide to publish.' },
     ],
@@ -38,7 +42,7 @@ const categories: Category[] = [
     title: 'Pricing & billing',
     summary: 'Plans, renewals and refunds.',
     faqs: [
-      { q: 'How much does it cost?', a: 'Standard is $24.99/year and Featured is $99/year. Both plans are annual and in USD.' },
+      { q: 'How much does it cost?', a: `${planPriceSummary}. Both plans are annual and in USD.` },
       { q: 'Is billing monthly or annual?', a: 'Annual only. Plans renew automatically each year unless you cancel before the renewal date.' },
       ...(taxNotice ? [{ q: 'Is tax added to the price?', a: taxNotice }] : []),
       { q: 'Do you offer refunds?', a: supportEmail ? `LaunchLog has a 7-day money-back guarantee for the initial payment. Requests are reviewed and processed manually in Stripe; email ${supportEmail} within 7 days of purchase.` : 'LaunchLog has a 7-day money-back guarantee for the initial payment. Requests are reviewed and processed manually in Stripe. A public request mailbox has not yet been configured; check the Contact page for current channels.' },
@@ -50,8 +54,8 @@ const categories: Category[] = [
     title: 'The tech edge',
     summary: 'Why LaunchLog pages are built for AI and search.',
     faqs: [
-      { q: 'How does LaunchLog help AI discovery?', a: 'Every listing ships schema.org JSON-LD in an @graph, is included in a dynamic llms.txt, and supports content-negotiated markdown — so search crawlers and large language models can read and cite your product cleanly. Users see a normal directory page; machines see structured, citable data.' },
-      { q: 'What is llms.txt?', a: 'llms.txt is an emerging convention for a clean, machine-readable map of site content. LaunchLog generates llms.txt and llms-full.txt from published listings.' },
+      { q: 'How does LaunchLog support machine-readable discovery?', a: 'Every published listing exposes schema.org JSON-LD, appears in the XML sitemap, and supports content-negotiated markdown. These outputs keep the product facts consistent for crawlers and other compatible systems, without guaranteeing indexing, ranking or citation.' },
+      { q: 'What is llms.txt?', a: 'llms.txt is an optional convention used by some non-Google tools as a machine-readable site map. LaunchLog generates llms.txt and llms-full.txt from published content. Google Search states that it ignores these files, so they are not presented as a ranking signal.' },
       { q: 'Does LaunchLog guarantee search or AI results?', a: 'No. LaunchLog provides structured, indexable discovery surfaces, but does not guarantee indexing, traffic, search position or AI citations.' },
     ],
   },

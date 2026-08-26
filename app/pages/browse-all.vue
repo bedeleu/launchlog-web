@@ -2,6 +2,7 @@
 import { Search, X } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import type { ListingPage } from '~/composables/useListings'
+import { parseCanonicalPageParam } from '~/utils/pagination'
 
 const route = useRoute()
 const { listListingPage } = useListings()
@@ -11,10 +12,8 @@ const { listListingPage } = useListings()
 const activeCategory = computed(() => (route.query.category as string) || '')
 const activeTag = computed(() => (route.query.tag as string) || '')
 const activeQuery = computed(() => (route.query.q as string) || '')
-const activePage = computed(() => {
-  const page = Number(route.query.page || 1)
-  return Number.isInteger(page) && page > 0 ? page : 1
-})
+const parsedPage = computed(() => parseCanonicalPageParam(route.query.page))
+const activePage = computed(() => parsedPage.value ?? 1)
 
 // view=directory hands page membership to the API: it plans 30 visual slots and
 // returns however many real records fill them, so no per_page is sent — a record
@@ -96,12 +95,13 @@ const submitSearch = () => {
 
 const clearFilters = () => navigateTo({ path: '/browse-all', query: {} })
 
-const setPage = (page: number) => {
+const browsePageLocation = (page: number) => {
   const target = Math.max(1, Math.min(meta.value.last_page, page))
-  const query: Record<string, string> = { ...route.query as Record<string, string> }
+  const query = { ...route.query }
   if (target > 1) query.page = String(target)
   else delete query.page
-  navigateTo({ path: '/browse-all', query })
+
+  return { path: '/browse-all', query }
 }
 
 const pageNumbers = computed(() => {
@@ -117,19 +117,56 @@ const pageNumbers = computed(() => {
 const config = useRuntimeConfig()
 const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
 const ogImageUrl = `${siteUrl}/og-image.jpg`
+const pagePath = (page: number) => page > 1 ? `/browse-all?page=${page}` : '/browse-all'
+const filteredOrInvalid = computed(() => hasFilters.value || parsedPage.value === null)
+const pageOutOfRange = computed(() => !pageError.value && activePage.value > meta.value.last_page)
+const canonicalUrl = computed(() => filteredOrInvalid.value
+  ? `${siteUrl}/browse-all`
+  : `${siteUrl}${pagePath(activePage.value)}`)
+const pageTitle = computed(() => activePage.value > 1 && !filteredOrInvalid.value
+  ? `Browse all SaaS launches — Page ${activePage.value} | LaunchLog`
+  : 'Browse all SaaS launches | LaunchLog')
+const pageDescription = computed(() => activePage.value > 1 && !filteredOrInvalid.value
+  ? `Browse published SaaS and tech products on LaunchLog. Directory page ${activePage.value} of ${meta.value.last_page}.`
+  : 'Browse published SaaS and tech products on LaunchLog — the log of what just shipped.')
+
+if (import.meta.server && pageOutOfRange.value) {
+  const event = useRequestEvent()
+  if (event) {
+    setResponseStatus(event, 404)
+    useResponseHeader('X-Robots-Tag').value = 'noindex, nofollow'
+  }
+}
 
 useSeoMeta({
-  title: 'Browse all — LaunchLog',
-  description: 'Browse every product on LaunchLog — the log of what just shipped.',
-  ogTitle: 'Browse all — LaunchLog',
-  ogDescription: 'Browse every product on LaunchLog — the log of what just shipped.',
-  ogUrl: `${siteUrl}/browse-all`,
+  title: pageTitle,
+  description: pageDescription,
+  robots: () => pageOutOfRange.value
+    ? 'noindex, nofollow'
+    : filteredOrInvalid.value
+      ? 'noindex, follow'
+      : undefined,
+  ogTitle: pageTitle,
+  ogDescription: pageDescription,
+  ogUrl: canonicalUrl,
   ogImage: ogImageUrl,
   twitterCard: 'summary_large_image',
-  twitterTitle: 'Browse all — LaunchLog',
-  twitterDescription: 'Browse every product on LaunchLog — the log of what just shipped.',
+  twitterTitle: pageTitle,
+  twitterDescription: pageDescription,
   twitterImage: ogImageUrl,
 })
+
+useHead(() => ({
+  link: [
+    { rel: 'canonical' as const, href: canonicalUrl.value },
+    ...(!filteredOrInvalid.value && !pageOutOfRange.value && activePage.value > 1
+      ? [{ rel: 'prev' as const, href: `${siteUrl}${pagePath(activePage.value - 1)}` }]
+      : []),
+    ...(!filteredOrInvalid.value && !pageOutOfRange.value && activePage.value < meta.value.last_page
+      ? [{ rel: 'next' as const, href: `${siteUrl}${pagePath(activePage.value + 1)}` }]
+      : []),
+  ],
+}))
 
 useBreadcrumbs([
   { name: 'Home', path: '/' },
@@ -240,12 +277,13 @@ useBreadcrumbs([
         class="mt-10 flex flex-wrap items-center justify-center gap-2"
         aria-label="Browse pagination"
       >
-        <Button
-          variant="outline"
-          :disabled="meta.current_page <= 1"
-          @click="setPage(meta.current_page - 1)"
-        >
+        <Button v-if="meta.current_page <= 1" variant="outline" disabled>
           Previous
+        </Button>
+        <Button v-else as-child variant="outline">
+          <NuxtLink :to="browsePageLocation(meta.current_page - 1)" rel="prev">
+            Previous
+          </NuxtLink>
         </Button>
         <template v-for="(page, index) in pageNumbers" :key="page">
           <span
@@ -255,24 +293,29 @@ useBreadcrumbs([
           >
             …
           </span>
-          <button
-            type="button"
+          <span
+            v-if="page === meta.current_page"
             class="flex size-10 items-center justify-center rounded-md border text-sm font-medium transition-colors"
-            :class="page === meta.current_page
-              ? 'border-emerald-400 bg-emerald-400 text-slate-950'
-              : 'border-brand-border text-brand-muted hover:border-white/20 hover:text-brand-fg'"
-            :aria-current="page === meta.current_page ? 'page' : undefined"
-            @click="setPage(page)"
+            :class="'border-emerald-400 bg-emerald-400 text-slate-950'"
+            aria-current="page"
           >
             {{ page }}
-          </button>
+          </span>
+          <NuxtLink
+            v-else
+            :to="browsePageLocation(page)"
+            class="flex size-10 items-center justify-center rounded-md border border-brand-border text-sm font-medium text-brand-muted transition-colors hover:border-white/20 hover:text-brand-fg"
+          >
+            {{ page }}
+          </NuxtLink>
         </template>
-        <Button
-          variant="outline"
-          :disabled="meta.current_page >= meta.last_page"
-          @click="setPage(meta.current_page + 1)"
-        >
+        <Button v-if="meta.current_page >= meta.last_page" variant="outline" disabled>
           Next
+        </Button>
+        <Button v-else as-child variant="outline">
+          <NuxtLink :to="browsePageLocation(meta.current_page + 1)" rel="next">
+            Next
+          </NuxtLink>
         </Button>
       </nav>
     </template>

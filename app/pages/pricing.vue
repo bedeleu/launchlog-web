@@ -9,14 +9,14 @@ const taxNotice = config.public.taxNotice.trim()
 
 useSeoMeta({
   title: 'Pricing | LaunchLog',
-  description: 'Simple annual pricing for LaunchLog listings, built for SEO, AI discovery, and launch visibility.',
+  description: 'Simple annual pricing for LaunchLog product pages, directory placement and machine-readable discovery surfaces.',
   ogTitle: 'LaunchLog Pricing — Standard $24.99, Featured $99/year',
-  ogDescription: 'Annual LaunchLog listing packages. Pay only when you publish. Every plan ships schema.org structured data and AI-readable pages.',
+  ogDescription: 'Annual LaunchLog listing packages. Pay only when you publish. Every plan includes a structured public product page.',
   ogUrl: `${siteUrl}/pricing`,
   ogImage: ogImageUrl,
   twitterCard: 'summary_large_image',
   twitterTitle: 'LaunchLog Pricing — Standard $24.99, Featured $99/year',
-  twitterDescription: 'Annual LaunchLog listing packages. Pay only when you publish. Every plan ships schema.org structured data and AI-readable pages.',
+  twitterDescription: 'Annual LaunchLog listing packages. Pay only when you publish. Every plan includes a structured public product page.',
   twitterImage: ogImageUrl,
 })
 
@@ -58,7 +58,7 @@ const discoveryItems = [
   {
     icon: Bot,
     title: 'LLM-readable by default',
-    body: 'Listings are exposed as human pages and machine-friendly markdown so AI assistants can understand them.',
+    body: 'Listings are exposed as visible HTML and content-negotiated markdown with consistent product facts.',
   },
   {
     icon: FileJson2,
@@ -118,7 +118,7 @@ const faqs = [
   },
 ]
 
-// Expose the same visible FAQ as FAQPage structured data (answer-first, citable by search + AI).
+// Expose the same visible FAQ as matching FAQPage structured data.
 useFaqSchema(faqs.map(f => ({ q: f.question, a: f.answer })))
 </script>
 

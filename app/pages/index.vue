@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button'
+import { SITE_IDENTITY } from '#shared/constants/site-identity'
 import type { ListingCard } from '~/composables/useListings'
 import { takeListingsWithoutSlugs } from '~/utils/listing-placement'
 
@@ -47,9 +48,11 @@ const homeListingsFailed = computed(() =>
   Boolean(homeListingsError.value) && !featuredListings.value.length && !recentListings.value.length)
 
 const config = useRuntimeConfig()
+const { plans } = usePlans()
 const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
 const homeUrl = `${siteUrl}/`
 const ogImageUrl = `${siteUrl}/og-image.jpg`
+const organizationLogoUrl = `${siteUrl}${SITE_IDENTITY.logoPath}`
 const homeDescription = 'LaunchLog is a curated directory for indie makers, SaaS founders and tech launches, built for discoverability in Google, Bing and AI answer engines.'
 
 useSeoMeta({
@@ -78,11 +81,11 @@ useHead({
           {
             '@type': 'Organization',
             '@id': `${siteUrl}/#organization`,
-            name: 'LaunchLog',
+            name: SITE_IDENTITY.brandName,
             url: homeUrl,
-            description:
-              'LaunchLog is a curated paid directory for indie makers, SaaS founders and tech launches.',
-            slogan: 'The log of what just shipped.',
+            description: SITE_IDENTITY.description,
+            slogan: SITE_IDENTITY.slogan,
+            email: SITE_IDENTITY.publicEmail,
             foundingDate: '2026',
             areaServed: 'Worldwide',
             knowsAbout: [
@@ -95,12 +98,18 @@ useHead({
             ],
             logo: {
               '@type': 'ImageObject',
-              url: ogImageUrl,
-              width: 1200,
-              height: 630,
+              url: organizationLogoUrl,
+              width: 1024,
+              height: 1024,
             },
             image: ogImageUrl,
-            sameAs: [],
+            sameAs: SITE_IDENTITY.socialProfiles,
+            contactPoint: {
+              '@type': 'ContactPoint',
+              email: SITE_IDENTITY.publicEmail,
+              contactType: 'customer support',
+              availableLanguage: ['English', 'Romanian'],
+            },
           },
           {
             '@type': 'WebSite',
@@ -113,11 +122,6 @@ useHead({
             description: homeDescription,
             inLanguage: 'en-US',
             availableLanguage: ['English'],
-            potentialAction: {
-              '@type': 'SearchAction',
-              target: `${siteUrl}/browse-all?q={search_term_string}`,
-              'query-input': 'required name=search_term_string',
-            },
           },
           {
             '@type': 'WebPage',
@@ -147,13 +151,15 @@ useHead({
             applicationCategory: 'BusinessApplication',
             operatingSystem: 'Web',
             description:
-              'A curated paid directory for indie makers, SaaS founders and tech launches, with schema.org structured data and AI-readable pages on every listing.',
+              'A curated paid directory for indie makers, SaaS founders and tech launches, with visible product facts and machine-readable output on every listing.',
             provider: { '@id': `${siteUrl}/#organization` },
             image: ogImageUrl,
-            offers: [
-              { '@type': 'Offer', name: 'Standard', price: '24.99', priceCurrency: 'USD' },
-              { '@type': 'Offer', name: 'Featured', price: '99.00', priceCurrency: 'USD' },
-            ],
+            offers: plans.map(plan => ({
+              '@type': 'Offer',
+              name: plan.name,
+              price: (plan.annualPriceCents / 100).toFixed(2),
+              priceCurrency: plan.currency,
+            })),
           },
         ],
       }),

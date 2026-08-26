@@ -2,13 +2,12 @@
 import { Code2 } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import type { ListingPage } from '~/composables/useListings'
+import { parseCanonicalPageParam } from '~/utils/pagination'
 
 const route = useRoute()
 const { listListingPage } = useListings()
-const activePage = computed(() => {
-  const page = Number(route.query.page || 1)
-  return Number.isInteger(page) && page > 0 ? page : 1
-})
+const parsedPage = computed(() => parseCanonicalPageParam(route.query.page))
+const activePage = computed(() => parsedPage.value ?? 1)
 
 const { data: pageData, error: pageError, refresh } = await useAsyncData<ListingPage>(
   () => `tech-products-${activePage.value}`,
@@ -45,27 +44,47 @@ const config = useRuntimeConfig()
 const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
 const ogImageUrl = `${siteUrl}/og-image.jpg`
 const pageUrl = computed(() => `${siteUrl}${pageHref(activePage.value)}`)
+const pageOutOfRange = computed(() => !pageError.value && activePage.value > meta.value.last_page)
+const pageTitle = computed(() => activePage.value > 1
+  ? `Tech products — Page ${activePage.value} | LaunchLog`
+  : 'Tech products | LaunchLog')
+const pageDescription = computed(() => activePage.value > 1
+  ? `Developer tools, DevOps, AI/ML, APIs, no-code and open-source launches. Page ${activePage.value} of ${meta.value.last_page}.`
+  : 'Developer tools, DevOps, AI/ML, APIs, no-code, and open-source launches on LaunchLog.')
+
+if (import.meta.server && pageOutOfRange.value) {
+  const event = useRequestEvent()
+  if (event) {
+    setResponseStatus(event, 404)
+    useResponseHeader('X-Robots-Tag').value = 'noindex, nofollow'
+  }
+}
 
 useSeoMeta({
-  title: 'Tech products — LaunchLog',
-  description: 'Developer tools, DevOps, AI/ML, APIs, no-code, and open-source launches on LaunchLog.',
-  ogTitle: 'Tech products — LaunchLog',
-  ogDescription: 'Developer tools, DevOps, AI/ML, APIs, no-code, and open-source launches on LaunchLog.',
+  title: pageTitle,
+  description: pageDescription,
+  robots: () => pageOutOfRange.value
+    ? 'noindex, nofollow'
+    : parsedPage.value === null
+      ? 'noindex, follow'
+      : undefined,
+  ogTitle: pageTitle,
+  ogDescription: pageDescription,
   ogUrl: pageUrl,
   ogImage: ogImageUrl,
   twitterCard: 'summary_large_image',
-  twitterTitle: 'Tech products — LaunchLog',
-  twitterDescription: 'Developer tools, DevOps, AI/ML, APIs, no-code, and open-source launches on LaunchLog.',
+  twitterTitle: pageTitle,
+  twitterDescription: pageDescription,
   twitterImage: ogImageUrl,
 })
 
 useHead(() => ({
   link: [
     { rel: 'canonical' as const, href: pageUrl.value },
-    ...(activePage.value > 1
+    ...(parsedPage.value !== null && !pageOutOfRange.value && activePage.value > 1
       ? [{ rel: 'prev' as const, href: `${siteUrl}${pageHref(activePage.value - 1)}` }]
       : []),
-    ...(activePage.value < meta.value.last_page
+    ...(parsedPage.value !== null && !pageOutOfRange.value && activePage.value < meta.value.last_page
       ? [{ rel: 'next' as const, href: `${siteUrl}${pageHref(activePage.value + 1)}` }]
       : []),
   ],

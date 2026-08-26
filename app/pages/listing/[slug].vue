@@ -239,7 +239,7 @@ useHead({
           <a
             :href="listing.url"
             target="_blank"
-            rel="noopener nofollow"
+            rel="noopener sponsored"
             class="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/80"
           >
             Visit Website
@@ -449,7 +449,7 @@ useHead({
             <a
               :href="listing.url"
               target="_blank"
-              rel="noopener nofollow"
+              rel="noopener sponsored"
               class="mt-6 inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/80"
             >
               Visit Site
@@ -467,7 +467,7 @@ useHead({
               markdown
             </p>
             <p class="mt-2 text-xs text-brand-muted">
-              This listing ships structured data and a markdown endpoint so AI assistants can cite it accurately.
+              This listing exposes the same product facts as visible HTML, structured data and a markdown response.
             </p>
           </div>
         </aside>

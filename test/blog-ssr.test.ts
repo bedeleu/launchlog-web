@@ -398,15 +398,13 @@ describe.skipIf(!isBuilt)('/blog SSR', () => {
       expect(canonicals).toEqual(['https://launchlog.ai/blog?page=2'])
     })
 
-    test('hreflang alternates follow the canonical instead of pinning every page to /blog', async () => {
+    test('a single-language archive does not emit misleading hreflang alternates', async () => {
       upstreamMode = 'posts'
 
       const html = await fetch(`${BASE}/blog?page=2`).then(response => response.text())
       const alternates = [...html.matchAll(/<link[^>]+rel="alternate"[^>]*>/g)]
-        .map(match => match[0].match(/href="([^"]+)"/)?.[1] ?? '')
 
-      expect(alternates.length).toBeGreaterThan(0)
-      expect(alternates.every(href => href === 'https://launchlog.ai/blog?page=2')).toBe(true)
+      expect(alternates).toEqual([])
     })
 
     test('page 2 has a differentiated title, og:title and og:url', async () => {
