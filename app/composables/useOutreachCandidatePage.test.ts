@@ -61,7 +61,7 @@ interface Candidate {
   validation_errors: [] | Partial<Record<'subject_line' | 'opening_line' | 'email_body', string[]>>
   suppressions: Array<{
     kind: 'email' | 'domain'
-    value: string
+    normalized_value: string
     reason: string
     source: 'manual' | 'opt_out'
     created_by: Actor | null
@@ -89,7 +89,7 @@ interface Recovery {
 
 interface Suppression {
   kind: 'email' | 'domain'
-  value: string
+  normalized_value: string
   reason: string
   source: 'manual' | 'opt_out'
   created_by: Actor | null
@@ -430,7 +430,7 @@ function richCandidate(overrides: Partial<Candidate> = {}): Candidate {
     validation_errors: { email_body: ['Check this field.'] },
     suppressions: [{
       kind: 'email',
-      value: 'ada@acme.test',
+      normalized_value: 'ada@acme.test',
       reason: 'Requested opt out',
       source: 'opt_out',
       created_by: { name: 'Admin', email: 'admin@launchlog.ai' },
@@ -623,7 +623,7 @@ function createApi(): Api {
       apiCalls.push({ name: 'createSuppression', payload: structuredClone(payload), transport })
       return take(suppressionQueue, async () => ({
         kind: 'email',
-        value: 'ada@acme.test',
+        normalized_value: 'ada@acme.test',
         reason: 'Manual suppression',
         source: 'manual',
         created_by: null,
@@ -893,7 +893,7 @@ describe('candidate load and fixed-window polling', () => {
       ['suppression enum', malformedCandidate(value => Object.assign(value, {
         suppressions: [{
           kind: 'address',
-          value: 'ada@acme.test',
+          normalized_value: 'ada@acme.test',
           reason: 'Invalid literal',
           source: 'manual',
           created_by: null,
@@ -904,6 +904,15 @@ describe('candidate load and fixed-window polling', () => {
       }))],
       ['audit bounds', malformedCandidate(value => Object.assign(value.audit, { export_count: -1 }))],
       ['audit actor', malformedCandidate(value => Object.assign(value.audit, { approved_by: { name: 'Admin', email: 42 } }))],
+      ['audit hash length', malformedCandidate(value => Object.assign(value.audit, { last_export_hash: 'a'.repeat(63) }))],
+      ['audit hash uppercase', malformedCandidate(value => Object.assign(value.audit, { last_export_hash: 'A'.repeat(64) }))],
+      ['audit hash non-hex', malformedCandidate(value => Object.assign(value.audit, { last_export_hash: 'g'.repeat(64) }))],
+      ['known validation scalar', malformedCandidate(value => Object.assign(value, {
+        validation_errors: { email_body: 'RAW_VALIDATION_SCALAR' },
+      }))],
+      ['known validation mixed array', malformedCandidate(value => Object.assign(value, {
+        validation_errors: { subject_line: ['Check this field.', 42] },
+      }))],
       ['timestamp nullability', malformedCandidate(value => Object.assign(value, { updated_at: null }))],
     ]
 
@@ -918,12 +927,42 @@ describe('candidate load and fixed-window polling', () => {
     }
   })
 
+  test('load and project a valid suppressed candidate with normalized values while dropping unknown validation keys', async () => {
+    const expected = candidate({
+      effective_status: 'suppressed',
+      validation_errors: {},
+      suppressions: [{
+        kind: 'email',
+        normalized_value: 'ada@acme.test',
+        reason: 'Requested opt out',
+        source: 'opt_out',
+        created_by: { name: 'Admin', email: 'admin@launchlog.ai' },
+        created_at: '2026-08-26T09:00:00.000Z',
+        updated_at: '2026-08-26T09:00:00.000Z',
+        matched_targets: ['email', 'email_domain'],
+      }],
+    })
+    const response = structuredClone(expected)
+    Object.assign(response, {
+      validation_errors: { arbitrary_private_field: ['RAW_UNKNOWN_VALIDATION_PII'] },
+    })
+    getQueue.push(async () => response)
+
+    await controller.load()
+
+    expect(controller.state.candidate).toEqual(expected)
+    expect(controller.state.candidate?.suppressions[0]).toEqual(expected.suppressions[0])
+    expect('value' in (controller.state.candidate?.suppressions[0] ?? {})).toBeFalse()
+    expect(controller.state.validation_errors).toEqual({})
+    expect(JSON.stringify(controller.state)).not.toContain('RAW_UNKNOWN_VALIDATION_PII')
+  })
+
   test('reuse strict candidate validation for poll, full mutation, and committed recovery GET', async () => {
     resetHarness(generating())
     await controller.load()
     const lastGoodPoll = structuredClone(controller.state.candidate)
-    getQueue.push(async () => malformedCandidate(value => Object.assign(value.prospect, {
-      source_attested_by: { name: 'Admin', email: 42 },
+    getQueue.push(async () => malformedCandidate(value => Object.assign(value.audit, {
+      last_export_hash: 'A'.repeat(64),
     })))
     await fireNextTimer()
     expect(controller.state.candidate).toEqual(lastGoodPoll)
@@ -934,9 +973,9 @@ describe('candidate load and fixed-window polling', () => {
     await controller.load()
     const lastGoodMutation = structuredClone(controller.state.candidate)
     controller.setProspectField('company_name', 'Malformed full response')
-    prospectQueue.push(async () => malformedCandidate(value => {
-      if (value.preview !== null) Object.assign(value.preview.capabilities, { edit: true })
-    }))
+    prospectQueue.push(async () => malformedCandidate(value => Object.assign(value, {
+      validation_errors: { email_body: 'RAW_VALIDATION_SCALAR' },
+    })))
     await expect(controller.saveProspect()).rejects.toMatchObject({ kind: 'server' })
     expect(controller.state.candidate).toEqual(lastGoodMutation)
     expect(controller.state.refresh_required).toBeTrue()
@@ -950,7 +989,9 @@ describe('candidate load and fixed-window polling', () => {
       persistence_status: 'committed',
       recovery_url: `/api/v1/admin/outreach/candidates/${ULID}`,
     }))
-    getQueue.push(async () => malformedCandidate(value => Object.assign(value.audit, { export_count: -1 })))
+    getQueue.push(async () => malformedCandidate(value => Object.assign(value, {
+      validation_errors: { subject_line: ['Check this field.', 42] },
+    })))
     await expect(controller.saveDraft()).rejects.toMatchObject({ kind: 'server' })
     expect(controller.state.candidate).toEqual(lastGoodRecovery)
     expect(controller.state.refresh_required).toBeTrue()
@@ -1041,7 +1082,7 @@ describe('candidate load and fixed-window polling', () => {
       controller.setSuppressionConfirmed(true)
       suppressionQueue.push(async () => ({
         kind: 'domain',
-        value: 'acme.test',
+        normalized_value: 'acme.test',
         reason: 'Guarded suppression',
         source: 'opt_out',
         created_by: null,
@@ -2371,7 +2412,7 @@ describe('revision-bound mutations and recovery', () => {
       controller.setSuppressionConfirmed(true)
       suppressionQueue.push(async () => ({
         kind: 'email',
-        value: 'ada@acme.test',
+        normalized_value: 'ada@acme.test',
         reason: 'Allowed terminal suppression',
         source: 'manual',
         created_by: null,
@@ -2660,7 +2701,7 @@ describe('revision-bound mutations and recovery', () => {
         enqueue: thunk => suppressionQueue.push(thunk),
         invoke: () => controller.suppress(),
         callName: 'createSuppression',
-        malformed: { kind: 'email', value: 'missing-resource-fields' },
+        malformed: { kind: 'email', normalized_value: 'missing-resource-fields' },
         dirty: true,
       },
       {
@@ -2833,7 +2874,7 @@ describe('committed mutation follow-up refresh failures', () => {
         },
         enqueueSuccess: () => suppressionQueue.push(async () => ({
           kind: 'email',
-          value: 'ada@acme.test',
+          normalized_value: 'ada@acme.test',
           reason: 'Committed suppression',
           source: 'manual',
           created_by: null,
@@ -3109,7 +3150,7 @@ describe('approval, lifecycle, suppression, and export actions', () => {
     expect(() => controller.setSuppressionConfirmed(false)).toThrow()
     pending.resolve({
       kind: 'domain',
-      value: 'acme.test',
+      normalized_value: 'acme.test',
       reason: 'Requested suppression',
       source: 'opt_out',
       created_by: null,
@@ -3117,6 +3158,7 @@ describe('approval, lifecycle, suppression, and export actions', () => {
       updated_at: '2026-08-26T12:00:00.000Z',
     })
     await action
+    expect(apiCalls.map(call => call.name)).toEqual(['getCandidate', 'createSuppression', 'getCandidate'])
 
     const call = apiCalls.find(entry => entry.name === 'createSuppression')
     expect(call?.payload).toEqual({
@@ -3147,7 +3189,7 @@ describe('approval, lifecycle, suppression, and export actions', () => {
     controller.setSuppressionConfirmed(true)
     suppressionQueue.push(async () => ({
       kind: 'address',
-      value: 'ada@acme.test',
+      normalized_value: 'ada@acme.test',
       reason: 'Suppress invalid response',
       source: 'manual',
       created_by: null,

@@ -100,7 +100,7 @@ interface CandidateSummary {
 
 interface Suppression {
   kind: 'email' | 'domain'
-  value: string
+  normalized_value: string
   reason: string
   source: 'manual' | 'opt_out'
   created_by: Actor | null
@@ -312,7 +312,7 @@ const campaign: Campaign = {
 
 const suppression: Suppression = {
   kind: 'email',
-  value: 'ada@acme.test',
+  normalized_value: 'ada@acme.test',
   reason: 'Requested opt out',
   source: 'opt_out',
   created_by: { name: 'Admin', email: 'admin@launchlog.ai' },
@@ -662,15 +662,21 @@ describe('typed LaunchLog outreach requests', () => {
     }, { signal })).toEqual({ ...detail, persisted_status: 'approved', effective_status: 'approved' })
     expect(await client.recaptureCandidate(ULID, { signal })).toEqual({ ...detail, effective_status: 'preview_generating' })
     expect(await client.renewCandidate(ULID, { signal })).toEqual(recovery)
-    expect(await client.listSuppressions({ page: 1 }, { signal })).toEqual(suppressionPage)
-    expect(await client.createSuppression({
+    const suppressions = await client.listSuppressions({ page: 1 }, { signal })
+    expect(suppressions).toEqual(suppressionPage)
+    expect(suppressions.data[0]?.normalized_value).toBe('ada@acme.test')
+    expect('value' in (suppressions.data[0] ?? {})).toBeFalse()
+    const createdSuppression = await client.createSuppression({
       prospect_public_id: ULID,
       expected_revision: 8,
       target: 'effective_domain',
       reason: 'Requested opt out',
       source: 'opt_out',
       confirm: true,
-    }, { signal })).toEqual(suppression)
+    }, { signal })
+    expect(createdSuppression).toEqual(suppression)
+    expect(createdSuppression.normalized_value).toBe('ada@acme.test')
+    expect('value' in createdSuppression).toBeFalse()
     const download = await client.exportCandidates({
       campaign_key: campaign.key,
       prospect_public_ids: [ULID],
