@@ -3,6 +3,7 @@ export const SITE_IDENTITY = {
   siteName: 'LaunchLog',
   slogan: 'The log of what just shipped.',
   description: 'A curated paid directory for indie makers, SaaS founders and tech launches.',
+  operatorName: 'AB Solutions',
   publicEmail: 'hello@launchlog.ai',
   logoPath: '/images/samples/logo.jpg',
   founder: {

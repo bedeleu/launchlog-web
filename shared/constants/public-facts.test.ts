@@ -20,4 +20,8 @@ describe('public facts', () => {
     expect(new Set(SITE_IDENTITY.socialProfiles).size).toBe(SITE_IDENTITY.socialProfiles.length)
     expect(SITE_IDENTITY.socialProfiles.every(url => url.startsWith('https://'))).toBe(true)
   })
+
+  test('uses the public AB Solutions operator identity', () => {
+    expect(SITE_IDENTITY.operatorName).toBe('AB Solutions')
+  })
 })

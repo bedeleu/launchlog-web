@@ -1,4 +1,5 @@
 import tailwindcss from '@tailwindcss/vite'
+import { SITE_IDENTITY } from './shared/constants/site-identity'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
@@ -48,7 +49,7 @@ export default defineNuxtConfig({
       // server/middleware/markdown-negotiation.ts for the canonical pattern.
       apiUrl: process.env.NUXT_PUBLIC_API_URL || 'https://api.launchlog.ai',
       domain: process.env.NUXT_PUBLIC_DOMAIN || 'launchlog.ai',
-      legalName: process.env.NUXT_PUBLIC_LEGAL_NAME || '',
+      legalName: process.env.NUXT_PUBLIC_LEGAL_NAME || SITE_IDENTITY.operatorName,
       legalEmail: process.env.NUXT_PUBLIC_LEGAL_EMAIL || '',
       supportEmail: process.env.NUXT_PUBLIC_SUPPORT_EMAIL || '',
       dmcaEmail: process.env.NUXT_PUBLIC_DMCA_EMAIL || '',

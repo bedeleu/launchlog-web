@@ -41,7 +41,6 @@ describe('contact request', () => {
       email: 'typed@example.com',
       website: 'https://maker.example',
       message: 'Please help me verify ownership.',
-      company: '',
     }
 
     await useContact().sendContactRequest(payload)
@@ -74,10 +73,30 @@ describe('contact request', () => {
       email: 'guest@example.com',
       website: '',
       message: 'I need help.',
-      company: '',
     })
 
     expect(calls[0]?.options?.headers).toBeUndefined()
     expect(authEvents).toEqual(['ready', 'token'])
+  })
+
+  test('sends only fields the person can see when browser autofill adds metadata', async () => {
+    const browserPayload = {
+      topic: 'listing_claim' as const,
+      name: 'Alex Maker',
+      email: 'alex@example.com',
+      website: 'https://maker.example',
+      message: 'Please help me verify ownership.',
+      company: 'Browser autofilled company',
+    }
+
+    await useContact().sendContactRequest(browserPayload)
+
+    expect(calls[0]?.options?.body).toEqual({
+      topic: 'listing_claim',
+      name: 'Alex Maker',
+      email: 'alex@example.com',
+      website: 'https://maker.example',
+      message: 'Please help me verify ownership.',
+    })
   })
 })

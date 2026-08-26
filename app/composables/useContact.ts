@@ -6,7 +6,6 @@ export interface ContactRequestPayload {
   email: string
   website: string
   message: string
-  company: string
 }
 
 export const useContact = () => {
@@ -19,7 +18,13 @@ export const useContact = () => {
     const token = await getIdToken()
     await $fetch(endpoint, {
       method: 'POST',
-      body: payload,
+      body: {
+        topic: payload.topic,
+        name: payload.name,
+        email: payload.email,
+        website: payload.website,
+        message: payload.message,
+      },
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     })
   }

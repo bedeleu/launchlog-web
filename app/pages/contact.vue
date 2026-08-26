@@ -37,7 +37,6 @@ const form = reactive({
   message: initialTopic === 'listing_claim'
     ? 'I would like to verify ownership of this website and manage its LaunchLog listing.'
     : '',
-  company: '',
 })
 const authReady = ref(false)
 const isSending = ref(false)
@@ -77,7 +76,6 @@ const submitRequest = async () => {
       email: form.email.trim(),
       website: form.website.trim(),
       message: form.message.trim(),
-      company: form.company,
     })
     sent.value = true
   }
@@ -239,11 +237,6 @@ useHead({
             />
             <p v-if="fieldErrors.message" class="text-xs text-brand-warning" role="alert">{{ fieldErrors.message }}</p>
           </div>
-        </div>
-
-        <div class="absolute -left-[10000px] top-auto size-px overflow-hidden" aria-hidden="true">
-          <Label for="contact-company">Company</Label>
-          <Input id="contact-company" v-model="form.company" tabindex="-1" autocomplete="off" />
         </div>
 
         <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
