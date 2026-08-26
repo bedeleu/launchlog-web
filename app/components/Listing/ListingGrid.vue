@@ -11,6 +11,8 @@ const props = withDefaults(defineProps<{
   interactive?: boolean
   /** Preview-only: slugs rendered as blurred context. Never set on live surfaces. */
   contextualSlugs?: string[]
+  /** Preview-only: keep one context card on phones so the purchase form stays nearby. */
+  compactContextOnMobile?: boolean
   generating?: boolean
   /** Forwarded to every card; top-level directory pages pass 'h2'. */
   headingLevel?: 'h2' | 'h3'
@@ -18,6 +20,7 @@ const props = withDefaults(defineProps<{
   mode: 'uniform',
   interactive: true,
   contextualSlugs: () => [],
+  compactContextOnMobile: false,
   generating: false,
   headingLevel: 'h3',
 })
@@ -66,6 +69,9 @@ const spanClass: Record<PlacementSpan, string> = {
 }
 
 const contextual = computed(() => new Set(props.contextualSlugs))
+const compactedContext = computed(() => new Set(
+  props.compactContextOnMobile ? props.contextualSlugs.slice(1) : [],
+))
 </script>
 
 <template>
@@ -101,6 +107,7 @@ const contextual = computed(() => new Set(props.contextualSlugs))
             // the same neutral treatment across public surfaces, including focus.
             item.variant !== 'standard' ? 'focus-visible:ring-white/70' : 'focus-visible:ring-brand-accent',
             contextual.has(item.listing.slug) ? 'pointer-events-none select-none opacity-55 blur-[1.5px]' : '',
+            compactedContext.has(item.listing.slug) ? 'hidden sm:block' : '',
           ]"
         >
           <ListingCard

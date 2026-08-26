@@ -59,7 +59,7 @@ jobs:
       - name: SSR tests
         env:
           SSR_TESTS: required
-        run: bun test test/blog-ssr.test.ts test/private-routes-ssr.test.ts test/tax-notice-ssr.test.ts
+        run: bun test test/blog-ssr.test.ts test/private-routes-ssr.test.ts test/tax-notice-ssr.test.ts test/preview-ssr.test.ts
 
       - name: Directory SSR tests
         env:

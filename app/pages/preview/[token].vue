@@ -65,10 +65,18 @@ const selectedPlan = computed(() => findPlan(selectedTier.value))
 const status = computed(() => preview.value?.status)
 const isGenerating = computed(() => status.value === 'generating')
 const isFailed = computed(() => status.value === 'failed')
+const domainConflict = computed(() => isFailed.value && preview.value?.error_code === 'domain_conflict')
+const existingListing = computed(() => preview.value?.existing_listing ?? null)
+const claimPath = computed(() => {
+  const domain = existingListing.value?.domain || preview.value?.domain || ''
+  return `/contact?topic=listing_claim&website=${encodeURIComponent(`https://${domain}`)}`
+})
 const screenshotFailed = computed(() =>
   isFailed.value && preview.value?.error_code === 'screenshot_failed',
 )
 const hasScreenshot = computed(() => !!preview.value?.screenshot_url)
+const slowGeneration = ref(false)
+let slowGenerationTimer: ReturnType<typeof setTimeout> | undefined
 
 // Intake returns immediately with status=generating; crawl + screenshot run in a
 // background job (D-057). Poll until ready/failed, filling untouched fields.
@@ -117,12 +125,31 @@ const recapture = async () => {
 }
 
 onMounted(() => {
-  if (isGenerating.value) startPolling()
+  if (isGenerating.value) {
+    startPolling()
+    slowGenerationTimer = setTimeout(() => {
+      if (isGenerating.value) slowGeneration.value = true
+    }, 45_000)
+  }
 
-  void waitForAuthReady().finally(() => {
+  void waitForAuthReady().finally(async () => {
     authReady.value = true
     if (user.value?.email) account.email = user.value.email
+    // SSR cannot inspect the browser's Firebase session. Refresh a conflict
+    // once auth is restored so an owner gets Manage rather than a claim form.
+    if (domainConflict.value) {
+      try {
+        applyPreview(await getPreview(token))
+      }
+      catch {
+        // The generic ownership-request route remains safe and usable.
+      }
+    }
   })
+})
+
+onBeforeUnmount(() => {
+  if (slowGenerationTimer) clearTimeout(slowGenerationTimer)
 })
 
 const emailValue = computed(() => resolveCheckoutEmail(authenticatedEmail.value, account.email))
@@ -145,6 +172,7 @@ const checkoutError = ref<string | null>(null)
 const canPay = computed(() =>
   authReady.value
   && !isGenerating.value
+  && !domainConflict.value
   && emailLooksValid.value
   && !checkoutPending.value,
 )
@@ -247,44 +275,36 @@ watch(
         </NuxtLink>
       </header>
 
-      <!-- GENERATING: a skeleton of the order-page layout (no half-empty content,
-           no spinner stuck on a screenshot). Replaced seamlessly when ready. -->
-      <div v-if="isGenerating" class="mt-8">
-        <div class="mb-6 flex items-center gap-2.5 text-sm text-brand-muted">
-          <AppSpinner class="shrink-0" />
-          <p>Generating your preview — capturing the screenshot and details…</p>
-        </div>
-        <div class="grid gap-10 xl:grid-cols-[minmax(0,1fr)_400px] xl:items-start">
-          <!-- left: browser-framed screenshot skeleton -->
-          <div class="min-w-0">
-            <div class="overflow-hidden rounded-2xl border border-brand-border bg-[#0c1120]">
-              <div class="flex items-center gap-2 border-b border-brand-border bg-white/[0.03] px-4 py-2.5">
-                <span class="size-2.5 rounded-full bg-white/10" />
-                <span class="size-2.5 rounded-full bg-white/10" />
-                <span class="size-2.5 rounded-full bg-white/10" />
-              </div>
-              <div class="aspect-[16/10] w-full animate-pulse bg-white/[0.04]" />
+      <section
+        v-if="isGenerating"
+        class="mt-8 overflow-hidden rounded-2xl border border-brand-accent/30 bg-[linear-gradient(110deg,rgba(99,102,241,0.14),rgba(255,255,255,0.025)_48%,rgba(16,185,129,0.06))] px-5 py-4 shadow-[0_18px_60px_rgba(0,0,0,0.28)] sm:px-6"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex min-w-0 items-start gap-3">
+            <span class="mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-accent/15 ring-1 ring-brand-accent/30">
+              <AppSpinner size="size-4" label="Building your preview" />
+            </span>
+            <div class="min-w-0">
+              <p class="font-semibold text-brand-fg">Building your preview</p>
+              <p class="mt-1 break-all font-mono text-xs text-brand-muted">{{ preview.domain }}</p>
+              <p v-if="slowGeneration" class="mt-2 max-w-2xl text-sm leading-6 text-brand-muted">
+                This site is taking a little longer. We’re still working — keep this tab open and checkout will unlock automatically.
+              </p>
             </div>
           </div>
-          <!-- right: order-form skeleton -->
-          <div class="min-w-0 space-y-8">
-            <div class="space-y-3">
-              <div class="h-3 w-28 animate-pulse rounded bg-white/[0.06]" />
-              <div class="h-20 animate-pulse rounded-xl bg-white/[0.04]" />
-              <div class="h-20 animate-pulse rounded-xl bg-white/[0.04]" />
-            </div>
-            <div class="space-y-3">
-              <div class="h-3 w-24 animate-pulse rounded bg-white/[0.06]" />
-              <div class="h-10 animate-pulse rounded-md bg-white/[0.04]" />
-            </div>
-            <div class="h-11 animate-pulse rounded-md bg-white/[0.05]" />
-          </div>
+          <ol class="grid shrink-0 grid-cols-3 gap-2 text-[11px] sm:w-[25rem]" aria-label="Preview progress">
+            <li class="rounded-lg border border-brand-success/25 bg-brand-success/[0.08] px-3 py-2 text-brand-success"><span class="block font-mono">01</span><span class="mt-0.5 block text-white/80">URL accepted</span></li>
+            <li class="rounded-lg border border-brand-accent/25 bg-brand-accent/[0.08] px-3 py-2 text-brand-accent"><span class="block font-mono">02</span><span class="mt-0.5 block text-white/80">Reading details</span></li>
+            <li class="rounded-lg border border-brand-accent/25 bg-brand-accent/[0.08] px-3 py-2 text-brand-accent"><span class="block font-mono">03</span><span class="mt-0.5 block text-white/80">Capturing site</span></li>
+          </ol>
         </div>
-      </div>
+      </section>
 
-      <!-- ORDER PAGE — live preview left, order form right. Shown for ready AND
-           failed previews: a missing screenshot never blocks checkout. -->
-      <div v-else class="mt-8 grid gap-10 xl:grid-cols-[minmax(0,1fr)_400px] xl:items-start">
+      <!-- Keep the real product visible while enrichment runs. The buyer can
+           understand the placement and plans instead of staring at a fake page. -->
+      <div class="mt-8 grid gap-10 xl:grid-cols-[minmax(0,1fr)_400px] xl:items-start">
         <!-- LEFT: the WOW live preview, sticky; plan switches are instant (v-show in the component) -->
         <div class="min-w-0 xl:sticky xl:top-8">
           <IntakePlacementPreview
@@ -293,11 +313,48 @@ watch(
             :tier="selectedTier"
             :title="form.title"
             :tagline="form.tagline"
+            :generating="isGenerating"
           />
+
+          <div
+            v-if="domainConflict"
+            class="mt-4 rounded-xl border border-brand-accent/40 bg-[linear-gradient(135deg,rgba(99,102,241,0.13),rgba(255,255,255,0.025))] p-5"
+            role="status"
+          >
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-brand-accent">
+              {{ existingListing?.action === 'manage' ? 'Already in your account' : 'Already on LaunchLog' }}
+            </p>
+            <h2 class="mt-2 text-lg font-semibold text-brand-fg">This website already has a listing.</h2>
+            <p class="mt-2 text-sm leading-6 text-brand-muted">
+              <template v-if="existingListing?.action === 'manage'">
+                Manage the existing listing from your dashboard. We will not create or charge for a duplicate.
+              </template>
+              <template v-else>
+                We never transfer ownership from a URL alone. Send a request and our team will verify control of the domain.
+              </template>
+            </p>
+            <div class="mt-4 flex flex-wrap gap-3">
+              <NuxtLink
+                v-if="existingListing?.action === 'manage'"
+                :to="existingListing.dashboard_path || '/dashboard'"
+                class="inline-flex h-10 items-center justify-center rounded-md bg-brand-accent px-4 text-sm font-semibold text-white hover:bg-brand-accent/90"
+              >Manage listing</NuxtLink>
+              <NuxtLink
+                v-else
+                :to="claimPath"
+                class="inline-flex h-10 items-center justify-center rounded-md bg-brand-accent px-4 text-sm font-semibold text-white hover:bg-brand-accent/90"
+              >Request ownership</NuxtLink>
+              <NuxtLink
+                v-if="existingListing?.listing_path"
+                :to="existingListing.listing_path"
+                class="inline-flex h-10 items-center justify-center rounded-md border border-brand-border px-4 text-sm font-medium text-brand-fg hover:bg-white/[0.04]"
+              >View listing</NuxtLink>
+            </div>
+          </div>
 
           <!-- Compact warning: the capture failed, publishing still works. -->
           <div
-            v-if="isFailed || !hasScreenshot"
+            v-if="!domainConflict && !isGenerating && (isFailed || !hasScreenshot)"
             class="mt-4 rounded-xl border border-brand-warning/40 bg-brand-warning/[0.07] p-4"
             role="status"
           >
@@ -328,7 +385,7 @@ watch(
           </div>
 
           <!-- Discreet listing-text editor — not a step; defaults come from the crawl -->
-          <div class="mt-4">
+          <div v-if="!domainConflict && !isGenerating" class="mt-4">
             <div class="flex flex-wrap items-center gap-x-5 gap-y-2">
               <button
                 type="button"
@@ -381,7 +438,7 @@ watch(
             <h2 class="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-brand-muted">
               01 — Select package
             </h2>
-            <IntakePlanSelector v-model="selectedTier" :disabled="checkoutPending" />
+            <IntakePlanSelector v-model="selectedTier" :disabled="checkoutPending || domainConflict" />
           </section>
 
           <!-- 02 — Publishing identity -->
@@ -447,15 +504,25 @@ watch(
 
           <!-- CTA -->
           <section>
-            <Button size="lg" class="w-full" :disabled="!canPay" @click="payAndPublish">
+            <div v-if="domainConflict" class="rounded-xl border border-brand-border bg-white/[0.025] p-4 text-center">
+              <p class="text-sm font-medium text-brand-fg">No duplicate payment is needed.</p>
+              <NuxtLink
+                :to="existingListing?.action === 'manage' ? (existingListing.dashboard_path || '/dashboard') : claimPath"
+                class="mt-2 inline-block text-sm font-medium text-brand-accent underline underline-offset-4"
+              >{{ existingListing?.action === 'manage' ? 'Open your dashboard' : 'Request ownership' }}</NuxtLink>
+            </div>
+            <Button v-else size="lg" class="w-full" :disabled="!canPay" @click="payAndPublish">
               <AppSpinner v-if="checkoutPending" class="mr-2" color="text-current" label="Opening secure checkout" />
-              {{ checkoutPending ? 'Opening secure checkout…' : `Pay & publish — ${selectedPlan.priceLabel}/year` }}
+              {{ checkoutPending ? 'Opening secure checkout…' : isGenerating ? 'Preparing preview…' : `Pay & publish — ${selectedPlan.priceLabel}/year` }}
             </Button>
             <div class="mt-3 min-h-5 text-center text-xs" aria-live="polite">
               <p v-if="checkoutError" class="text-brand-warning" role="alert">
                 {{ checkoutError }}
               </p>
-              <p v-else class="text-brand-muted">
+              <p v-else-if="isGenerating" class="text-brand-muted">
+                Checkout unlocks automatically when the preview is ready.
+              </p>
+              <p v-else-if="!domainConflict" class="text-brand-muted">
                 That's just {{ selectedPlan.monthlyLabel }}/mo · pay only when you publish · 7-day money-back guarantee.
               </p>
             </div>
