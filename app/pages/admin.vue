@@ -1,20 +1,32 @@
 <script setup lang="ts">
-import { ArrowRight, Camera, CheckCircle2, Clock3, FilePlus2, Gauge, ListChecks, ShieldCheck, Sparkles } from '@lucide/vue'
+import { ArrowRight, Camera, CheckCircle2, Clock3, FilePlus2, Gauge, ListChecks, MessagesSquare, ShieldCheck, Sparkles } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import type { AdminDashboard, AdminListing, FounderScreenshotStatus } from '~/composables/useAdminListings'
 import { toErrorLike } from '~/utils/error-like'
 
 definePageMeta({ middleware: 'admin' })
-useHead({ title: 'Admin · LaunchLog' })
 
+const route = useRoute()
 const { dashboard, runFounderScreenshots, founderScreenshotStatus } = useAdminListings()
 
+const isAdminRoot = computed(() => route.path === '/admin' || route.path === '/admin/')
+const adminPageTitle = computed(() => {
+  if (isAdminRoot.value) return 'Admin · LaunchLog'
+  const path = route.path.endsWith('/') ? route.path.slice(0, -1) : route.path
+  if (path === '/admin/outreach') return 'Outreach operations · LaunchLog'
+  if (path === '/admin/outreach/new') return 'New outreach candidate · LaunchLog'
+  if (path.startsWith('/admin/outreach/')) return 'Outreach candidate review · LaunchLog'
+  return undefined
+})
+useHead(() => adminPageTitle.value === undefined ? {} : { title: adminPageTitle.value })
 const data = ref<AdminDashboard | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
 const screenshotStatus = ref<FounderScreenshotStatus | null>(null)
 const screenshotBusy = ref(false)
 const screenshotMessage = ref<string | null>(null)
+const pageMounted = ref(false)
+let dashboardInitialized = false
 
 async function loadDashboard() {
   loading.value = true
@@ -160,7 +172,9 @@ function listingStatusClass(listing: AdminListing) {
   return 'border-white/10 bg-white/[0.04] text-slate-400'
 }
 
-onMounted(async () => {
+async function initializeDashboard(): Promise<void> {
+  if (!pageMounted.value || !isAdminRoot.value || dashboardInitialized) return
+  dashboardInitialized = true
   await loadDashboard()
   try {
     await refreshScreenshotStatus()
@@ -168,11 +182,21 @@ onMounted(async () => {
   catch {
     screenshotStatus.value = null
   }
+}
+
+watch(isAdminRoot, (root) => {
+  if (root) void initializeDashboard()
+})
+
+onMounted(() => {
+  pageMounted.value = true
+  void initializeDashboard()
 })
 </script>
 
 <template>
-  <main class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+  <NuxtPage v-if="!isAdminRoot" />
+  <div v-else class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
     <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
       <div>
         <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-300">
@@ -187,6 +211,12 @@ onMounted(async () => {
       </div>
 
       <div class="flex flex-wrap gap-2">
+        <Button as-child variant="outline">
+          <NuxtLink to="/admin/outreach">
+            <MessagesSquare class="mr-2 size-4" />
+            Outreach
+          </NuxtLink>
+        </Button>
         <Button as-child variant="outline">
           <NuxtLink to="/admin/listings">
             <ListChecks class="mr-2 size-4" />
@@ -439,5 +469,5 @@ onMounted(async () => {
         </div>
       </section>
     </template>
-  </main>
+  </div>
 </template>

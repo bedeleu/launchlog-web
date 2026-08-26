@@ -26,6 +26,21 @@ const PRIVATE_PREFIXES: PrivatePrefix[] = [
 export function canonicalPrivatePath(pathname: string): string | null {
   const lowered = pathname.toLowerCase()
 
+  if (lowered === '/admin/outreach' || lowered.startsWith('/admin/outreach/')) {
+    const segments = pathname.split('/')
+    let canonical = '/admin/outreach'
+    const remainder = segments.slice(3)
+
+    if (remainder.length === 1 && remainder[0]?.toLowerCase() === 'new') {
+      canonical += '/new'
+    }
+    else if (remainder.length > 0) {
+      canonical += `/${remainder.join('/')}`
+    }
+
+    return canonical === pathname ? null : canonical
+  }
+
   for (const { prefix, preserveRemainderCase } of PRIVATE_PREFIXES) {
     // Whole-segment match only: `/administration` is a different route from `/admin`.
     if (lowered !== prefix && !lowered.startsWith(`${prefix}/`)) {

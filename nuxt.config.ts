@@ -84,8 +84,8 @@ export default defineNuxtConfig({
     // Firebase auth state exists only in the browser. Rendering protected pages
     // on the server makes the client redirect replace different HTML mid-hydration.
     '/dashboard': { ssr: false, headers: { 'x-robots-tag': 'noindex, nofollow' } },
-    '/admin': { ssr: false, headers: { 'x-robots-tag': 'noindex, nofollow' } },
-    '/admin/**': { ssr: false, headers: { 'x-robots-tag': 'noindex, nofollow' } },
+    '/admin': { ssr: false, headers: { 'x-robots-tag': 'noindex, nofollow', 'cache-control': 'private, no-store', 'referrer-policy': 'no-referrer' } },
+    '/admin/**': { ssr: false, headers: { 'x-robots-tag': 'noindex, nofollow', 'cache-control': 'private, no-store', 'referrer-policy': 'no-referrer' } },
     // Private/non-indexable routes are kept out of the sitemap via `sitemap.exclude`
     // below (the canonical @nuxtjs/sitemap API) — no per-route `sitemap: false`
     // rules here, which aren't typed on NitroRouteConfig.
@@ -115,6 +115,7 @@ export default defineNuxtConfig({
   sitemap: {
     exclude: [
       '/admin',
+      '/admin/**',
       '/dashboard',
       '/login',
       '/checkout/**',

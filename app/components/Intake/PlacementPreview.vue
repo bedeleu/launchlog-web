@@ -1,15 +1,23 @@
 <script setup lang="ts">
 import { Search } from '@lucide/vue'
 import type { ListingCard, ListingTier } from '~/composables/useListings'
-import type { Preview } from '~/composables/usePreviews'
 
-const props = defineProps<{
-  preview: Preview
+interface PlacementPreviewSource {
+  domain: string
+  screenshot_url: string | null
+}
+
+const props = withDefaults(defineProps<{
+  preview: PlacementPreviewSource
   tier: string
   title: string
   tagline: string
   generating?: boolean
-}>()
+  contextScreenshots?: boolean
+}>(), {
+  generating: false,
+  contextScreenshots: true,
+})
 
 const isFeatured = computed(() => props.tier === 'featured')
 const displayTitle = computed(() => props.title || props.preview.domain || 'Your product')
@@ -40,7 +48,9 @@ const contextCards = computed<ListingCard[]>(() => contextSlugs.value.map((slug,
   name: 'Example product',
   tagline: 'A short pitch from another listing in the directory.',
   url: 'https://example.com',
-  screenshot_url: `/images/samples/${(index % SAMPLE_IMAGES) + 1}.png`,
+  screenshot_url: props.contextScreenshots
+    ? `/images/samples/${(index % SAMPLE_IMAGES) + 1}.png`
+    : null,
   tier: 'basic',
   source: 'seed',
   category: null,
