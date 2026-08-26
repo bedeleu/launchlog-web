@@ -74,7 +74,7 @@ watch(user, async () => {
           <Search class="size-5" />
         </NuxtLink>
         <template v-if="authReady">
-          <NuxtLink v-if="admin" to="/admin/listings" class="px-3 py-2 text-sm font-medium text-emerald-300 transition-colors hover:text-brand-fg">
+          <NuxtLink v-if="admin" to="/admin" class="px-3 py-2 text-sm font-medium text-emerald-300 transition-colors hover:text-brand-fg">
             Admin
           </NuxtLink>
           <NuxtLink v-if="user && !admin" to="/dashboard" class="px-3 py-2 text-sm font-medium text-brand-muted transition-colors hover:text-brand-fg">
@@ -123,7 +123,7 @@ watch(user, async () => {
           </NuxtLink>
           <div class="mt-2 flex items-center gap-2 border-t border-brand-border pt-3">
             <template v-if="authReady">
-              <NuxtLink v-if="admin" to="/admin/listings" class="flex-1 rounded-md px-3 py-2.5 text-center text-sm font-medium text-emerald-300 hover:text-brand-fg">
+              <NuxtLink v-if="admin" to="/admin" class="flex-1 rounded-md px-3 py-2.5 text-center text-sm font-medium text-emerald-300 hover:text-brand-fg">
                 Admin
               </NuxtLink>
               <NuxtLink v-else-if="user" to="/dashboard" class="flex-1 rounded-md px-3 py-2.5 text-center text-sm font-medium text-brand-muted hover:text-brand-fg">

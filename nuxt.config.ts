@@ -116,6 +116,7 @@ export default defineNuxtConfig({
   sitemap: {
     exclude: [
       '/admin',
+      '/admin/**',
       '/dashboard',
       '/login',
       '/checkout/**',
