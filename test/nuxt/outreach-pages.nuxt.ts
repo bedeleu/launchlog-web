@@ -335,7 +335,9 @@ function controller(detail: OutreachCandidateDetail = candidate()): OutreachCand
       source_context: detail.prospect.source_context,
       notes: detail.prospect.notes,
     },
-    draft_form: detail.draft ?? { subject_line: '', opening_line: '', email_body: '' },
+    draft_form: detail.draft === null
+      ? { subject_line: '', opening_line: '', email_body: '' }
+      : { ...detail.draft },
     prospect_edit: 'clean',
     draft_edit: 'clean',
     suppression_draft: { target: null, reason: '', source: 'manual', confirmed: false, confirmed_revision: null },
@@ -1610,6 +1612,36 @@ describe('candidate creation', () => {
     expect(testDoubles.navigateTo).toHaveBeenCalledWith(`/admin/outreach/${OTHER_PUBLIC_ID}`)
   })
 
+  test.each([
+    ['rejects', () => Promise.reject(new Error('Local navigation unavailable'))],
+    ['returns false', () => Promise.resolve(false)],
+  ] as const)('locks an already-committed full Resource when navigation %s', async (_outcome, navigate) => {
+    const returned = candidate({ public_id: OTHER_PUBLIC_ID })
+    const client = api({ createCandidate: vi.fn().mockResolvedValue(returned) })
+    testDoubles.useAdminOutreach.mockReturnValue(client)
+    testDoubles.navigateTo.mockImplementationOnce(navigate)
+    const mounted = await mountTaskComponent(NewPage)
+    await settle()
+    await completeCandidateForm(mounted)
+
+    await field(mounted, 'form').trigger('submit')
+    await settle()
+
+    expect(client.createCandidate).toHaveBeenCalledOnce()
+    expect(client.getCandidate).not.toHaveBeenCalled()
+    expect(testDoubles.validateCommittedRecovery).not.toHaveBeenCalled()
+    expect(testDoubles.navigateTo).toHaveBeenCalledWith(`/admin/outreach/${OTHER_PUBLIC_ID}`)
+    expect(mounted.text()).toContain('The candidate was saved')
+    expect(mounted.find(`a[href="/admin/outreach/${OTHER_PUBLIC_ID}"]`).exists()).toBe(true)
+    const create = mounted.findAll('button').find(item => item.text().trim() === 'Create candidate')
+    expect(create === undefined || create.attributes('disabled') !== undefined).toBe(true)
+
+    const form = mounted.find('form')
+    if (form.exists()) await form.trigger('submit')
+    await settle()
+    expect(client.createCandidate).toHaveBeenCalledOnce()
+  })
+
   test('performs one create and validates committed recovery before one read-only follow-up', async () => {
     const recovery = {
       public_id: PUBLIC_ID,
@@ -2549,6 +2581,8 @@ describe('navigation and shared placement renderer', () => {
   })
 
   test('adds Outreach to the admin hub without removing listing and screenshot operations', async () => {
+    testDoubles.route.path = '/admin'
+    testDoubles.route.fullPath = '/admin'
     const mounted = await mountNuxtComponent(AdminPage)
     await settle()
 
@@ -2556,6 +2590,53 @@ describe('navigation and shared placement renderer', () => {
     expect(mounted.find('a[href="/admin/outreach"]').text()).toContain('Outreach')
     expect(mounted.find('a[href="/admin/listings"]').exists()).toBe(true)
     expect(mounted.text()).toContain('Screenshot and moderation pipeline')
+  })
+
+  test('treats the router-normalized trailing slash as the admin root', async () => {
+    testDoubles.route.path = '/admin/'
+    testDoubles.route.fullPath = '/admin/'
+    const adminClient = dashboardApi()
+    testDoubles.useAdminListings.mockReturnValue(adminClient)
+    const childOutlet = defineComponent({
+      name: 'UnexpectedAdminChildOutlet',
+      template: '<section aria-label="Unexpected admin child outlet" />',
+    })
+
+    const mounted = await mountNuxtComponent(AdminPage, {
+      global: { stubs: { NuxtPage: childOutlet } },
+    })
+    await settle()
+
+    expect(mounted.text()).toContain('Admin dashboard')
+    expect(mounted.text()).toContain('Screenshot and moderation pipeline')
+    expect(mounted.find('section[aria-label="Unexpected admin child outlet"]').exists()).toBe(false)
+    expect(adminClient.dashboard).toHaveBeenCalledOnce()
+    expect(adminClient.founderScreenshotStatus).toHaveBeenCalledOnce()
+    expect(adminClient.runFounderScreenshots).not.toHaveBeenCalled()
+  })
+
+  test('renders the nested admin child outlet without starting dashboard or screenshot work', async () => {
+    testDoubles.route.path = '/admin/outreach'
+    testDoubles.route.fullPath = '/admin/outreach'
+    const adminClient = dashboardApi()
+    testDoubles.useAdminListings.mockReturnValue(adminClient)
+    const childOutlet = defineComponent({
+      name: 'AdminChildOutlet',
+      template: '<section aria-label="Outreach child page outlet"><h1>Nested outreach workspace</h1></section>',
+    })
+
+    const mounted = await mountNuxtComponent(AdminPage, {
+      global: { stubs: { NuxtPage: childOutlet } },
+    })
+    await settle()
+
+    expect(mounted.find('section[aria-label="Outreach child page outlet"]').exists()).toBe(true)
+    expect(mounted.text()).toContain('Nested outreach workspace')
+    expect(mounted.text()).not.toContain('Admin dashboard')
+    expect(document.title).toBe('Outreach operations · LaunchLog')
+    expect(adminClient.dashboard).not.toHaveBeenCalled()
+    expect(adminClient.founderScreenshotStatus).not.toHaveBeenCalled()
+    expect(adminClient.runFounderScreenshots).not.toHaveBeenCalled()
   })
 
   test('accepts the structural placement shape with screenshot and submitted-data fallback', async () => {
@@ -2593,5 +2674,414 @@ describe('navigation and shared placement renderer', () => {
     const mounted = await mountTaskComponent(component)
     await settle()
     assertNoDeliverySurface(mounted)
+  })
+})
+
+describe('GREEN review regressions', () => {
+  test('prevents native candidate form navigation and performs exactly one private create', async () => {
+    const createResult = deferred<OutreachCandidateDetail>()
+    const client = api({ createCandidate: vi.fn(() => createResult.promise) })
+    testDoubles.useAdminOutreach.mockReturnValue(client)
+    const mounted = await mountTaskComponent(NewPage)
+    await settle()
+    await completeCandidateForm(mounted)
+    const form = field<HTMLFormElement>(mounted, 'form')
+    const locationBefore = window.location.href
+    let defaultPrevented = false
+    form.element.addEventListener('submit', event => { defaultPrevented = event.defaultPrevented })
+
+    await form.trigger('submit')
+    await nextTick()
+
+    expect(defaultPrevented).toBe(true)
+    expect(window.location.href).toBe(locationBefore)
+    expect(client.createCandidate).toHaveBeenCalledOnce()
+    expect(client.createCandidate).toHaveBeenCalledWith(expect.objectContaining({
+      business_email: BUSINESS_EMAIL,
+      source_context: 'Public launch announcement.',
+    }), expect.anything())
+  })
+
+  test('latches refresh when both the browser click and authoritative reload fail', async () => {
+    const client = api({
+      listCandidates: vi.fn()
+        .mockResolvedValueOnce(page([summary()]))
+        .mockRejectedValueOnce(new OutreachApiError('network')),
+    })
+    testDoubles.useAdminOutreach.mockReturnValue(client)
+    const mounted = await mountTaskComponent(ListPage)
+    await settle()
+    await candidateCheckboxes(mounted, [summary()])[0]!.setValue(true)
+    const dom = installDownloadSpies({ clickError: new Error('Browser blocked download') })
+
+    await button(mounted, 'Download CSV').trigger('click')
+    await settle()
+
+    expect(dom.click).toHaveBeenCalledOnce()
+    expect(dom.remove).toHaveBeenCalledOnce()
+    expect(dom.revokeObjectURL).toHaveBeenCalledOnce()
+    expect(client.listCandidates).toHaveBeenCalledTimes(2)
+    expect(mounted.text()).toContain('Refresh required')
+    expect(button(mounted, 'Download CSV').attributes('disabled')).toBeDefined()
+  })
+
+  test('drops same-id selection when the authoritative row becomes ineligible', async () => {
+    const first = summary()
+    const second = summary({ effective_status: 'suppressed' })
+    const client = api({
+      listCandidates: vi.fn()
+        .mockResolvedValueOnce(page([first]))
+        .mockResolvedValueOnce(page([second])),
+    })
+    testDoubles.useAdminOutreach.mockReturnValue(client)
+    const mounted = await mountTaskComponent(ListPage)
+    await settle()
+    await candidateCheckboxes(mounted, [first])[0]!.setValue(true)
+    installDownloadSpies({ clickError: new Error('Browser blocked download') })
+
+    await button(mounted, 'Download CSV').trigger('click')
+    await settle()
+
+    expect(mounted.text()).not.toContain('1 selected')
+    expect(candidateCheckboxes(mounted, [second])[0]!.element.checked).toBe(false)
+    expect(button(mounted, 'Download CSV').attributes('disabled')).toBeDefined()
+  })
+
+  test('clears and reloads selection after campaign archive and revalidates immediately before export', async () => {
+    const eligible = summary()
+    const archived = summary({ campaign_status: 'archived' })
+    const listCandidates = vi.fn()
+      .mockResolvedValueOnce(page([eligible]))
+      .mockResolvedValueOnce(page([archived]))
+    const client = api({
+      listCampaigns: vi.fn().mockResolvedValue([campaign()]),
+      listCandidates,
+      updateCampaign: vi.fn().mockResolvedValue(campaign({ status: 'archived' })),
+    })
+    testDoubles.useAdminOutreach.mockReturnValue(client)
+    const mounted = await mountTaskComponent(ListPage)
+    await settle()
+    await candidateCheckboxes(mounted, [eligible])[0]!.setValue(true)
+    await button(mounted, 'Archive campaign').trigger('click')
+    await button(mounted, 'Confirm permanent archive').trigger('click')
+    await settle()
+
+    expect(listCandidates).toHaveBeenCalledTimes(2)
+    expect(mounted.text()).not.toContain('1 selected')
+    expect(button(mounted, 'Download CSV').attributes('disabled')).toBeDefined()
+
+    const mutable = summary()
+    const directClient = api({ listCandidates: vi.fn().mockResolvedValue(page([mutable])) })
+    testDoubles.useAdminOutreach.mockReturnValue(directClient)
+    mounted.unmount()
+    const direct = await mountTaskComponent(ListPage)
+    await settle()
+    await candidateCheckboxes(direct, [mutable])[0]!.setValue(true)
+    mutable.effective_status = 'suppressed'
+    await button(direct, 'Download CSV').trigger('click')
+    await settle()
+    expect(directClient.exportCandidates).not.toHaveBeenCalled()
+  })
+
+  test('keeps stale detail edit fields inert before throwing setters', async () => {
+    const staleController = controller()
+    staleController.state.prospect_edit = 'stale'
+    staleController.state.draft_edit = 'stale'
+    staleController.setProspectField = vi.fn(() => { throw new Error('stale setter reached') })
+    staleController.setDraftField = vi.fn(() => { throw new Error('stale setter reached') })
+    testDoubles.useOutreachCandidatePage.mockReturnValue(staleController)
+    setDetailRoute()
+    const stale = await mountTaskComponent(DetailPage)
+    await settle()
+
+    const company = field<HTMLInputElement>(stale, '[name="company_name"]')
+    const subject = field<HTMLInputElement>(stale, '[name="subject_line"]')
+    expect(company.attributes('disabled')).toBeDefined()
+    expect(subject.attributes('disabled')).toBeDefined()
+    await company.trigger('input')
+    await subject.trigger('input')
+    expect(staleController.setProspectField).not.toHaveBeenCalled()
+    expect(staleController.setDraftField).not.toHaveBeenCalled()
+  })
+
+  test('keeps every suppression setter inert while a controller action is pending', async () => {
+    const pendingController = controller()
+    pendingController.state.action = { name: 'suppress', phase: 'pending' }
+    pendingController.setSuppressionTarget = vi.fn(() => { throw new Error('pending setter reached') })
+    pendingController.setSuppressionReason = vi.fn(() => { throw new Error('pending setter reached') })
+    pendingController.setSuppressionSource = vi.fn(() => { throw new Error('pending setter reached') })
+    pendingController.setSuppressionConfirmed = vi.fn(() => { throw new Error('pending setter reached') })
+    testDoubles.useOutreachCandidatePage.mockReturnValue(pendingController)
+    setDetailRoute()
+    const mounted = await mountTaskComponent(DetailPage)
+    await settle()
+
+    const controls = [
+      { control: field(mounted, '[name="suppression_target"][value="email"]'), event: 'change' },
+      { control: field(mounted, '[name="suppression_reason"]'), event: 'input' },
+      { control: field(mounted, '[name="suppression_source"][value="opt_out"]'), event: 'change' },
+      { control: field(mounted, '[name="suppression_confirm"]'), event: 'change' },
+    ]
+    for (const { control, event } of controls) {
+      expect(control.attributes('disabled')).toBeDefined()
+      await control.trigger(event)
+    }
+    expect(pendingController.setSuppressionTarget).not.toHaveBeenCalled()
+    expect(pendingController.setSuppressionReason).not.toHaveBeenCalled()
+    expect(pendingController.setSuppressionSource).not.toHaveBeenCalled()
+    expect(pendingController.setSuppressionConfirmed).not.toHaveBeenCalled()
+  })
+
+  test('keeps a refresh-locked suppression draft editable while blocking confirmation and campaign activation', async () => {
+    const refreshController = controller(candidate({ campaign: { ...candidate().campaign, status: 'draft' } }))
+    refreshController.state.refresh_required = true
+    refreshController.setSuppressionConfirmed = vi.fn(() => { throw new Error('refresh confirmation reached') })
+    refreshController.setCampaignActivationConfirmed = vi.fn(() => { throw new Error('refresh activation reached') })
+    testDoubles.useOutreachCandidatePage.mockReturnValue(refreshController)
+    setDetailRoute()
+    const mounted = await mountTaskComponent(DetailPage)
+    await settle()
+
+    const target = field(mounted, '[name="suppression_target"][value="product_domain"]')
+    const reason = field(mounted, '[name="suppression_reason"]')
+    const source = field(mounted, '[name="suppression_source"][value="opt_out"]')
+    expect(target.attributes('disabled')).toBeUndefined()
+    expect(reason.attributes('disabled')).toBeUndefined()
+    expect(source.attributes('disabled')).toBeUndefined()
+    await target.setValue(true)
+    await reason.setValue('Reviewed public opt-out evidence')
+    await source.setValue(true)
+    expect(refreshController.setSuppressionTarget).toHaveBeenCalledWith('product_domain')
+    expect(refreshController.setSuppressionReason).toHaveBeenCalledWith('Reviewed public opt-out evidence')
+    expect(refreshController.setSuppressionSource).toHaveBeenCalledWith('opt_out')
+
+    const confirmation = field(mounted, '[name="suppression_confirm"]')
+    expect(confirmation.attributes('disabled')).toBeDefined()
+    await confirmation.trigger('change')
+    expect(refreshController.setSuppressionConfirmed).not.toHaveBeenCalled()
+    const activation = button(mounted, 'Enable CSV export in LaunchLog')
+    expect(activation.attributes('disabled')).toBeDefined()
+    await activation.trigger('click')
+    expect(refreshController.setCampaignActivationConfirmed).not.toHaveBeenCalled()
+  })
+
+  test.each([
+    [ListPage, 'list'],
+    [NewPage, 'new'],
+    [DetailPage, 'detail'],
+  ] as const)('removes private robots metadata when the %s page unmounts', async (component, kind) => {
+    if (kind === 'detail') setDetailRoute()
+    const mounted = await mountTaskComponent(component)
+    await settle()
+    expect(document.head.querySelector('meta[name="robots"]')?.getAttribute('content')).toContain('noindex')
+
+    mounted.unmount()
+    await nextTick()
+
+    const directives = [...document.head.querySelectorAll('meta[name="robots"]')]
+      .flatMap(meta => (meta.getAttribute('content') ?? '').toLowerCase().split(','))
+      .map(value => value.trim())
+    expect(directives).not.toContain('noindex')
+    expect(directives).not.toContain('nofollow')
+  })
+
+  test('locks the create surface after committed recovery cannot be reloaded', async () => {
+    const recovery = {
+      public_id: PUBLIC_ID,
+      persistence_status: 'committed' as const,
+      recovery_url: `/api/v1/admin/outreach/candidates/${PUBLIC_ID}`,
+    }
+    const client = api({
+      createCandidate: vi.fn().mockResolvedValue(recovery),
+      getCandidate: vi.fn().mockRejectedValue(new OutreachApiError('network')),
+    })
+    testDoubles.useAdminOutreach.mockReturnValue(client)
+    testDoubles.validateCommittedRecovery.mockReturnValue(PUBLIC_ID)
+    const mounted = await mountTaskComponent(NewPage)
+    await settle()
+    await completeCandidateForm(mounted)
+    await field(mounted, 'form').trigger('submit')
+    await settle()
+
+    expect(mounted.text()).toContain('The candidate was saved')
+    const create = mounted.findAll('button').find(item => item.text().trim() === 'Create candidate')
+    expect(create === undefined || create.attributes('disabled') !== undefined).toBe(true)
+    expect(client.createCandidate).toHaveBeenCalledOnce()
+  })
+
+  test('renders durable export timestamp and actor email fallback without exposing the hash', async () => {
+    const detail = candidate({
+      persisted_status: 'exported',
+      effective_status: 'exported',
+      audit: {
+        approved_at: '2026-08-25T10:00:00.000Z',
+        approved_by: { name: null, email: 'approver@example.invalid' },
+        exported_at: '2026-08-26T09:15:00.000Z',
+        exported_by: { name: null, email: 'exporter@example.invalid' },
+        export_count: 2,
+        last_export_hash: AUDIT_HASH,
+      },
+    })
+    testDoubles.useOutreachCandidatePage.mockReturnValue(controller(detail))
+    setDetailRoute()
+    const mounted = await mountTaskComponent(DetailPage)
+    await settle()
+
+    expect(mounted.text()).toContain('2026-08-26T09:15:00.000Z')
+    expect(mounted.text()).toContain('approver@example.invalid')
+    expect(mounted.text()).toContain('exporter@example.invalid')
+    expect(mounted.text()).not.toContain(AUDIT_HASH)
+  })
+
+  test('canonicalizes a valid domain alias and page one without passing aliases to the API', async () => {
+    testDoubles.route.query = { domain: ' Product.Example.Invalid. ', page: '1' }
+    const client = api()
+    testDoubles.useAdminOutreach.mockReturnValue(client)
+    await mountTaskComponent(ListPage)
+    await settle()
+
+    expect(client.listCandidates).toHaveBeenCalledOnce()
+    expect(client.listCandidates).toHaveBeenCalledWith({ domain: 'product.example.invalid' }, expect.anything())
+    expect(testDoubles.routerReplace).toHaveBeenCalledWith({ query: { domain: 'product.example.invalid' } })
+  })
+
+  test('wires campaign and suppression fields to stable descriptions, errors, and validity state', async () => {
+    const list = await mountTaskComponent(ListPage)
+    await settle()
+
+    const describeContract = (wrapper: VueWrapper, selector: string) => {
+      const control = field(wrapper, selector)
+      expect(accessibleNameOf(wrapper, control)).toMatch(/\S/)
+      expect(control.attributes('aria-invalid')).toBe('false')
+      const describedBy = control.attributes('aria-describedby')?.split(/\s+/) ?? []
+      expect(describedBy.every(Boolean)).toBe(true)
+      expect(new Set(describedBy).size).toBeGreaterThanOrEqual(2)
+      const nodes = describedBy.map((describedId) => {
+        const describedNode = wrapper.find(`[id="${describedId}"]`)
+        return describedNode.exists() ? describedNode.element : null
+      })
+      expect(nodes.every(node => node !== null && wrapper.element.contains(node))).toBe(true)
+      expect(nodes.some(node => (node?.textContent ?? '').trim().length > 0)).toBe(true)
+      expect(nodes.some(node => (
+        (node?.textContent ?? '').trim().length === 0
+        || node?.matches('[role="alert"], [role="status"], [aria-live]') === true
+      ))).toBe(true)
+      return { control, describedBy, nodes }
+    }
+
+    const listContracts = [
+      ['[name="campaign_name"]', 'Accessible campaign'],
+      ['[name="campaign_key"]', 'accessible-campaign'],
+      ['[name="sender_identity_label"]', 'Founder research'],
+      ['[name="domain"]', 'product.example.invalid'],
+    ] as const
+    const stableListContracts = listContracts.map(([selector, value]) => ({
+      selector,
+      value,
+      ...describeContract(list, selector),
+    }))
+
+    for (const contract of stableListContracts) await contract.control.setValue(contract.value)
+    await nextTick()
+    for (const contract of stableListContracts) {
+      const current = describeContract(list, contract.selector)
+      expect(current.describedBy).toEqual(contract.describedBy)
+      expect(current.nodes).toEqual(contract.nodes)
+    }
+
+    const detailController = controller()
+    testDoubles.useOutreachCandidatePage.mockReturnValue(detailController)
+    setDetailRoute()
+    const detail = await mountTaskComponent(DetailPage)
+    await settle()
+    const suppression = describeContract(detail, '[name="suppression_reason"]')
+    await suppression.control.setValue('Reviewed public request')
+    await nextTick()
+    const currentSuppression = describeContract(detail, '[name="suppression_reason"]')
+    expect(currentSuppression.describedBy).toEqual(suppression.describedBy)
+    expect(currentSuppression.nodes).toEqual(suppression.nodes)
+  })
+
+  test('announces create, activation, and archive campaign success through the stable live region', async () => {
+    const created = campaign({ key: 'autumn-founders', name: 'Autumn founders', status: 'draft' })
+    const client = api({
+      listCampaigns: vi.fn().mockResolvedValue([campaign({ status: 'draft' })]),
+      createCampaign: vi.fn().mockResolvedValue(created),
+      updateCampaign: vi.fn()
+        .mockResolvedValueOnce(campaign({ status: 'active' }))
+        .mockResolvedValueOnce(campaign({ status: 'archived' })),
+    })
+    testDoubles.useAdminOutreach.mockReturnValue(client)
+    const mounted = await mountTaskComponent(ListPage)
+    await settle()
+    const announcer = politeAnnouncer(mounted).element
+
+    await field(mounted, '[name="campaign_name"]').setValue('Autumn founders')
+    await field(mounted, '[name="campaign_key"]').setValue('autumn-founders')
+    await field(mounted, '[name="sender_identity_label"]').setValue('Founder research')
+    await button(mounted, 'Create campaign').trigger('click')
+    await settle()
+    expect(politeAnnouncer(mounted).element).toBe(announcer)
+    expect(announcer.textContent).toMatch(/Autumn founders.*created/i)
+
+    await button(mounted, 'Enable CSV export in LaunchLog').trigger('click')
+    await button(mounted, 'Confirm CSV eligibility').trigger('click')
+    await settle()
+    expect(announcer.textContent).toMatch(/Founder signals.*(?:active|enabled)/i)
+
+    await button(mounted, 'Archive campaign').trigger('click')
+    await button(mounted, 'Confirm permanent archive').trigger('click')
+    await settle()
+    expect(announcer.textContent).toMatch(/Founder signals.*archived/i)
+  })
+
+  test('keeps the same-revision authoritative draft returned by discard refresh', async () => {
+    const initial = candidate({
+      revision: 7,
+      draft: {
+        subject_line: 'Initial clean subject',
+        opening_line: 'Initial clean opening',
+        email_body: 'Initial clean body',
+      },
+    })
+    const authoritative = candidate({
+      revision: 7,
+      draft: {
+        subject_line: 'Authoritative subject',
+        opening_line: 'Authoritative opening',
+        email_body: 'Authoritative body',
+      },
+    })
+    const getCandidate = vi.fn().mockResolvedValue(authoritative)
+    const candidateController = controller(initial)
+    candidateController.confirmDiscardAndRefresh = vi.fn().mockImplementation(async () => {
+      const refreshed = await getCandidate(PUBLIC_ID)
+      candidateController.state.candidate = refreshed
+      candidateController.state.draft_form = { ...refreshed.draft! }
+      candidateController.state.draft_edit = 'clean'
+      candidateController.state.discard_confirmation_required = false
+    })
+    testDoubles.useOutreachCandidatePage.mockReturnValue(candidateController)
+    setDetailRoute()
+    const mounted = await mountTaskComponent(DetailPage)
+    await settle()
+
+    const subject = field<HTMLInputElement>(mounted, '[name="subject_line"]')
+    expect(subject.element.value).toBe('Initial clean subject')
+    await subject.setValue('Unsaved local subject')
+    expect(candidateController.state.draft_edit).toBe('dirty')
+    await button(mounted, 'Refresh').trigger('click')
+    await button(mounted, 'Discard and refresh').trigger('click')
+    await settle()
+
+    expect(getCandidate).toHaveBeenCalledOnce()
+    expect(getCandidate).toHaveBeenCalledWith(PUBLIC_ID)
+    expect(candidateController.confirmDiscardAndRefresh).toHaveBeenCalledOnce()
+    expect(candidateController.load).toHaveBeenCalledOnce()
+    expect(candidateController.state.candidate?.revision).toBe(7)
+    expect(candidateController.state.draft_form.subject_line).toBe('Authoritative subject')
+    expect(subject.element.value).toBe('Authoritative subject')
+    expect(subject.element.value).not.toBe('Initial clean subject')
+    expect(subject.element.value).not.toBe('Unsaved local subject')
   })
 })
