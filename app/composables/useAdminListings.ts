@@ -136,6 +136,15 @@ export const useAdminListings = () => {
     return data
   }
 
+  const publishPreview = async (token: string, tier: ListingTier): Promise<AdminListing> => {
+    const { data } = await $fetch<{ data: AdminListing }>(`${base}/previews/${token}/publish`, {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: { tier },
+    })
+    return data
+  }
+
   const update = async (id: string, payload: Partial<AdminListing>): Promise<AdminListing> => {
     const { data } = await $fetch<{ data: AdminListing }>(`${base}/listings/${id}`, {
       method: 'PATCH',
@@ -174,6 +183,7 @@ export const useAdminListings = () => {
     list,
     get,
     create,
+    publishPreview,
     update,
     publish: (id: string) => action(id, 'publish'),
     unpublish: (id: string) => action(id, 'unpublish'),

@@ -70,6 +70,23 @@ describe('admin listing requests', () => {
     ])
   })
 
+  test('publishes a preview through the admin-only no-checkout route', async () => {
+    response = { data: { id: 'listing-from-preview', tier: 'featured' } }
+
+    const result = await useAdminListings().publishPreview('preview-token', 'featured')
+
+    expect(result.id).toBe('listing-from-preview')
+    expect(result.tier).toBe('featured')
+    expect(calls).toEqual([{
+      url: `${API}/api/v1/admin/previews/preview-token/publish`,
+      options: {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${TOKEN}` },
+        body: { tier: 'featured' },
+      },
+    }])
+  })
+
   test('fails before requesting when no Firebase token is available', async () => {
     globals.useAuth = () => ({ getIdToken: async () => null })
 

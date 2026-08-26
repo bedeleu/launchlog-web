@@ -15,13 +15,15 @@ import {
   reconcileCancelledCheckout,
 } from '~/utils/checkout-cancellation'
 import { buildPreviewTextEdit, resolvePreviewCheckout } from '~/utils/preview-checkout'
+import { resolvePreviewPublishingMode } from '~/utils/preview-publishing'
 
 const route = useRoute()
 const router = useRouter()
 const token = route.params.token as string
 const { getPreview, updatePreview, recapturePreview, cancelPreviewCheckout } = usePreviews()
 const { createSession } = useBilling()
-const { user, waitForAuthReady } = useAuth()
+const { user, waitForAuthReady, isAdmin: resolveIsAdmin } = useAuth()
+const { publishPreview: publishAdminPreview } = useAdminListings()
 const { findPlan } = usePlans()
 const intake = useIntakeStore()
 
@@ -70,6 +72,7 @@ const account = reactive({
   email: initialCheckout.email,
 })
 const authReady = ref(false)
+const isAdminAccount = ref(false)
 const authenticatedEmail = computed(() => authReady.value ? user.value?.email?.trim() || null : null)
 const isAuthenticatedBuyer = computed(() => authenticatedEmail.value !== null)
 
@@ -77,6 +80,11 @@ const isAuthenticatedBuyer = computed(() => authenticatedEmail.value !== null)
 const selectedTier = ref<PlanTier>(initialCheckout.tier)
 const selectedPlan = computed(() => findPlan(selectedTier.value))
 const checkoutReserved = computed(() => preview.value?.checkout_reserved === true)
+const publishingMode = computed(() => resolvePreviewPublishingMode({
+  authReady: authReady.value,
+  isAdmin: isAdminAccount.value,
+  checkoutReserved: checkoutReserved.value,
+}))
 const checkoutCancellationState = ref<'idle' | 'pending' | 'done' | 'error'>(
   route.query.checkout === 'cancelled' ? 'pending' : 'idle',
 )
@@ -209,9 +217,19 @@ onMounted(() => {
     }, 45_000)
   }
 
-  void waitForAuthReady().finally(async () => {
-    authReady.value = true
-    if (user.value?.email && !checkoutReserved.value) account.email = user.value.email
+  void (async () => {
+    try {
+      await waitForAuthReady()
+      isAdminAccount.value = user.value ? await resolveIsAdmin() : false
+    }
+    catch {
+      isAdminAccount.value = false
+    }
+    finally {
+      authReady.value = true
+      if (user.value?.email && !checkoutReserved.value) account.email = user.value.email
+    }
+
     // SSR cannot inspect the browser's Firebase session. Refresh a conflict
     // once auth is restored so an owner gets Manage rather than a claim form.
     if (domainConflict.value) {
@@ -222,7 +240,7 @@ onMounted(() => {
         // The generic ownership-request route remains safe and usable.
       }
     }
-  })
+  })()
 })
 
 onBeforeUnmount(() => {
@@ -245,12 +263,15 @@ const invalidFieldClass = 'border-brand-warning/70 shadow-[0_0_0_1px_rgba(245,15
 
 const checkoutPending = ref(false)
 const checkoutError = ref<string | null>(null)
+const adminPublishPending = ref(false)
+const adminPublishError = ref<string | null>(null)
 
 // Payment is blocked only by things that genuinely prevent checkout. A missing
 // or failed screenshot never blocks it — the API decides whether the remaining
 // data can be published, and the screenshot can be recaptured afterwards.
 const canPay = computed(() =>
   authReady.value
+  && publishingMode.value.kind === 'checkout'
   && !isGenerating.value
   && !domainConflict.value
   && emailLooksValid.value
@@ -258,6 +279,39 @@ const canPay = computed(() =>
   && checkoutCancellationState.value !== 'pending'
   && checkoutCancellationState.value !== 'error',
 )
+
+const canAdminPublish = computed(() =>
+  authReady.value
+  && publishingMode.value.kind === 'admin'
+  && !isGenerating.value
+  && !domainConflict.value
+  && !adminPublishPending.value
+  && checkoutCancellationState.value !== 'pending',
+)
+
+const publishAsAdmin = async () => {
+  if (!canAdminPublish.value) return
+
+  adminPublishPending.value = true
+  adminPublishError.value = null
+
+  try {
+    if (publishingMode.value.cancelCheckout) {
+      applyPreview(await cancelPreviewCheckout(token))
+    }
+
+    await updatePreview(token, buildPreviewTextEdit(form))
+    const listing = await publishAdminPreview(token, selectedTier.value)
+    await navigateTo(`/admin/listings/${listing.id}`)
+  }
+  catch (error: unknown) {
+    adminPublishError.value = toErrorLike(error).data?.message
+      ?? 'This placement could not be published. Nothing was charged; try again or review it in Admin.'
+  }
+  finally {
+    adminPublishPending.value = false
+  }
+}
 
 const payAndPublish = async () => {
   attemptedPublish.value = true
@@ -342,7 +396,11 @@ watch(
             Review &amp; publish your listing
           </h1>
           <p class="mt-2 text-brand-muted">
-            See how your product will appear, pick a package, and publish. Pay only when you publish.
+            {{ !authReady
+              ? 'Review the generated listing while we check your publishing access.'
+              : isAdminAccount
+                ? 'Review the generated listing, choose its placement, and publish it directly as an admin.'
+                : 'See how your product will appear, pick a package, and publish. Pay only when you publish.' }}
           </p>
         </div>
         <NuxtLink
@@ -514,13 +572,24 @@ watch(
           <!-- 01 — Select package -->
           <section>
             <h2 class="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-brand-muted">
-              01 — Select package
+              {{ !authReady ? '01 — Checking access' : isAdminAccount ? '01 — Select admin placement' : '01 — Select package' }}
             </h2>
             <IntakePlanSelector
+              v-if="authReady"
               v-model="selectedTier"
-              :disabled="checkoutPending || domainConflict || checkoutReserved || checkoutCancellationState === 'pending'"
+              :admin-mode="isAdminAccount"
+              :disabled="checkoutPending || adminPublishPending || domainConflict || (!isAdminAccount && checkoutReserved) || checkoutCancellationState === 'pending'"
             />
-            <p v-if="checkoutReserved" class="mt-2 text-xs leading-5 text-brand-muted">
+            <div
+              v-else
+              class="flex min-h-24 items-center gap-3 rounded-xl border border-brand-border bg-white/[0.02] px-4 py-3"
+              aria-busy="true"
+              aria-live="polite"
+            >
+              <AppSpinner class="shrink-0" label="Checking publishing access" />
+              <p class="text-sm text-brand-muted">Checking publishing access…</p>
+            </div>
+            <p v-if="checkoutReserved && !isAdminAccount" class="mt-2 text-xs leading-5 text-brand-muted">
               This plan is locked to your saved Stripe checkout so returning cannot create a different order.
             </p>
           </section>
@@ -528,7 +597,13 @@ watch(
           <!-- 02 — Publishing identity -->
           <section class="space-y-4">
             <h2 class="text-sm font-semibold uppercase tracking-[0.2em] text-brand-muted">
-              {{ checkoutReserved ? '02 — Saved checkout' : isAuthenticatedBuyer ? '02 — Publishing account' : '02 — Where should we send your listing?' }}
+              {{ isAdminAccount
+                ? '02 — Admin publishing'
+                : checkoutReserved
+                  ? '02 — Saved checkout'
+                  : isAuthenticatedBuyer
+                    ? '02 — Publishing account'
+                    : '02 — Where should we send your listing?' }}
             </h2>
             <div
               v-if="checkoutCancellationState === 'done'"
@@ -544,7 +619,7 @@ watch(
               </div>
             </div>
             <div
-              v-if="checkoutReserved"
+              v-if="checkoutReserved && !isAdminAccount"
               class="rounded-xl border border-brand-accent/35 bg-brand-accent/[0.07] px-4 py-4"
               role="status"
             >
@@ -594,13 +669,15 @@ watch(
               <CheckCircle2 class="mt-0.5 size-5 shrink-0 text-brand-success" aria-hidden="true" />
               <div class="min-w-0">
                 <p class="text-xs font-medium uppercase tracking-[0.14em] text-brand-muted">
-                  Publishing as
+                  {{ isAdminAccount ? 'Admin publishing' : 'Publishing as' }}
                 </p>
                 <p class="mt-1 break-words text-sm font-semibold text-brand-fg">
                   {{ authenticatedEmail }}
                 </p>
                 <p class="mt-1 text-xs leading-5 text-brand-muted">
-                  This listing will be added directly to your signed-in account.
+                  {{ isAdminAccount
+                    ? 'This placement will be published directly without Stripe or a subscription.'
+                    : 'This listing will be added directly to your signed-in account.' }}
                 </p>
               </div>
             </div>
@@ -649,6 +726,22 @@ watch(
                 >View it</NuxtLink>
               </div>
             </div>
+            <Button
+              v-else-if="isAdminAccount"
+              size="lg"
+              class="w-full"
+              :disabled="!canAdminPublish"
+              @click="publishAsAdmin"
+            >
+              <AppSpinner v-if="adminPublishPending" class="mr-2" color="text-current" label="Publishing admin placement" />
+              {{ adminPublishPending
+                ? 'Publishing placement…'
+                : checkoutCancellationState === 'pending'
+                  ? 'Cancelling previous checkout…'
+                  : isGenerating
+                    ? 'Preparing preview…'
+                    : `Publish ${selectedPlan.name} as admin` }}
+            </Button>
             <Button v-else size="lg" class="w-full" :disabled="!canPay" @click="payAndPublish">
               <AppSpinner v-if="checkoutPending" class="mr-2" color="text-current" label="Opening secure checkout" />
               {{ checkoutPending
@@ -657,18 +750,23 @@ watch(
                   ? 'Cancelling checkout…'
                   : checkoutCancellationState === 'error'
                     ? 'Retry cancellation above'
-                : isGenerating
-                  ? 'Preparing preview…'
-                  : checkoutReserved
-                    ? `Resume secure checkout — ${selectedPlan.priceLabel}/year`
-                    : `Pay & publish — ${selectedPlan.priceLabel}/year` }}
+                    : isGenerating
+                      ? 'Preparing preview…'
+                      : checkoutReserved
+                        ? `Resume secure checkout — ${selectedPlan.priceLabel}/year`
+                        : `Pay & publish — ${selectedPlan.priceLabel}/year` }}
             </Button>
             <div class="mt-3 min-h-5 text-center text-xs" aria-live="polite">
-              <p v-if="checkoutError" class="text-brand-warning" role="alert">
-                {{ checkoutError }}
+              <p v-if="adminPublishError || checkoutError" class="text-brand-warning" role="alert">
+                {{ adminPublishError || checkoutError }}
               </p>
               <p v-else-if="isGenerating" class="text-brand-muted">
-                Checkout unlocks automatically when the preview is ready.
+                {{ isAdminAccount
+                  ? 'Admin publishing unlocks automatically when the preview is ready.'
+                  : 'Checkout unlocks automatically when the preview is ready.' }}
+              </p>
+              <p v-else-if="isAdminAccount && !domainConflict" class="text-brand-muted">
+                Manual admin placement · no checkout or subscription.
               </p>
               <p v-else-if="!domainConflict" class="text-brand-muted">
                 That's just {{ selectedPlan.monthlyLabel }}/mo · pay only when you publish · 7-day money-back guarantee.

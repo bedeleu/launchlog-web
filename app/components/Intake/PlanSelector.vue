@@ -2,8 +2,9 @@
 import { Check } from '@lucide/vue'
 import type { PlanTier } from '~/composables/usePlans'
 
-withDefaults(defineProps<{ modelValue: PlanTier, disabled?: boolean }>(), {
+withDefaults(defineProps<{ modelValue: PlanTier, disabled?: boolean, adminMode?: boolean }>(), {
   disabled: false,
+  adminMode: false,
 })
 const emit = defineEmits<{ 'update:modelValue': [tier: PlanTier] }>()
 
@@ -42,12 +43,22 @@ const { plans } = usePlans()
           </span>
         </div>
         <div class="shrink-0 text-right">
-          <div class="font-semibold text-brand-fg">
-            {{ plan.monthlyLabel }}<span class="text-xs font-normal text-brand-muted">/mo</span>
-          </div>
-          <div class="text-[11px] text-brand-muted">
-            {{ plan.priceLabel }} billed yearly
-          </div>
+          <template v-if="adminMode">
+            <div class="text-xs font-semibold uppercase tracking-[0.12em] text-brand-success">
+              Manual placement
+            </div>
+            <div class="mt-0.5 text-[11px] text-brand-muted">
+              No Stripe subscription
+            </div>
+          </template>
+          <template v-else>
+            <div class="font-semibold text-brand-fg">
+              {{ plan.monthlyLabel }}<span class="text-xs font-normal text-brand-muted">/mo</span>
+            </div>
+            <div class="text-[11px] text-brand-muted">
+              {{ plan.priceLabel }} billed yearly
+            </div>
+          </template>
         </div>
       </div>
 
