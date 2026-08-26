@@ -1,5 +1,12 @@
 export type PreviewStatus = 'generating' | 'ready' | 'failed' | 'converted' | 'expired'
 
+export interface ExistingListingConflict {
+  action: 'manage' | 'claim'
+  domain: string
+  listing_path: string | null
+  dashboard_path: string | null
+}
+
 export interface Preview {
   token: string
   status: PreviewStatus
@@ -16,6 +23,7 @@ export interface Preview {
   crawl: Record<string, unknown> | null
   error_code: string | null
   error_message: string | null
+  existing_listing: ExistingListingConflict | null
   expires_at: string | null
 }
 
@@ -28,6 +36,27 @@ export interface PreviewEdit {
   tier?: string | null
 }
 
+export const existingListingConflictFromError = (error: unknown): ExistingListingConflict | null => {
+  const response = error as {
+    data?: {
+      error?: unknown
+      conflict?: Record<string, unknown>
+    }
+  }
+  const conflict = response.data?.conflict
+
+  if (response.data?.error !== 'listing_exists' || !conflict) return null
+  if (conflict.action !== 'manage' && conflict.action !== 'claim') return null
+  if (typeof conflict.domain !== 'string' || !conflict.domain.trim()) return null
+
+  return {
+    action: conflict.action,
+    domain: conflict.domain,
+    listing_path: typeof conflict.listing_path === 'string' ? conflict.listing_path : null,
+    dashboard_path: typeof conflict.dashboard_path === 'string' ? conflict.dashboard_path : null,
+  }
+}
+
 /**
  * Preview-first intake (D-057). The preview is the private, pre-payment
  * artifact; it only becomes a public Listing after the payment webhook
@@ -35,19 +64,29 @@ export interface PreviewEdit {
  */
 export const usePreviews = () => {
   const config = useRuntimeConfig()
+  const { getIdToken, waitForAuthReady } = useAuth()
   // apiUrl is host-only; routes/api.php is mounted under /api (D-051).
   const base = `${config.public.apiUrl}/api/v1`
+
+  const authHeaders = async (): Promise<Record<string, string> | undefined> => {
+    await waitForAuthReady()
+    const token = await getIdToken()
+    return token ? { Authorization: `Bearer ${token}` } : undefined
+  }
 
   const createPreview = async (url: string): Promise<Preview> => {
     const { data } = await $fetch<{ data: Preview }>(`${base}/previews`, {
       method: 'POST',
       body: { url },
+      headers: await authHeaders(),
     })
     return data
   }
 
   const getPreview = async (token: string): Promise<Preview> => {
-    const { data } = await $fetch<{ data: Preview }>(`${base}/previews/${token}`)
+    const { data } = await $fetch<{ data: Preview }>(`${base}/previews/${token}`, {
+      headers: await authHeaders(),
+    })
     return data
   }
 

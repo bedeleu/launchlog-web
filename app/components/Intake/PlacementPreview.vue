@@ -12,8 +12,12 @@ const props = defineProps<{
 }>()
 
 const isFeatured = computed(() => props.tier === 'featured')
-const displayTitle = computed(() => props.title || props.preview.domain || 'Your product')
-const displayTagline = computed(() => props.tagline || 'Your one-line pitch goes here')
+const displayTitle = computed(() =>
+  props.title || (props.generating ? 'Your product' : props.preview.domain || 'Your product'),
+)
+const displayTagline = computed(() =>
+  props.tagline || (props.generating ? 'We’re reading your website details.' : 'Your one-line pitch goes here'),
+)
 
 /**
  * Three illustrative rows, not a full 30-slot production page: the buyer only
@@ -110,6 +114,7 @@ const previewListings = computed<ListingCard[]>(() => [buyerCard.value, ...conte
           mode="mixed"
           :interactive="false"
           :contextual-slugs="contextSlugs"
+          compact-context-on-mobile
           :generating="generating"
         />
       </div>
