@@ -106,5 +106,13 @@ export const usePreviews = () => {
     return data
   }
 
-  return { createPreview, getPreview, updatePreview, recapturePreview }
+  const cancelPreviewCheckout = async (token: string): Promise<Preview> => {
+    const { data } = await $fetch<{ data: Preview }>(`${base}/previews/${token}/checkout/cancel`, {
+      method: 'POST',
+      headers: await authHeaders(),
+    })
+    return data
+  }
+
+  return { createPreview, getPreview, updatePreview, recapturePreview, cancelPreviewCheckout }
 }

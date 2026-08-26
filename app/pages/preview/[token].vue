@@ -8,11 +8,13 @@ import type { PlanTier } from '~/composables/usePlans'
 import type { Preview } from '~/composables/usePreviews'
 import { toErrorLike } from '~/utils/error-like'
 import { resolveCheckoutEmail } from '~/utils/checkout-customer'
+import { reconcileCancelledCheckout } from '~/utils/checkout-cancellation'
 import { buildPreviewTextEdit, resolvePreviewCheckout } from '~/utils/preview-checkout'
 
 const route = useRoute()
+const router = useRouter()
 const token = route.params.token as string
-const { getPreview, updatePreview, recapturePreview } = usePreviews()
+const { getPreview, updatePreview, recapturePreview, cancelPreviewCheckout } = usePreviews()
 const { createSession } = useBilling()
 const { user, waitForAuthReady } = useAuth()
 const { findPlan } = usePlans()
@@ -70,7 +72,9 @@ const isAuthenticatedBuyer = computed(() => authenticatedEmail.value !== null)
 const selectedTier = ref<PlanTier>(initialCheckout.tier)
 const selectedPlan = computed(() => findPlan(selectedTier.value))
 const checkoutReserved = computed(() => preview.value?.checkout_reserved === true)
-const checkoutCancelled = computed(() => checkoutReserved.value && route.query.checkout === 'cancelled')
+const checkoutCancellationState = ref<'idle' | 'pending' | 'done' | 'error'>(
+  route.query.checkout === 'cancelled' ? 'pending' : 'idle',
+)
 
 const status = computed(() => preview.value?.status)
 const isGenerating = computed(() => status.value === 'generating')
@@ -147,7 +151,28 @@ const recapture = async () => {
   }
 }
 
+const reconcileStripeBack = async () => {
+  if (route.query.checkout !== 'cancelled') return
+
+  checkoutCancellationState.value = 'pending'
+  const result = await reconcileCancelledCheckout({
+    returnedFromCheckout: true,
+    checkoutReserved: checkoutReserved.value,
+    cancel: () => cancelPreviewCheckout(token),
+    clearCancelledQuery: async () => {
+      const query = { ...route.query }
+      delete query.checkout
+      await router.replace({ query })
+    },
+  })
+
+  if (result.state === 'done' && result.preview) applyPreview(result.preview)
+  checkoutCancellationState.value = result.state === 'idle' ? 'idle' : result.state
+}
+
 onMounted(() => {
+  void reconcileStripeBack()
+
   if (isGenerating.value) {
     startPolling()
     slowGenerationTimer = setTimeout(() => {
@@ -199,7 +224,9 @@ const canPay = computed(() =>
   && !isGenerating.value
   && !domainConflict.value
   && emailLooksValid.value
-  && !checkoutPending.value,
+  && !checkoutPending.value
+  && checkoutCancellationState.value !== 'pending'
+  && checkoutCancellationState.value !== 'error',
 )
 
 const payAndPublish = async () => {
@@ -460,7 +487,7 @@ watch(
             </h2>
             <IntakePlanSelector
               v-model="selectedTier"
-              :disabled="checkoutPending || domainConflict || checkoutReserved"
+              :disabled="checkoutPending || domainConflict || checkoutReserved || checkoutCancellationState === 'pending'"
             />
             <p v-if="checkoutReserved" class="mt-2 text-xs leading-5 text-brand-muted">
               This plan is locked to your saved Stripe checkout so returning cannot create a different order.
@@ -473,18 +500,50 @@ watch(
               {{ checkoutReserved ? '02 — Saved checkout' : isAuthenticatedBuyer ? '02 — Publishing account' : '02 — Where should we send your listing?' }}
             </h2>
             <div
+              v-if="checkoutCancellationState === 'done'"
+              class="flex items-start gap-3 rounded-xl border border-brand-success/35 bg-brand-success/[0.07] px-4 py-4"
+              role="status"
+            >
+              <CheckCircle2 class="mt-0.5 size-5 shrink-0 text-brand-success" aria-hidden="true" />
+              <div>
+                <p class="text-sm font-semibold text-brand-fg">Checkout cancelled</p>
+                <p class="mt-1 text-sm leading-6 text-brand-muted">
+                  Nothing was charged or published. This website is available again, so you can change the plan or retry.
+                </p>
+              </div>
+            </div>
+            <div
               v-if="checkoutReserved"
               class="rounded-xl border border-brand-accent/35 bg-brand-accent/[0.07] px-4 py-4"
               role="status"
             >
               <p class="text-sm font-semibold text-brand-fg">
-                {{ checkoutCancelled ? 'Payment wasn’t completed' : 'Your secure checkout is ready to resume' }}
+                {{ checkoutCancellationState === 'pending'
+                  ? 'Cancelling secure checkout…'
+                  : checkoutCancellationState === 'error'
+                    ? 'Checkout could not be cancelled'
+                    : 'Your secure checkout is ready to resume' }}
               </p>
               <p class="mt-1 text-sm leading-6 text-brand-muted">
-                <template v-if="checkoutCancelled">Nothing was charged or published. </template>
-                Continue with the same {{ selectedPlan.name }} plan for
-                <span class="font-medium text-brand-fg">{{ account.email }}</span>.
+                <template v-if="checkoutCancellationState === 'pending'">
+                  Confirming with Stripe and releasing this website now.
+                </template>
+                <template v-else-if="checkoutCancellationState === 'error'">
+                  Stripe did not confirm the cancellation, so no reservation was removed. Try again safely.
+                </template>
+                <template v-else>
+                  Continue with the same {{ selectedPlan.name }} plan for
+                  <span class="font-medium text-brand-fg">{{ account.email }}</span>.
+                </template>
               </p>
+              <Button
+                v-if="checkoutCancellationState === 'error'"
+                type="button"
+                variant="outline"
+                size="sm"
+                class="mt-3"
+                @click="reconcileStripeBack"
+              >Try cancellation again</Button>
             </div>
             <div
               v-else-if="!authReady"
@@ -563,6 +622,10 @@ watch(
               <AppSpinner v-if="checkoutPending" class="mr-2" color="text-current" label="Opening secure checkout" />
               {{ checkoutPending
                 ? 'Opening secure checkout…'
+                : checkoutCancellationState === 'pending'
+                  ? 'Cancelling checkout…'
+                  : checkoutCancellationState === 'error'
+                    ? 'Retry cancellation above'
                 : isGenerating
                   ? 'Preparing preview…'
                   : checkoutReserved

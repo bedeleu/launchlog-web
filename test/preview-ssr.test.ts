@@ -133,16 +133,17 @@ describe.skipIf(!isBuilt)('preview and ownership-request SSR', () => {
     expect(html).not.toContain('You can still publish your listing now')
   })
 
-  test('returning from Stripe states that nothing was charged or published and resumes the exact checkout', async () => {
+  test('returning from Stripe immediately enters cancellation instead of offering the saved checkout again', async () => {
     const response = await fetch(`${BASE}/preview/${RESERVED_TOKEN}?checkout=cancelled`)
     const html = await response.text()
 
     expect(response.status).toBe(200)
-    expect(html).toContain('Payment wasn’t completed')
-    expect(html).toContain('Nothing was charged or published.')
+    expect(html).toContain('Cancelling secure checkout…')
+    expect(html).toContain('Confirming with Stripe and releasing this website now.')
     expect(html).toContain('Featured')
     expect(html).toContain('maker@example.com')
-    expect(html).toContain('Resume secure checkout')
+    expect(html).toContain('Cancelling checkout…')
+    expect(html).not.toContain('Resume secure checkout')
     expect(html).not.toContain('This website is already represented on LaunchLog.')
   })
 

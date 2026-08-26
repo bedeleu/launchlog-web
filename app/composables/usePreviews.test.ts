@@ -73,6 +73,21 @@ describe('preview identity and existing-listing routing', () => {
     expect(authEvents).toEqual(['ready', 'token'])
   })
 
+  test('cancels the exact preview checkout with the current verified identity', async () => {
+    const token = 'p'.repeat(64)
+
+    await usePreviews().cancelPreviewCheckout(token)
+
+    expect(calls).toEqual([{
+      url: `${API}/api/v1/previews/${token}/checkout/cancel`,
+      options: {
+        method: 'POST',
+        headers: { Authorization: 'Bearer firebase-id-token' },
+      },
+    }])
+    expect(authEvents).toEqual(['ready', 'token'])
+  })
+
   test('accepts only the safe conflict contract from a 409 response', () => {
     const conflict = existingListingConflictFromError({
       data: {
