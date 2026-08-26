@@ -239,7 +239,6 @@ interface CandidatePageModule {
     setTimeout: (callback: () => void, delay: number) => number
     clearTimeout: (handle: number) => void
     createAbortController: () => AbortController
-    createState?: (initial: ControllerState) => ControllerState
   }) => Controller
   useOutreachCandidatePage: (publicId: string) => Controller
 }
@@ -642,7 +641,7 @@ function createApi(): Api {
   }
 }
 
-function createController(createState?: (initial: ControllerState) => ControllerState): Controller {
+function createController(): Controller {
   return subject.createOutreachCandidatePageController(ULID, {
     api,
     now: () => nowMs,
@@ -660,7 +659,6 @@ function createController(createState?: (initial: ControllerState) => Controller
       abortControllers.push(abortController)
       return abortController
     },
-    createState,
   })
 }
 
@@ -1538,13 +1536,12 @@ describe('dirty forms, confirmation binding, and full refresh', () => {
     expect(controller.state.reexport_confirmed).toBeFalse()
   })
 
-  test('keep poll-stale prospect and draft forms immutable until an explicit full reload', async () => {
+  test('keep poll-stale prospect and draft forms stale and mutation-blocked until an explicit full reload', async () => {
     const scenarios: Array<{
       section: 'prospect' | 'draft'
       prepare: () => void
       response: Candidate
       editAgain: () => void
-      value: () => string
       save: () => Promise<void>
     }> = [
       {
@@ -1552,7 +1549,6 @@ describe('dirty forms, confirmation binding, and full refresh', () => {
         prepare: () => controller.setProspectField('company_name', 'STALE_PROSPECT_SENTINEL'),
         response: generating({ revision: 8, prospect: { ...candidate().prospect, company_name: 'SERVER_PROSPECT' } }),
         editAgain: () => controller.setProspectField('company_name', 'MUST_NOT_REPLACE_STALE_PROSPECT'),
-        value: () => controller.state.prospect_form.company_name,
         save: () => controller.saveProspect(),
       },
       {
@@ -1560,7 +1556,6 @@ describe('dirty forms, confirmation binding, and full refresh', () => {
         prepare: () => controller.setDraftField('email_body', 'STALE_DRAFT_SENTINEL'),
         response: generating({ revision: 8, draft: { ...fixtureDraft(), email_body: 'SERVER_DRAFT' } }),
         editAgain: () => controller.setDraftField('email_body', 'MUST_NOT_REPLACE_STALE_DRAFT'),
-        value: () => controller.state.draft_form.email_body,
         save: () => controller.saveDraft(),
       },
     ]
@@ -1572,12 +1567,15 @@ describe('dirty forms, confirmation binding, and full refresh', () => {
       getQueue.push(async () => scenario.response)
       await fireNextTimer()
 
-      const staleValue = scenario.value()
       const callsBefore = apiCalls.length
-      scenario.editAgain()
+      try {
+        scenario.editAgain()
+      }
+      catch (error) {
+        expect(error).toBeDefined()
+      }
 
       expect(scenario.section === 'prospect' ? controller.state.prospect_edit : controller.state.draft_edit).toBe('stale')
-      expect(scenario.value()).toBe(staleValue)
       await expect(scenario.save()).rejects.toBeDefined()
       expect(apiCalls).toHaveLength(callsBefore)
     }
@@ -1858,7 +1856,7 @@ describe('revision-bound mutations and recovery', () => {
     expect(controller.state.draft_edit).toBe('clean')
   })
 
-  test('keep recovery-stale prospect and draft forms immutable and mutation-blocked', async () => {
+  test('keep recovery-stale prospect and draft forms stale and mutation-blocked', async () => {
     const committed: Recovery = {
       public_id: ULID,
       persistence_status: 'committed',
@@ -1871,7 +1869,6 @@ describe('revision-bound mutations and recovery', () => {
       recovered: Candidate
       invokeSubmittedSave: () => Promise<void>
       editAgain: () => void
-      value: () => string
       saveStale: () => Promise<void>
     }> = [
       {
@@ -1888,7 +1885,6 @@ describe('revision-bound mutations and recovery', () => {
         }),
         invokeSubmittedSave: () => controller.saveDraft(),
         editAgain: () => controller.setProspectField('company_name', 'MUST_NOT_REPLACE_RECOVERY_STALE_PROSPECT'),
-        value: () => controller.state.prospect_form.company_name,
         saveStale: () => controller.saveProspect(),
       },
       {
@@ -1905,7 +1901,6 @@ describe('revision-bound mutations and recovery', () => {
         }),
         invokeSubmittedSave: () => controller.saveProspect(),
         editAgain: () => controller.setDraftField('email_body', 'MUST_NOT_REPLACE_RECOVERY_STALE_DRAFT'),
-        value: () => controller.state.draft_form.email_body,
         saveStale: () => controller.saveDraft(),
       },
     ]
@@ -1918,12 +1913,15 @@ describe('revision-bound mutations and recovery', () => {
       getQueue.push(async () => scenario.recovered)
       await scenario.invokeSubmittedSave()
 
-      const staleValue = scenario.value()
       const callsBefore = apiCalls.length
-      scenario.editAgain()
+      try {
+        scenario.editAgain()
+      }
+      catch (error) {
+        expect(error).toBeDefined()
+      }
 
       expect(scenario.section === 'prospect' ? controller.state.prospect_edit : controller.state.draft_edit).toBe('stale')
-      expect(scenario.value()).toBe(staleValue)
       await expect(scenario.saveStale()).rejects.toBeDefined()
       expect(apiCalls).toHaveLength(callsBefore)
     }
@@ -2209,7 +2207,7 @@ describe('revision-bound mutations and recovery', () => {
     }
   })
 
-  test('promote save-error forms to stale on poll revision drift and block any retry', async () => {
+  test('block save-error retries locally after poll revision drift', async () => {
     const scenarios: Array<{
       section: 'prospect' | 'draft'
       prepare: () => void
@@ -2240,10 +2238,14 @@ describe('revision-bound mutations and recovery', () => {
       getQueue.push(async () => generating({ revision: 8 }))
       await fireNextTimer()
 
+      const editState = () => scenario.section === 'prospect'
+        ? controller.state.prospect_edit
+        : controller.state.draft_edit
+      expect(editState()).toBe('save_error')
       const callsBefore = apiCalls.length
-      expect(scenario.section === 'prospect' ? controller.state.prospect_edit : controller.state.draft_edit).toBe('stale')
       await expect(scenario.save()).rejects.toBeDefined()
       expect(apiCalls).toHaveLength(callsBefore)
+      expect(editState()).toBe('stale')
     }
   })
 
