@@ -24,6 +24,7 @@ export interface Preview {
   error_code: string | null
   error_message: string | null
   existing_listing: ExistingListingConflict | null
+  checkout_reserved: boolean
   expires_at: string | null
 }
 

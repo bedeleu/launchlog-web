@@ -58,7 +58,7 @@ const toDraft = (preview: Preview, existing?: PreviewDraft): PreviewDraft => ({
   // never trust a stored value the validator no longer accepts.
   tier: isPlanTier(existing?.tier)
     ? existing.tier
-    : (isPlanTier(preview.tier) ? preview.tier : 'featured'),
+    : (isPlanTier(preview.tier) ? preview.tier : 'basic'),
   screenshotUrl: preview.screenshot_url,
   status: preview.status,
   expiresAt: preview.expires_at,

@@ -8,6 +8,7 @@ import type { PlanTier } from '~/composables/usePlans'
 import type { Preview } from '~/composables/usePreviews'
 import { toErrorLike } from '~/utils/error-like'
 import { resolveCheckoutEmail } from '~/utils/checkout-customer'
+import { buildPreviewTextEdit, resolvePreviewCheckout } from '~/utils/preview-checkout'
 
 const route = useRoute()
 const token = route.params.token as string
@@ -39,6 +40,13 @@ if (preview.value?.status === 'converted') {
 }
 
 const draft = computed(() => intake.getDraft(token))
+const initialCheckout = resolvePreviewCheckout({
+  checkoutReserved: preview.value?.checkout_reserved === true,
+  previewTier: preview.value?.tier,
+  previewEmail: preview.value?.email,
+  draftTier: draft.value?.tier,
+  draftEmail: draft.value?.email,
+})
 
 // Listing text (defaults from the crawl). Edited via a discreet inline panel,
 // not a primary step — buying shouldn't feel like an editor.
@@ -52,15 +60,17 @@ const showEdit = ref(false)
 // Account: email only. The account itself is created server-side after the
 // payment webhook (D-057) — no password, no coupon, nothing to fill in twice.
 const account = reactive({
-  email: draft.value?.email ?? preview.value?.email ?? '',
+  email: initialCheckout.email,
 })
 const authReady = ref(false)
 const authenticatedEmail = computed(() => authReady.value ? user.value?.email?.trim() || null : null)
 const isAuthenticatedBuyer = computed(() => authenticatedEmail.value !== null)
 
-// Featured is the default selection — the most valuable placement (D-058).
-const selectedTier = ref<PlanTier>(draft.value?.tier ?? 'featured')
+// Standard is the honest default. Featured remains an explicit upgrade.
+const selectedTier = ref<PlanTier>(initialCheckout.tier)
 const selectedPlan = computed(() => findPlan(selectedTier.value))
+const checkoutReserved = computed(() => preview.value?.checkout_reserved === true)
+const checkoutCancelled = computed(() => checkoutReserved.value && route.query.checkout === 'cancelled')
 
 const status = computed(() => preview.value?.status)
 const isGenerating = computed(() => status.value === 'generating')
@@ -86,7 +96,20 @@ const applyPreview = (next: Preview) => {
   if (!form.title && next.title) form.title = next.title
   if (!form.tagline && next.tagline) form.tagline = next.tagline
   if (!form.description && next.description) form.description = next.description
-  if (!account.email && next.email) account.email = next.email
+  if (next.checkout_reserved) {
+    const savedCheckout = resolvePreviewCheckout({
+      checkoutReserved: true,
+      previewTier: next.tier,
+      previewEmail: next.email,
+      draftTier: selectedTier.value,
+      draftEmail: account.email,
+    })
+    selectedTier.value = savedCheckout.tier
+    account.email = savedCheckout.email
+  }
+  else if (!account.email && next.email) {
+    account.email = next.email
+  }
 }
 
 const { pause: stopPolling, resume: startPolling } = useIntervalFn(async () => {
@@ -134,7 +157,7 @@ onMounted(() => {
 
   void waitForAuthReady().finally(async () => {
     authReady.value = true
-    if (user.value?.email) account.email = user.value.email
+    if (user.value?.email && !checkoutReserved.value) account.email = user.value.email
     // SSR cannot inspect the browser's Firebase session. Refresh a conflict
     // once auth is restored so an owner gets Manage rather than a claim form.
     if (domainConflict.value) {
@@ -152,7 +175,9 @@ onBeforeUnmount(() => {
   if (slowGenerationTimer) clearTimeout(slowGenerationTimer)
 })
 
-const emailValue = computed(() => resolveCheckoutEmail(authenticatedEmail.value, account.email))
+const emailValue = computed(() => checkoutReserved.value
+  ? account.email.trim()
+  : resolveCheckoutEmail(authenticatedEmail.value, account.email))
 const emailLooksValid = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue.value))
 const attemptedPublish = ref(false)
 const emailShowsInvalid = computed(() => attemptedPublish.value && !emailLooksValid.value)
@@ -192,13 +217,7 @@ const payAndPublish = async () => {
 
   try {
     // Save first: if the edits cannot be persisted, no session is created.
-    await updatePreview(token, {
-      title: form.title || null,
-      tagline: form.tagline || null,
-      description: form.description || null,
-      email,
-      tier,
-    })
+    await updatePreview(token, buildPreviewTextEdit(form))
 
     // The resolved address always travels to useBilling; useBilling alone
     // decides what reaches the wire, so the page's view of "signed in" and the
@@ -218,8 +237,9 @@ const payAndPublish = async () => {
     window.location.href = session.url
   }
   catch (e: unknown) {
-    checkoutError.value = toErrorLike(e).data?.message
-      ?? 'We could not start checkout. Please try again.'
+    checkoutError.value = checkoutReserved.value
+      ? 'Your saved checkout could not be reopened. Refresh this page or contact support; nothing has been charged or published.'
+      : (toErrorLike(e).data?.message ?? 'We could not start checkout. Please try again.')
   }
   finally {
     // Keep the button locked while the browser is leaving for Stripe.
@@ -438,16 +458,36 @@ watch(
             <h2 class="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-brand-muted">
               01 — Select package
             </h2>
-            <IntakePlanSelector v-model="selectedTier" :disabled="checkoutPending || domainConflict" />
+            <IntakePlanSelector
+              v-model="selectedTier"
+              :disabled="checkoutPending || domainConflict || checkoutReserved"
+            />
+            <p v-if="checkoutReserved" class="mt-2 text-xs leading-5 text-brand-muted">
+              This plan is locked to your saved Stripe checkout so returning cannot create a different order.
+            </p>
           </section>
 
           <!-- 02 — Publishing identity -->
           <section class="space-y-4">
             <h2 class="text-sm font-semibold uppercase tracking-[0.2em] text-brand-muted">
-              {{ isAuthenticatedBuyer ? '02 — Publishing account' : '02 — Where should we send your listing?' }}
+              {{ checkoutReserved ? '02 — Saved checkout' : isAuthenticatedBuyer ? '02 — Publishing account' : '02 — Where should we send your listing?' }}
             </h2>
             <div
-              v-if="!authReady"
+              v-if="checkoutReserved"
+              class="rounded-xl border border-brand-accent/35 bg-brand-accent/[0.07] px-4 py-4"
+              role="status"
+            >
+              <p class="text-sm font-semibold text-brand-fg">
+                {{ checkoutCancelled ? 'Payment wasn’t completed' : 'Your secure checkout is ready to resume' }}
+              </p>
+              <p class="mt-1 text-sm leading-6 text-brand-muted">
+                <template v-if="checkoutCancelled">Nothing was charged or published. </template>
+                Continue with the same {{ selectedPlan.name }} plan for
+                <span class="font-medium text-brand-fg">{{ account.email }}</span>.
+              </p>
+            </div>
+            <div
+              v-else-if="!authReady"
               class="flex min-h-20 items-center gap-3 rounded-xl border border-brand-border bg-white/[0.02] px-4 py-3"
               aria-busy="true"
               aria-live="polite"
@@ -521,7 +561,13 @@ watch(
             </div>
             <Button v-else size="lg" class="w-full" :disabled="!canPay" @click="payAndPublish">
               <AppSpinner v-if="checkoutPending" class="mr-2" color="text-current" label="Opening secure checkout" />
-              {{ checkoutPending ? 'Opening secure checkout…' : isGenerating ? 'Preparing preview…' : `Pay & publish — ${selectedPlan.priceLabel}/year` }}
+              {{ checkoutPending
+                ? 'Opening secure checkout…'
+                : isGenerating
+                  ? 'Preparing preview…'
+                  : checkoutReserved
+                    ? `Resume secure checkout — ${selectedPlan.priceLabel}/year`
+                    : `Pay & publish — ${selectedPlan.priceLabel}/year` }}
             </Button>
             <div class="mt-3 min-h-5 text-center text-xs" aria-live="polite">
               <p v-if="checkoutError" class="text-brand-warning" role="alert">

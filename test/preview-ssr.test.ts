@@ -14,6 +14,7 @@ const SERVER_PORT = 3202
 const BASE = `http://127.0.0.1:${SERVER_PORT}`
 const GENERATING_TOKEN = 'g'.repeat(64)
 const CONFLICT_TOKEN = 'c'.repeat(64)
+const RESERVED_TOKEN = 'r'.repeat(64)
 
 const preview = (status: 'generating' | 'failed') => ({
   token: status === 'generating' ? GENERATING_TOKEN : CONFLICT_TOKEN,
@@ -34,8 +35,23 @@ const preview = (status: 'generating' | 'failed') => ({
   existing_listing: status === 'failed'
     ? { action: 'claim', domain: 'maker.example', listing_path: '/listing/maker-example', dashboard_path: null }
     : null,
+  checkout_reserved: false,
   expires_at: '2026-09-01T00:00:00Z',
 })
+
+const reservedPreview = {
+  ...preview('failed'),
+  token: RESERVED_TOKEN,
+  status: 'ready',
+  title: 'Reserved maker',
+  tagline: 'A saved checkout.',
+  email: 'maker@example.com',
+  tier: 'featured',
+  error_code: null,
+  error_message: null,
+  existing_listing: null,
+  checkout_reserved: true,
+}
 
 let api: ReturnType<typeof Bun.serve> | undefined
 let server: ReturnType<typeof Bun.spawn> | undefined
@@ -62,6 +78,7 @@ describe.skipIf(!isBuilt)('preview and ownership-request SSR', () => {
         const path = new URL(request.url).pathname
         if (path.endsWith(GENERATING_TOKEN)) return Response.json({ data: preview('generating') })
         if (path.endsWith(CONFLICT_TOKEN)) return Response.json({ data: preview('failed') })
+        if (path.endsWith(RESERVED_TOKEN)) return Response.json({ data: reservedPreview })
         return Response.json({ message: 'not found' }, { status: 404 })
       },
     })
@@ -114,6 +131,19 @@ describe.skipIf(!isBuilt)('preview and ownership-request SSR', () => {
     expect(html).toContain('No duplicate payment is needed.')
     expect(html).not.toContain('Pay &amp; publish')
     expect(html).not.toContain('You can still publish your listing now')
+  })
+
+  test('returning from Stripe states that nothing was charged or published and resumes the exact checkout', async () => {
+    const response = await fetch(`${BASE}/preview/${RESERVED_TOKEN}?checkout=cancelled`)
+    const html = await response.text()
+
+    expect(response.status).toBe(200)
+    expect(html).toContain('Payment wasn’t completed')
+    expect(html).toContain('Nothing was charged or published.')
+    expect(html).toContain('Featured')
+    expect(html).toContain('maker@example.com')
+    expect(html).toContain('Resume secure checkout')
+    expect(html).not.toContain('This website is already represented on LaunchLog.')
   })
 
   test('the contact page renders a real prefilled ownership form', async () => {

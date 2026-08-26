@@ -101,13 +101,13 @@ const contentClass = computed(() => {
 
 const headingClass = computed(() => {
   if (isSpotlight.value) return 'line-clamp-2 text-2xl leading-[1.1] tracking-tight md:text-3xl'
-  // Display scale is the loudest thing about this card, and it costs no colour.
-  if (isDirectorySpotlight.value) return 'line-clamp-2 text-3xl leading-[1.1] tracking-tight'
+  if (isDirectorySpotlight.value) return 'line-clamp-3 text-xl leading-6 tracking-tight 2xl:text-2xl 2xl:leading-7'
   return 'truncate'
 })
 
 const taglineClass = computed(() => {
-  // Featured taglines step up with their display names.
+  if (isDirectorySpotlight.value) return 'line-clamp-4 text-sm leading-6'
+  // Homepage spotlights have enough width for the larger editorial treatment.
   if (isPriorityPlacement.value) return 'line-clamp-3 text-base leading-7'
   return 'line-clamp-2 text-sm leading-6'
 })
