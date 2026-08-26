@@ -108,6 +108,8 @@ describe.skipIf(!isBuilt)('preview and ownership-request SSR', () => {
     expect(response.status).toBe(200)
     expect(html).toContain('Already on LaunchLog')
     expect(html).toContain('Request ownership')
+    expect(html).toContain('View it')
+    expect(html).toContain('href="/listing/maker-example"')
     expect(html).toContain('/contact?topic=listing_claim')
     expect(html).toContain('No duplicate payment is needed.')
     expect(html).not.toContain('Pay &amp; publish')

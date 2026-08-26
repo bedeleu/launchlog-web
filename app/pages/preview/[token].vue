@@ -337,18 +337,18 @@ watch(
               <NuxtLink
                 v-if="existingListing?.action === 'manage'"
                 :to="existingListing.dashboard_path || '/dashboard'"
-                class="inline-flex h-10 items-center justify-center rounded-md bg-brand-accent px-4 text-sm font-semibold text-white hover:bg-brand-accent/90"
+                class="inline-flex h-10 items-center justify-center rounded-md bg-brand-accent px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/60"
               >Manage listing</NuxtLink>
               <NuxtLink
                 v-else
                 :to="claimPath"
-                class="inline-flex h-10 items-center justify-center rounded-md bg-brand-accent px-4 text-sm font-semibold text-white hover:bg-brand-accent/90"
+                class="inline-flex h-10 items-center justify-center rounded-md bg-brand-accent px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/60"
               >Request ownership</NuxtLink>
               <NuxtLink
                 v-if="existingListing?.listing_path"
                 :to="existingListing.listing_path"
-                class="inline-flex h-10 items-center justify-center rounded-md border border-brand-border px-4 text-sm font-medium text-brand-fg hover:bg-white/[0.04]"
-              >View listing</NuxtLink>
+                class="inline-flex h-10 items-center justify-center rounded-md border border-brand-border px-4 text-sm font-medium text-brand-fg transition-colors hover:border-brand-accent/50 hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/60"
+              >View it</NuxtLink>
             </div>
           </div>
 
@@ -505,11 +505,19 @@ watch(
           <!-- CTA -->
           <section>
             <div v-if="domainConflict" class="rounded-xl border border-brand-border bg-white/[0.025] p-4 text-center">
-              <p class="text-sm font-medium text-brand-fg">No duplicate payment is needed.</p>
-              <NuxtLink
-                :to="existingListing?.action === 'manage' ? (existingListing.dashboard_path || '/dashboard') : claimPath"
-                class="mt-2 inline-block text-sm font-medium text-brand-accent underline underline-offset-4"
-              >{{ existingListing?.action === 'manage' ? 'Open your dashboard' : 'Request ownership' }}</NuxtLink>
+              <p class="text-sm font-medium text-brand-fg">This website is already represented on LaunchLog.</p>
+              <p class="mt-1 text-xs leading-5 text-brand-muted">No duplicate payment is needed.</p>
+              <div class="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+                <NuxtLink
+                  :to="existingListing?.action === 'manage' ? (existingListing.dashboard_path || '/dashboard') : claimPath"
+                  class="text-sm font-medium text-brand-accent underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/60"
+                >{{ existingListing?.action === 'manage' ? 'Open your dashboard' : 'Request ownership' }}</NuxtLink>
+                <NuxtLink
+                  v-if="existingListing?.listing_path"
+                  :to="existingListing.listing_path"
+                  class="text-sm font-medium text-brand-fg underline decoration-white/30 underline-offset-4 transition-colors hover:text-brand-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/60"
+                >View it</NuxtLink>
+              </div>
             </div>
             <Button v-else size="lg" class="w-full" :disabled="!canPay" @click="payAndPublish">
               <AppSpinner v-if="checkoutPending" class="mr-2" color="text-current" label="Opening secure checkout" />
