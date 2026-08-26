@@ -7,7 +7,7 @@ import type { ContactTopic } from '~/composables/useContact'
 
 const config = useRuntimeConfig()
 const route = useRoute()
-const { sendContactRequest } = useContact()
+const { resetContactForm, sendContactRequest } = useContact()
 const { user, waitForAuthReady } = useAuth()
 const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
 const pageUrl = `${siteUrl}/contact`
@@ -77,6 +77,7 @@ const submitRequest = async () => {
       website: form.website.trim(),
       message: form.message.trim(),
     })
+    resetContactForm(form, authenticatedEmail.value)
     sent.value = true
   }
   catch (error: unknown) {

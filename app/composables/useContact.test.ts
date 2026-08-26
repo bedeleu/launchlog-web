@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import { useContact } from './useContact'
+import { useContact, type ContactRequestPayload } from './useContact'
 
 const API = 'https://api.launchlog.test'
 const globals = globalThis as unknown as Record<string, unknown>
@@ -97,6 +97,46 @@ describe('contact request', () => {
       email: 'alex@example.com',
       website: 'https://maker.example',
       message: 'Please help me verify ownership.',
+    })
+  })
+
+  test('clears guest fields after a successful request', () => {
+    const form: ContactRequestPayload = {
+      topic: 'listing_claim',
+      name: 'Alex Maker',
+      email: 'alex@example.com',
+      website: 'https://maker.example',
+      message: 'Please help me verify ownership.',
+    }
+
+    useContact().resetContactForm(form, null)
+
+    expect(form).toEqual({
+      topic: 'support',
+      name: '',
+      email: '',
+      website: '',
+      message: '',
+    })
+  })
+
+  test('keeps the verified account email when resetting the form', () => {
+    const form: ContactRequestPayload = {
+      topic: 'billing',
+      name: 'Alex Maker',
+      email: 'stale@example.com',
+      website: 'https://maker.example',
+      message: 'Please help me with billing.',
+    }
+
+    useContact().resetContactForm(form, 'verified@example.com')
+
+    expect(form).toEqual({
+      topic: 'support',
+      name: '',
+      email: 'verified@example.com',
+      website: '',
+      message: '',
     })
   })
 })

@@ -29,5 +29,15 @@ export const useContact = () => {
     })
   }
 
-  return { sendContactRequest }
+  const resetContactForm = (form: ContactRequestPayload, verifiedEmail: string | null): void => {
+    Object.assign(form, {
+      topic: 'support',
+      name: '',
+      email: verifiedEmail ?? '',
+      website: '',
+      message: '',
+    })
+  }
+
+  return { resetContactForm, sendContactRequest }
 }
