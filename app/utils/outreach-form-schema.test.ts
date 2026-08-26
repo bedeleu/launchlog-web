@@ -127,9 +127,11 @@ describe('outreach campaign schemas', () => {
       sender_identity_label: 'Warm domain A',
     })
 
-    for (const key of ['Founders-2026', 'founders_2026', '-founders', 'founders-', 'föö']) {
+    for (const key of ['   ', 'Founders-2026', 'founders_2026', '-founders', 'founders-', 'föö']) {
       reject(schemas.outreachCampaignCreateSchema, { ...campaignCreate, key }, 'key')
     }
+    reject(schemas.outreachCampaignCreateSchema, { ...campaignCreate, name: '   ' }, 'name')
+    reject(schemas.outreachCampaignCreateSchema, { ...campaignCreate, sender_identity_label: '   ' }, 'sender_identity_label')
   })
 
   test('enforce campaign name, key, and sender code-point limits', () => {
@@ -147,6 +149,8 @@ describe('outreach campaign schemas', () => {
     expect(parse(schemas.outreachCampaignUpdateSchema, { status: 'active', key: 'cannot-change' }))
       .toEqual({ status: 'active' })
     reject(schemas.outreachCampaignUpdateSchema, { status: 'paused' }, 'status')
+    reject(schemas.outreachCampaignUpdateSchema, { name: '   ' }, 'name')
+    reject(schemas.outreachCampaignUpdateSchema, { sender_identity_label: '   ' }, 'sender_identity_label')
     parse(schemas.outreachCampaignUpdateSchema, { name: astral(120) })
     reject(schemas.outreachCampaignUpdateSchema, { name: astral(121) }, 'name')
     parse(schemas.outreachCampaignUpdateSchema, { sender_identity_label: astral(120) })
@@ -175,6 +179,16 @@ describe('candidate and prospect schemas', () => {
       country_code: 'RO',
       notes: null,
     })
+  })
+
+  test('require candidate identity and public-source context text plus canonical campaign keys', () => {
+    for (const field of ['company_name', 'product_name', 'source_context']) {
+      reject(schemas.outreachCandidateCreateSchema, { ...candidateCreate, [field]: '   ' }, field)
+    }
+
+    for (const campaign_key of ['   ', 'Founders-2026', 'founders_2026', '-founders', 'founders-', 'föö']) {
+      reject(schemas.outreachCandidateCreateSchema, { ...candidateCreate, campaign_key }, 'campaign_key')
+    }
   })
 
   test('reject formula-prefixed or malformed email and normalize nullable country', () => {
@@ -310,6 +324,32 @@ describe('candidate and prospect schemas', () => {
       country_code: 'ROU',
     }, 'country_code')
   })
+
+  test('normalize prospect-edit email and nullable text without accepting formula prefixes', () => {
+    expect(parse(schemas.outreachProspectEditSchema, {
+      expected_revision: 7,
+      source_attested: true,
+      founder_first_name: '   ',
+      business_email: '  ADA@ACME.TEST  ',
+      country_code: '   ',
+      notes: '   ',
+    })).toEqual({
+      expected_revision: 7,
+      source_attested: true,
+      founder_first_name: null,
+      business_email: 'ada@acme.test',
+      country_code: null,
+      notes: null,
+    })
+
+    for (const business_email of ['  =cmd@example.test  ', '  +cmd@example.test  ', '  -cmd@example.test  ', '  @cmd@example.test  ']) {
+      reject(schemas.outreachProspectEditSchema, {
+        expected_revision: 7,
+        source_attested: true,
+        business_email,
+      }, 'business_email')
+    }
+  })
 })
 
 describe('draft, approval, suppression, and export schemas', () => {
@@ -329,6 +369,8 @@ describe('draft, approval, suppression, and export schemas', () => {
 
     reject(schemas.outreachDraftEditSchema, { expected_revision: -1, subject_line: 'Subject' }, 'expected_revision')
     reject(schemas.outreachDraftEditSchema, { expected_revision: 2, subject_line: '   ' }, 'subject_line')
+    reject(schemas.outreachDraftEditSchema, { expected_revision: 2, opening_line: '   ' }, 'opening_line')
+    reject(schemas.outreachDraftEditSchema, { expected_revision: 2, email_body: '   ' }, 'email_body')
   })
 
   test('require both literal approval confirmations and bounded revision', () => {
@@ -347,6 +389,11 @@ describe('draft, approval, suppression, and export schemas', () => {
       confirm_english_plain_text: false,
       confirm_public_source: true,
     }, 'confirm_english_plain_text')
+    reject(schemas.outreachApprovalSchema, {
+      expected_revision: 1,
+      confirm_english_plain_text: true,
+      confirm_public_source: false,
+    }, 'confirm_public_source')
     reject(schemas.outreachApprovalSchema, {
       expected_revision: 1,
       confirm_english_plain_text: true,
@@ -462,5 +509,13 @@ describe('draft, approval, suppression, and export schemas', () => {
       prospect_public_ids: [ULID],
       confirm_reexport: 'false',
     }, 'confirm_reexport')
+
+    for (const campaign_key of ['   ', 'Founders-2026', 'founders_2026', '-founders', 'founders-', 'föö']) {
+      reject(schemas.outreachExportSchema, {
+        campaign_key,
+        prospect_public_ids: [ULID],
+        confirm_reexport: false,
+      }, 'campaign_key')
+    }
   })
 })

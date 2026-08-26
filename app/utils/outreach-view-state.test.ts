@@ -394,6 +394,7 @@ describe('campaign and effective-state matrix', () => {
 
     const ready = subject.outreachViewState(input(readyCandidate()))
     expect(ready.blockers.approve).toEqual([])
+    expect(ready.blockers.export).toContain('not_approved')
     expect(ready.blockers.recapture).toContain('recapture_not_available')
     expect(ready.blockers.renew).toContain('renewal_not_available')
   })
@@ -419,6 +420,9 @@ describe('timing boundaries', () => {
     expect(underState.timing.has_review_window).toBeFalse()
     expect(underState.blockers.approve).toContain('ttl_under_24h')
     expect(underState.blockers.export).toContain('ttl_under_24h')
+
+    const exactApproved = preview(approvedCandidate(), 'ready', isoFromNow(24))
+    expect(subject.outreachViewState(input(exactApproved)).blockers.export).toEqual([])
   })
 
   test('enable renewal at exact 48 hours and disable it one millisecond over', () => {
@@ -571,6 +575,22 @@ describe('validation, confirmation, and concurrency blockers', () => {
     for (const blockers of Object.values(state.blockers)) {
       expect(blockers).toContain('action_pending')
       expect(blockers).toContain('refresh_required')
+    }
+  })
+
+  test('omit action-pending outside the exact pending phase', () => {
+    const settledPhases: Array<'success' | 'validation_error' | 'action_error'> = [
+      'success',
+      'validation_error',
+      'action_error',
+    ]
+    for (const phase of settledPhases) {
+      const state = subject.outreachViewState(input(readyCandidate(), {
+        action: { name: 'save_draft', phase },
+      }))
+      for (const blockers of Object.values(state.blockers)) {
+        expect(blockers).not.toContain('action_pending')
+      }
     }
   })
 

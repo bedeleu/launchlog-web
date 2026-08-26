@@ -263,12 +263,99 @@ interface Deferred<T> {
 }
 
 const modulePath = ['./useOutreachCandidatePage', 'ts'].join('.')
-const subject = await import(modulePath) as CandidatePageModule
+const externalGlobalGuards = [
+  'fetch',
+  '$fetch',
+  'XMLHttpRequest',
+  'WebSocket',
+  'EventSource',
+  'navigator',
+  'sendBeacon',
+  'document',
+  'localStorage',
+  'sessionStorage',
+  'indexedDB',
+  'caches',
+  'cookieStore',
+  'useRuntimeConfig',
+  'useNuxtApp',
+  'useAuth',
+  'useFirebaseAuth',
+  'getAuth',
+  'firebase',
+  'firebaseAuth',
+  'provider',
+]
+const importDescriptors = new Map<string, PropertyDescriptor | undefined>()
+const forbiddenImportSideEffect = (): never => {
+  throw new Error('Outreach controller import touched a forbidden external surface.')
+}
+let importedModule: unknown
+
+for (const name of externalGlobalGuards) {
+  importDescriptors.set(name, Object.getOwnPropertyDescriptor(globalThis, name))
+  Object.defineProperty(globalThis, name, { get: forbiddenImportSideEffect, configurable: true })
+}
+
+const importCreateObjectUrlDescriptor = Object.getOwnPropertyDescriptor(URL, 'createObjectURL')
+const importRevokeObjectUrlDescriptor = Object.getOwnPropertyDescriptor(URL, 'revokeObjectURL')
+Object.defineProperty(URL, 'createObjectURL', { value: forbiddenImportSideEffect, configurable: true })
+Object.defineProperty(URL, 'revokeObjectURL', { value: forbiddenImportSideEffect, configurable: true })
+
+try {
+  importedModule = await import(modulePath)
+}
+finally {
+  for (const name of externalGlobalGuards) {
+    const descriptor = importDescriptors.get(name)
+    if (descriptor === undefined) Reflect.deleteProperty(globalThis, name)
+    else Object.defineProperty(globalThis, name, descriptor)
+  }
+  if (importCreateObjectUrlDescriptor === undefined) Reflect.deleteProperty(URL, 'createObjectURL')
+  else Object.defineProperty(URL, 'createObjectURL', importCreateObjectUrlDescriptor)
+  if (importRevokeObjectUrlDescriptor === undefined) Reflect.deleteProperty(URL, 'revokeObjectURL')
+  else Object.defineProperty(URL, 'revokeObjectURL', importRevokeObjectUrlDescriptor)
+}
+
+const subject = importedModule as CandidatePageModule
 
 const ULID = '01ARZ3NDEKTSV4RRFFQ69G5FAV'
 const SECOND_ULID = '01ARZ3NDEKTSV4RRFFQ69G5FAW'
 const NOW_START = Date.parse('2026-08-26T12:00:00.000Z')
 const TEN_MINUTES = 10 * 60 * 1000
+
+function installExternalSideEffectGuards(): () => void {
+  const descriptors = new Map<string, PropertyDescriptor | undefined>()
+  const fail = (): never => {
+    throw new Error('Outreach controller touched a forbidden network, storage, DOM, beacon, or provider surface.')
+  }
+
+  for (const name of externalGlobalGuards) {
+    descriptors.set(name, Object.getOwnPropertyDescriptor(globalThis, name))
+    Object.defineProperty(globalThis, name, { get: fail, configurable: true })
+  }
+
+  const createObjectUrlDescriptor = Object.getOwnPropertyDescriptor(URL, 'createObjectURL')
+  const revokeObjectUrlDescriptor = Object.getOwnPropertyDescriptor(URL, 'revokeObjectURL')
+  Object.defineProperty(URL, 'createObjectURL', { value: fail, configurable: true })
+  Object.defineProperty(URL, 'revokeObjectURL', { value: fail, configurable: true })
+
+  return () => {
+    for (const name of externalGlobalGuards) {
+      const descriptor = descriptors.get(name)
+      if (descriptor === undefined) Reflect.deleteProperty(globalThis, name)
+      else Object.defineProperty(globalThis, name, descriptor)
+    }
+    if (createObjectUrlDescriptor === undefined) Reflect.deleteProperty(URL, 'createObjectURL')
+    else Object.defineProperty(URL, 'createObjectURL', createObjectUrlDescriptor)
+    if (revokeObjectUrlDescriptor === undefined) Reflect.deleteProperty(URL, 'revokeObjectURL')
+    else Object.defineProperty(URL, 'revokeObjectURL', revokeObjectUrlDescriptor)
+  }
+}
+
+function astral(count: number): string {
+  return '😀'.repeat(count)
+}
 
 function candidate(overrides: Partial<Candidate> = {}): Candidate {
   const base: Candidate = {
@@ -623,6 +710,120 @@ describe('candidate load and fixed-window polling', () => {
     }
   })
 
+  test('keep every controller operation inside the injected API and scheduler seams', async () => {
+    const restoreExternalSurfaces = installExternalSideEffectGuards()
+    try {
+      resetHarness()
+      await controller.load()
+      await controller.refresh()
+      controller.setProspectField('company_name', 'Guarded company')
+      prospectQueue.push(async () => candidate({
+        revision: 8,
+        prospect: { ...candidate().prospect, company_name: 'Guarded company' },
+      }))
+      await controller.saveProspect()
+      expect(apiCalls.at(-1)?.name).toBe('updateProspect')
+
+      controller.setDraftField('subject_line', 'Guarded subject')
+      draftQueue.push(async () => candidate({
+        revision: 9,
+        draft: { ...fixtureDraft(), subject_line: 'Guarded subject' },
+      }))
+      await controller.saveDraft()
+      expect(apiCalls.at(-1)?.name).toBe('updateDraft')
+
+      controller.setApprovalEnglishPlainText(true)
+      controller.setApprovalPublicSource(true)
+      approveQueue.push(async () => approved({ revision: 10 }))
+      await controller.approve()
+      expect(apiCalls.at(-1)?.name).toBe('approveCandidate')
+
+      resetHarness()
+      await controller.load()
+      controller.setProspectField('company_name', 'Discard me')
+      const beforeDiscardGate = apiCalls.length
+      await controller.refresh()
+      expect(apiCalls).toHaveLength(beforeDiscardGate)
+      controller.cancelDiscardRefresh()
+      await controller.load()
+      getQueue.push(async () => candidate({ revision: 8 }))
+      await controller.confirmDiscardAndRefresh()
+      expect(apiCalls.at(-1)?.name).toBe('getCandidate')
+
+      resetHarness(candidate({ campaign: { ...candidate().campaign, status: 'draft' } }))
+      await controller.load()
+      controller.setCampaignActivationConfirmed(true)
+      campaignQueue.push(async () => ({
+        name: 'Founders active',
+        key: 'founders-2026',
+        status: 'active',
+        sender_identity_label: 'Warmed founder domain',
+        candidate_count: 1,
+        created_at: '2026-08-25T10:00:00.000Z',
+        updated_at: '2026-08-26T12:00:00.000Z',
+      }))
+      await controller.activateCampaign()
+      expect(apiCalls.at(-1)?.name).toBe('updateCampaign')
+
+      resetHarness(candidate({
+        persisted_status: 'draft',
+        effective_status: 'failed',
+        preview: { ...fixturePreview(), status: 'failed' },
+      }))
+      await controller.load()
+      recaptureQueue.push(async () => generating({ revision: 8 }))
+      await controller.recapture()
+      expect(apiCalls.at(-1)?.name).toBe('recaptureCandidate')
+
+      resetHarness(candidate({
+        persisted_status: 'draft',
+        effective_status: 'expired',
+        preview: { ...fixturePreview(), status: 'expired', expires_at: '2026-08-25T12:00:00.000Z' },
+      }))
+      await controller.load()
+      renewQueue.push(async () => generating({ revision: 8 }))
+      await controller.renew()
+      expect(apiCalls.at(-1)?.name).toBe('renewCandidate')
+
+      resetHarness()
+      await controller.load()
+      controller.setSuppressionTarget('effective_domain')
+      controller.setSuppressionReason('Guarded suppression')
+      controller.setSuppressionSource('opt_out')
+      controller.setSuppressionConfirmed(true)
+      suppressionQueue.push(async () => ({
+        kind: 'domain',
+        value: 'acme.test',
+        reason: 'Guarded suppression',
+        source: 'opt_out',
+        created_by: null,
+        created_at: '2026-08-26T12:00:00.000Z',
+        updated_at: '2026-08-26T12:00:00.000Z',
+      }))
+      getQueue.push(async () => candidate({ revision: 8, effective_status: 'suppressed' }))
+      await controller.suppress()
+      expect(apiCalls.slice(-2).map(call => call.name)).toEqual(['createSuppression', 'getCandidate'])
+
+      resetHarness(approved())
+      await controller.load()
+      exportQueue.push(async () => ({
+        blob: new Blob(['email,subject\r\n']),
+        filename: 'launchlog-outreach-founders-2026.csv',
+      }))
+      getQueue.push(async () => approved({ persisted_status: 'exported', effective_status: 'exported' }))
+      const result = await controller.exportCandidate()
+      expect(result.filename).toBe('launchlog-outreach-founders-2026.csv')
+      expect(apiCalls.slice(-2).map(call => call.name)).toEqual(['exportCandidates', 'getCandidate'])
+
+      controller.setReexportConfirmed(true)
+      controller.setReexportConfirmed(false)
+      controller.dispose()
+    }
+    finally {
+      restoreExternalSurfaces()
+    }
+  })
+
   test('project every controller axis through the computed outreach view', async () => {
     serverCandidate = approved()
     await controller.load()
@@ -786,6 +987,99 @@ describe('candidate load and fixed-window polling', () => {
     expect(activeTimers()).toHaveLength(0)
   })
 
+  test('preserve the original generation deadline across a pre-deadline manual refresh', async () => {
+    serverCandidate = generating()
+    await controller.load()
+    nowMs = NOW_START + 5 * 60 * 1000
+    getQueue.push(async () => generating({ revision: 8 }))
+    await controller.refresh()
+    expect(controller.state.poll_active).toBeTrue()
+    expect(controller.state.poll_deadline_reached).toBeFalse()
+    expect(activeTimers()).toHaveLength(1)
+
+    nowMs = NOW_START + TEN_MINUTES - 1
+    getQueue.push(async () => generating({ revision: 9 }))
+    const beforeLastAllowedPoll = apiCalls.length
+    await fireNextTimer()
+    expect(apiCalls).toHaveLength(beforeLastAllowedPoll + 1)
+    expect(controller.state.poll_active).toBeTrue()
+
+    nowMs = NOW_START + TEN_MINUTES
+    const beforeDeadline = apiCalls.length
+    await fireNextTimer()
+    expect(apiCalls).toHaveLength(beforeDeadline)
+    expect(controller.state.poll_active).toBeFalse()
+    expect(controller.state.poll_deadline_reached).toBeTrue()
+  })
+
+  test('resume after every definitive non-stale action error only inside the original deadline', async () => {
+    const definitiveKinds: ErrorKind[] = [
+      'validation',
+      'conflict',
+      'forbidden',
+      'not_found',
+      'unauthenticated',
+      'rate_limited',
+    ]
+
+    for (const kind of definitiveKinds) {
+      resetHarness(generating())
+      await controller.load()
+      nowMs = NOW_START + 5 * 60 * 1000
+      controller.setDraftField('subject_line', `Definitive ${kind}`)
+      draftQueue.push(async () => { throw safeError(kind) })
+      await expect(controller.saveDraft()).rejects.toMatchObject({ kind })
+      expect(controller.state.refresh_required).toBeFalse()
+      expect(controller.state.poll_active).toBeTrue()
+      expect(activeTimers()).toHaveLength(1)
+
+      nowMs = NOW_START + TEN_MINUTES
+      const beforeDeadline = apiCalls.length
+      await fireNextTimer()
+      expect(apiCalls).toHaveLength(beforeDeadline)
+      expect(controller.state.poll_active).toBeFalse()
+      expect(controller.state.poll_deadline_reached).toBeTrue()
+    }
+  })
+
+  test('preserve the original generating window after campaign activation success or definitive error', async () => {
+    const outcomes: Array<'success' | 'conflict'> = ['success', 'conflict']
+    for (const outcome of outcomes) {
+      resetHarness(generating({ campaign: { ...candidate().campaign, status: 'draft' } }))
+      await controller.load()
+      nowMs = NOW_START + 5 * 60 * 1000
+      controller.setCampaignActivationConfirmed(true)
+      if (outcome === 'success') {
+        campaignQueue.push(async () => ({
+          name: 'Founders active',
+          key: 'founders-2026',
+          status: 'active',
+          sender_identity_label: 'Warmed founder domain',
+          candidate_count: 1,
+          created_at: '2026-08-25T10:00:00.000Z',
+          updated_at: '2026-08-26T12:00:00.000Z',
+        }))
+        await controller.activateCampaign()
+        expect(controller.state.candidate?.campaign.status).toBe('active')
+      }
+      else {
+        campaignQueue.push(async () => { throw safeError('conflict') })
+        await expect(controller.activateCampaign()).rejects.toMatchObject({ kind: 'conflict' })
+        expect(controller.state.candidate?.campaign.status).toBe('draft')
+      }
+      expect(controller.state.refresh_required).toBeFalse()
+      expect(controller.state.poll_active).toBeTrue()
+      expect(activeTimers()).toHaveLength(1)
+
+      nowMs = NOW_START + TEN_MINUTES
+      const beforeDeadline = apiCalls.length
+      await fireNextTimer()
+      expect(apiCalls).toHaveLength(beforeDeadline)
+      expect(controller.state.poll_active).toBeFalse()
+      expect(controller.state.poll_deadline_reached).toBeTrue()
+    }
+  })
+
   test('start a fresh fixed ten-minute deadline after recapture and renew generation', async () => {
     const scenarios: Array<{
       initial: () => Candidate
@@ -945,6 +1239,23 @@ describe('candidate load and fixed-window polling', () => {
 })
 
 describe('dirty forms, confirmation binding, and full refresh', () => {
+  test('synchronize both clean forms from a poll response', async () => {
+    serverCandidate = generating()
+    await controller.load()
+    getQueue.push(async () => generating({
+      revision: 8,
+      prospect: { ...candidate().prospect, company_name: 'Server-polled company' },
+      draft: { ...fixtureDraft(), email_body: 'SERVER_POLLED_BODY' },
+    }))
+
+    await fireNextTimer()
+
+    expect(controller.state.prospect_form.company_name).toBe('Server-polled company')
+    expect(controller.state.draft_form.email_body).toBe('SERVER_POLLED_BODY')
+    expect(controller.state.prospect_edit).toBe('clean')
+    expect(controller.state.draft_edit).toBe('clean')
+  })
+
   test('preserve dirty forms and suppression draft across poll revision drift', async () => {
     serverCandidate = generating()
     await controller.load()
@@ -981,6 +1292,10 @@ describe('dirty forms, confirmation binding, and full refresh', () => {
     await controller.load()
     controller.setProspectField('company_name', 'Dirty company')
     controller.setSuppressionReason('Dirty suppression reason')
+    controller.setApprovalEnglishPlainText(true)
+    controller.setApprovalPublicSource(true)
+    controller.setCampaignActivationConfirmed(true)
+    controller.setReexportConfirmed(true)
     const callsBefore = apiCalls.length
 
     await controller.refresh()
@@ -1004,7 +1319,32 @@ describe('dirty forms, confirmation binding, and full refresh', () => {
       confirmed: false,
       confirmed_revision: null,
     })
+    expect(controller.state.suppression_dirty).toBeFalse()
+    expect(controller.state.approval_english_plain_text).toBeFalse()
+    expect(controller.state.approval_public_source).toBeFalse()
+    expect(controller.state.campaign_activation_confirmed).toBeFalse()
+    expect(controller.state.reexport_confirmed).toBeFalse()
     expect(controller.state.discard_confirmation_required).toBeFalse()
+  })
+
+  test('reset approval and re-export confirmation after either form is edited', async () => {
+    const editSections: Array<() => void> = [
+      () => controller.setProspectField('company_name', 'Edited company'),
+      () => controller.setDraftField('subject_line', 'Edited subject'),
+    ]
+
+    for (const editSection of editSections) {
+      resetHarness()
+      await controller.load()
+      controller.setApprovalEnglishPlainText(true)
+      controller.setApprovalPublicSource(true)
+      controller.setReexportConfirmed(true)
+      editSection()
+
+      expect(controller.state.approval_english_plain_text).toBeFalse()
+      expect(controller.state.approval_public_source).toBeFalse()
+      expect(controller.state.reexport_confirmed).toBeFalse()
+    }
   })
 })
 
@@ -1068,6 +1408,52 @@ describe('revision-bound mutations and recovery', () => {
     })
     expect(controller.state.candidate?.revision).toBe(8)
     expect(controller.state.draft_edit).toBe('clean')
+  })
+
+  test('synchronize a clean other section and preserve a dirty other section in both save directions', async () => {
+    const otherSectionCases: Array<{ dirty: boolean, expectedValue: string, expectedEdit: EditState }> = [
+      { dirty: false, expectedValue: 'SERVER_OTHER_DRAFT', expectedEdit: 'clean' },
+      { dirty: true, expectedValue: 'LOCAL_OTHER_DRAFT', expectedEdit: 'stale' },
+    ]
+    for (const otherSectionCase of otherSectionCases) {
+      resetHarness()
+      await controller.load()
+      controller.setProspectField('company_name', 'Saved prospect')
+      if (otherSectionCase.dirty) controller.setDraftField('email_body', 'LOCAL_OTHER_DRAFT')
+      prospectQueue.push(async () => candidate({
+        revision: 8,
+        prospect: { ...candidate().prospect, company_name: 'Saved prospect' },
+        draft: { ...fixtureDraft(), email_body: 'SERVER_OTHER_DRAFT' },
+      }))
+
+      await controller.saveProspect()
+
+      expect(controller.state.prospect_edit).toBe('clean')
+      expect(controller.state.draft_form.email_body).toBe(otherSectionCase.expectedValue)
+      expect(controller.state.draft_edit).toBe(otherSectionCase.expectedEdit)
+    }
+
+    const prospectCases: Array<{ dirty: boolean, expectedValue: string, expectedEdit: EditState }> = [
+      { dirty: false, expectedValue: 'Server other prospect', expectedEdit: 'clean' },
+      { dirty: true, expectedValue: 'Local other prospect', expectedEdit: 'stale' },
+    ]
+    for (const prospectCase of prospectCases) {
+      resetHarness()
+      await controller.load()
+      controller.setDraftField('subject_line', 'Saved draft')
+      if (prospectCase.dirty) controller.setProspectField('company_name', 'Local other prospect')
+      draftQueue.push(async () => candidate({
+        revision: 8,
+        prospect: { ...candidate().prospect, company_name: 'Server other prospect' },
+        draft: { ...fixtureDraft(), subject_line: 'Saved draft' },
+      }))
+
+      await controller.saveDraft()
+
+      expect(controller.state.draft_edit).toBe('clean')
+      expect(controller.state.prospect_form.company_name).toBe(prospectCase.expectedValue)
+      expect(controller.state.prospect_edit).toBe(prospectCase.expectedEdit)
+    }
   })
 
   test('use one validated GET for committed recovery and never fetch the returned URL', async () => {
@@ -1310,6 +1696,115 @@ describe('revision-bound mutations and recovery', () => {
     expect(controller.state.prospect_edit).toBe('stale')
     expect(controller.state.draft_edit).toBe('stale')
     expect(controller.state.candidate?.revision).toBe(7)
+  })
+
+  test('allow only suppression after archive or conversion and keep every other candidate mutation local', async () => {
+    const scenarios: Array<{ initial: Candidate, blocker: string }> = [
+      {
+        initial: candidate({ campaign: { ...candidate().campaign, status: 'archived' } }),
+        blocker: 'campaign_archived',
+      },
+      {
+        initial: approved({ effective_status: 'converted' }),
+        blocker: 'converted',
+      },
+    ]
+
+    for (const scenario of scenarios) {
+      resetHarness(scenario.initial)
+      await controller.load()
+      controller.setProspectField('company_name', 'Blocked company edit')
+      controller.setDraftField('subject_line', 'Blocked draft edit')
+      controller.setApprovalEnglishPlainText(true)
+      controller.setApprovalPublicSource(true)
+      controller.setCampaignActivationConfirmed(true)
+      controller.setReexportConfirmed(true)
+
+      const blocked: Array<() => Promise<unknown>> = [
+        () => controller.saveProspect(),
+        () => controller.saveDraft(),
+        () => controller.approve(),
+        () => controller.recapture(),
+        () => controller.renew(),
+        () => controller.activateCampaign(),
+        () => controller.exportCandidate(),
+      ]
+      const beforeBlocked = apiCalls.length
+      for (const invoke of blocked) {
+        await expect(invoke()).rejects.toBeDefined()
+      }
+      expect(apiCalls).toHaveLength(beforeBlocked)
+      expect(controller.state.view.blockers.export).toContain(scenario.blocker)
+
+      controller.setSuppressionTarget('email')
+      controller.setSuppressionReason('Allowed terminal suppression')
+      controller.setSuppressionSource('manual')
+      controller.setSuppressionConfirmed(true)
+      suppressionQueue.push(async () => ({
+        kind: 'email',
+        value: 'ada@acme.test',
+        reason: 'Allowed terminal suppression',
+        source: 'manual',
+        created_by: null,
+        created_at: '2026-08-26T12:00:00.000Z',
+        updated_at: '2026-08-26T12:00:00.000Z',
+      }))
+      getQueue.push(async () => ({ ...scenario.initial, revision: 8 }))
+      await controller.suppress()
+      expect(apiCalls.slice(-2).map(call => call.name)).toEqual(['createSuppression', 'getCandidate'])
+    }
+  })
+
+  test('block every later mutation after an exact stale revision with zero API calls', async () => {
+    resetHarness(candidate({ campaign: { ...candidate().campaign, status: 'draft' } }))
+    await controller.load()
+    controller.setProspectField('company_name', 'Stale company')
+    controller.setDraftField('subject_line', 'Stale subject')
+    controller.setApprovalEnglishPlainText(true)
+    controller.setApprovalPublicSource(true)
+    controller.setCampaignActivationConfirmed(true)
+    controller.setSuppressionTarget('email')
+    controller.setSuppressionReason('Stale suppression')
+    controller.setSuppressionConfirmed(true)
+    prospectQueue.push(async () => { throw safeError('stale_revision') })
+    await expect(controller.saveProspect()).rejects.toMatchObject({ kind: 'stale_revision' })
+
+    expect(controller.state.prospect_edit).toBe('stale')
+    expect(controller.state.draft_edit).toBe('stale')
+    await expectEveryMutationBlockedWithoutApiCall()
+  })
+
+  test('refuse active, archived, unconfirmed, and concurrent campaign activation without another API call', async () => {
+    const refusedStatuses: CampaignStatus[] = ['active', 'archived']
+    for (const status of refusedStatuses) {
+      resetHarness(candidate({ campaign: { ...candidate().campaign, status } }))
+      await controller.load()
+      controller.setCampaignActivationConfirmed(true)
+      const before = apiCalls.length
+      await expect(controller.activateCampaign()).rejects.toBeDefined()
+      expect(apiCalls).toHaveLength(before)
+    }
+
+    resetHarness(candidate({ campaign: { ...candidate().campaign, status: 'draft' } }))
+    await controller.load()
+    const beforeUnconfirmed = apiCalls.length
+    await expect(controller.activateCampaign()).rejects.toBeDefined()
+    expect(apiCalls).toHaveLength(beforeUnconfirmed)
+
+    controller.setCampaignActivationConfirmed(true)
+    controller.setDraftField('subject_line', 'Pending draft')
+    const pending = deferred<Candidate>()
+    draftQueue.push(() => pending.promise)
+    const save = controller.saveDraft()
+    const beforeConcurrent = apiCalls.length
+    await expect(controller.activateCampaign()).rejects.toBeDefined()
+    expect(apiCalls).toHaveLength(beforeConcurrent)
+    pending.resolve(candidate({
+      revision: 8,
+      campaign: { ...candidate().campaign, status: 'draft' },
+      draft: { ...fixtureDraft(), subject_line: 'Pending draft' },
+    }))
+    await save
   })
 
   test('latch uncertain PATCH/POST outcomes and allow only explicit successful GET to clear it', async () => {
@@ -1780,6 +2275,76 @@ describe('approval, lifecycle, suppression, and export actions', () => {
     expect(controller.state.poll_active).toBeTrue()
   })
 
+  test('bind suppression confirmation only to semantic draft changes and exact reason boundaries', async () => {
+    await controller.load()
+    controller.setSuppressionTarget('email')
+    controller.setSuppressionReason('  Same reason  ')
+    controller.setSuppressionSource('manual')
+    controller.setSuppressionConfirmed(true)
+    expect(controller.state.suppression_draft.confirmed).toBeTrue()
+    expect(controller.state.suppression_draft.confirmed_revision).toBe(7)
+    expect(controller.state.suppression_dirty).toBeTrue()
+
+    controller.setSuppressionTarget('email')
+    controller.setSuppressionReason('Same reason')
+    controller.setSuppressionSource('manual')
+    expect(controller.state.suppression_draft.confirmed).toBeTrue()
+    expect(controller.state.suppression_draft.confirmed_revision).toBe(7)
+
+    controller.setSuppressionTarget('product_domain')
+    expect(controller.state.suppression_draft.confirmed).toBeFalse()
+    expect(controller.state.suppression_draft.confirmed_revision).toBeNull()
+    controller.setSuppressionConfirmed(true)
+    controller.setSuppressionReason('Changed reason')
+    expect(controller.state.suppression_draft.confirmed).toBeFalse()
+    controller.setSuppressionConfirmed(true)
+    controller.setSuppressionSource('opt_out')
+    expect(controller.state.suppression_draft.confirmed).toBeFalse()
+
+    controller.setSuppressionReason(astral(500))
+    controller.setSuppressionConfirmed(true)
+    expect(controller.state.suppression_draft.confirmed).toBeTrue()
+    controller.setSuppressionReason(astral(501))
+    expect(controller.state.suppression_draft.confirmed).toBeFalse()
+    expect(() => controller.setSuppressionConfirmed(true)).toThrow()
+    expect(controller.state.suppression_draft.confirmed_revision).toBeNull()
+
+    controller.setSuppressionReason('Valid again')
+    controller.setSuppressionConfirmed(true)
+    controller.setSuppressionConfirmed(false)
+    expect(controller.state.suppression_draft.confirmed).toBeFalse()
+    expect(controller.state.suppression_draft.confirmed_revision).toBeNull()
+  })
+
+  test('reject suppression confirmation without loaded current state or behind freshness guards', async () => {
+    controller.setSuppressionTarget('email')
+    controller.setSuppressionReason('No loaded candidate')
+    expect(() => controller.setSuppressionConfirmed(true)).toThrow()
+    expect(apiCalls).toEqual([])
+
+    resetHarness()
+    await controller.load()
+    controller.setSuppressionTarget('email')
+    controller.setSuppressionReason('Will become stale')
+    controller.setProspectField('company_name', 'Stale edit')
+    prospectQueue.push(async () => { throw safeError('stale_revision') })
+    await expect(controller.saveProspect()).rejects.toMatchObject({ kind: 'stale_revision' })
+    const beforeStaleConfirmation = apiCalls.length
+    expect(() => controller.setSuppressionConfirmed(true)).toThrow()
+    expect(apiCalls).toHaveLength(beforeStaleConfirmation)
+
+    resetHarness()
+    await controller.load()
+    controller.setSuppressionTarget('email')
+    controller.setSuppressionReason('Uncertain freshness')
+    controller.setDraftField('subject_line', 'Uncertain draft')
+    draftQueue.push(async () => { throw safeError('network') })
+    await expect(controller.saveDraft()).rejects.toMatchObject({ kind: 'network' })
+    const beforeRefreshRequiredConfirmation = apiCalls.length
+    expect(() => controller.setSuppressionConfirmed(true)).toThrow()
+    expect(apiCalls).toHaveLength(beforeRefreshRequiredConfirmation)
+  })
+
   test('bind suppression to current revision and snapshot only the target enum', async () => {
     await controller.load()
     controller.setSuppressionTarget('effective_domain')
@@ -1792,7 +2357,10 @@ describe('approval, lifecycle, suppression, and export actions', () => {
     suppressionQueue.push(() => pending.promise)
     getQueue.push(async () => candidate({ revision: 8, effective_status: 'suppressed' }))
     const action = controller.suppress()
+    expect(() => controller.setSuppressionTarget('email')).toThrow()
     expect(() => controller.setSuppressionReason('late mutation')).toThrow()
+    expect(() => controller.setSuppressionSource('manual')).toThrow()
+    expect(() => controller.setSuppressionConfirmed(false)).toThrow()
     pending.resolve({
       kind: 'domain',
       value: 'acme.test',
@@ -1822,6 +2390,7 @@ describe('approval, lifecycle, suppression, and export actions', () => {
       confirmed: false,
       confirmed_revision: null,
     })
+    expect(controller.state.suppression_dirty).toBeFalse()
     expect(controller.state.candidate?.effective_status).toBe('suppressed')
   })
 
@@ -1906,6 +2475,12 @@ describe('disposal and privacy cleanup', () => {
 
     controller.dispose()
     expect(signal?.aborted).toBeTrue()
+    expect(activeTimers()).toHaveLength(0)
+    const disposedState = structuredClone(controller.state)
+    const callsAfterFirstDispose = apiCalls.length
+    controller.dispose()
+    expect(controller.state).toEqual(disposedState)
+    expect(apiCalls).toHaveLength(callsAfterFirstDispose)
     expect(activeTimers()).toHaveLength(0)
     pending.resolve(generating({ revision: 99 }))
     await flushMicrotasks()

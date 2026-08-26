@@ -201,14 +201,36 @@ type QueuedRaw =
   | { kind: 'reject', error: unknown }
 
 const modulePath = ['./useAdminOutreach', 'ts'].join('.')
-const importGuards = ['fetch', 'WebSocket', 'EventSource', 'localStorage', 'sessionStorage']
+const externalGlobalGuards = [
+  'fetch',
+  '$fetch',
+  'XMLHttpRequest',
+  'WebSocket',
+  'EventSource',
+  'navigator',
+  'sendBeacon',
+  'document',
+  'localStorage',
+  'sessionStorage',
+  'indexedDB',
+  'caches',
+  'cookieStore',
+  'useRuntimeConfig',
+  'useNuxtApp',
+  'useAuth',
+  'useFirebaseAuth',
+  'getAuth',
+  'firebase',
+  'firebaseAuth',
+  'provider',
+]
 const importDescriptors = new Map<string, PropertyDescriptor | undefined>()
 const forbiddenImportSideEffect = (): never => {
   throw new Error('Outreach module import touched a forbidden browser or network surface.')
 }
 let importedModule: unknown
 
-for (const name of importGuards) {
+for (const name of externalGlobalGuards) {
   importDescriptors.set(name, Object.getOwnPropertyDescriptor(globalThis, name))
   Object.defineProperty(globalThis, name, { get: forbiddenImportSideEffect, configurable: true })
 }
@@ -222,7 +244,7 @@ try {
   importedModule = await import(modulePath)
 }
 finally {
-  for (const name of importGuards) {
+  for (const name of externalGlobalGuards) {
     const descriptor = importDescriptors.get(name)
     if (descriptor === undefined) Reflect.deleteProperty(globalThis, name)
     else Object.defineProperty(globalThis, name, descriptor)
@@ -230,8 +252,14 @@ finally {
   if (importCreateObjectUrlDescriptor !== undefined) {
     Object.defineProperty(URL, 'createObjectURL', importCreateObjectUrlDescriptor)
   }
+  else {
+    Reflect.deleteProperty(URL, 'createObjectURL')
+  }
   if (importRevokeObjectUrlDescriptor !== undefined) {
     Object.defineProperty(URL, 'revokeObjectURL', importRevokeObjectUrlDescriptor)
+  }
+  else {
+    Reflect.deleteProperty(URL, 'revokeObjectURL')
   }
 }
 
@@ -242,6 +270,35 @@ const TOKEN = 'firebase-id-token'
 const ULID = '01ARZ3NDEKTSV4RRFFQ69G5FAV'
 const SECOND_ULID = '01ARZ3NDEKTSV4RRFFQ69G5FAW'
 const MAX_INTEGER = 2_147_483_647
+
+function installExternalSideEffectGuards(): () => void {
+  const descriptors = new Map<string, PropertyDescriptor | undefined>()
+  const fail = (): never => {
+    throw new Error('Outreach client touched a forbidden network, storage, DOM, beacon, or provider surface.')
+  }
+
+  for (const name of externalGlobalGuards) {
+    descriptors.set(name, Object.getOwnPropertyDescriptor(globalThis, name))
+    Object.defineProperty(globalThis, name, { get: fail, configurable: true })
+  }
+
+  const createObjectUrlDescriptor = Object.getOwnPropertyDescriptor(URL, 'createObjectURL')
+  const revokeObjectUrlDescriptor = Object.getOwnPropertyDescriptor(URL, 'revokeObjectURL')
+  Object.defineProperty(URL, 'createObjectURL', { value: fail, configurable: true })
+  Object.defineProperty(URL, 'revokeObjectURL', { value: fail, configurable: true })
+
+  return () => {
+    for (const name of externalGlobalGuards) {
+      const descriptor = descriptors.get(name)
+      if (descriptor === undefined) Reflect.deleteProperty(globalThis, name)
+      else Object.defineProperty(globalThis, name, descriptor)
+    }
+    if (createObjectUrlDescriptor === undefined) Reflect.deleteProperty(URL, 'createObjectURL')
+    else Object.defineProperty(URL, 'createObjectURL', createObjectUrlDescriptor)
+    if (revokeObjectUrlDescriptor === undefined) Reflect.deleteProperty(URL, 'revokeObjectURL')
+    else Object.defineProperty(URL, 'revokeObjectURL', revokeObjectUrlDescriptor)
+  }
+}
 
 const campaign: Campaign = {
   name: 'Founders 2026',
@@ -516,6 +573,9 @@ beforeEach(() => {
 
 describe('typed LaunchLog outreach requests', () => {
   test('expose only fourteen named operations and execute their exact wire contracts', async () => {
+    const restoreExternalSurfaces = installExternalSideEffectGuards()
+    try {
+      client = createClient()
     const signal = new AbortController().signal
     queueJson({ data: [campaign] })
     queueJson({ data: campaign })
@@ -715,6 +775,10 @@ describe('typed LaunchLog outreach requests', () => {
       prospect_public_ids: [ULID],
       confirm_reexport: false,
     })
+    }
+    finally {
+      restoreExternalSurfaces()
+    }
   })
 
   test('await a fresh token for every call and fail before fetch when missing', async () => {
