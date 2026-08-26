@@ -1288,6 +1288,95 @@ describe('dirty forms, confirmation binding, and full refresh', () => {
     expect(controller.state.reexport_confirmed).toBeFalse()
   })
 
+  test('synchronize each clean form independently while preserving the dirty form during polling', async () => {
+    const scenarios: Array<{
+      dirty: 'prospect' | 'draft'
+      prepare: () => void
+      response: Candidate
+    }> = [
+      {
+        dirty: 'prospect',
+        prepare: () => controller.setProspectField('company_name', 'DIRTY_PROSPECT_ONLY'),
+        response: generating({
+          revision: 8,
+          prospect: { ...candidate().prospect, company_name: 'SERVER_PROSPECT' },
+          draft: { ...fixtureDraft(), email_body: 'SERVER_CLEAN_DRAFT' },
+        }),
+      },
+      {
+        dirty: 'draft',
+        prepare: () => controller.setDraftField('email_body', 'DIRTY_DRAFT_ONLY'),
+        response: generating({
+          revision: 8,
+          prospect: { ...candidate().prospect, company_name: 'SERVER_CLEAN_PROSPECT' },
+          draft: { ...fixtureDraft(), email_body: 'SERVER_DRAFT' },
+        }),
+      },
+    ]
+
+    for (const scenario of scenarios) {
+      resetHarness(generating())
+      await controller.load()
+      scenario.prepare()
+      getQueue.push(async () => scenario.response)
+
+      await fireNextTimer()
+
+      expect(controller.state.candidate?.revision).toBe(8)
+      if (scenario.dirty === 'prospect') {
+        expect(controller.state.prospect_form.company_name).toBe('DIRTY_PROSPECT_ONLY')
+        expect(controller.state.prospect_edit).toBe('stale')
+        expect(controller.state.draft_form.email_body).toBe('SERVER_CLEAN_DRAFT')
+        expect(controller.state.draft_edit).toBe('clean')
+      }
+      else {
+        expect(controller.state.prospect_form.company_name).toBe('SERVER_CLEAN_PROSPECT')
+        expect(controller.state.prospect_edit).toBe('clean')
+        expect(controller.state.draft_form.email_body).toBe('DIRTY_DRAFT_ONLY')
+        expect(controller.state.draft_edit).toBe('stale')
+      }
+    }
+  })
+
+  test('gate repeated load independently for each dirty route-local source', async () => {
+    const scenarios: Array<{
+      name: string
+      prepare: () => void
+      assertPreserved: () => void
+    }> = [
+      {
+        name: 'prospect',
+        prepare: () => controller.setProspectField('company_name', 'DIRTY_LOAD_PROSPECT'),
+        assertPreserved: () => expect(controller.state.prospect_form.company_name).toBe('DIRTY_LOAD_PROSPECT'),
+      },
+      {
+        name: 'draft',
+        prepare: () => controller.setDraftField('email_body', 'DIRTY_LOAD_DRAFT'),
+        assertPreserved: () => expect(controller.state.draft_form.email_body).toBe('DIRTY_LOAD_DRAFT'),
+      },
+      {
+        name: 'suppression',
+        prepare: () => controller.setSuppressionReason('DIRTY_LOAD_SUPPRESSION'),
+        assertPreserved: () => expect(controller.state.suppression_draft.reason).toBe('DIRTY_LOAD_SUPPRESSION'),
+      },
+    ]
+
+    for (const scenario of scenarios) {
+      resetHarness()
+      await controller.load()
+      scenario.prepare()
+      const callsBefore = apiCalls.length
+
+      await controller.load()
+
+      expect(apiCalls, scenario.name).toHaveLength(callsBefore)
+      expect(controller.state.discard_confirmation_required, scenario.name).toBeTrue()
+      scenario.assertPreserved()
+      controller.cancelDiscardRefresh()
+      expect(controller.state.discard_confirmation_required, scenario.name).toBeFalse()
+    }
+  })
+
   test('gate repeated load and refresh behind one confirm-or-cancel discard flow', async () => {
     await controller.load()
     controller.setProspectField('company_name', 'Dirty company')
@@ -1752,6 +1841,90 @@ describe('revision-bound mutations and recovery', () => {
       getQueue.push(async () => ({ ...scenario.initial, revision: 8 }))
       await controller.suppress()
       expect(apiCalls.slice(-2).map(call => call.name)).toEqual(['createSuppression', 'getCandidate'])
+    }
+  })
+
+  test('refuse terminal archived and converted states for otherwise eligible review actions', async () => {
+    const failedPreview = fixturePreview()
+    const expiredPreview = fixturePreview()
+    const actions: Array<{
+      name: string
+      initial: Candidate
+      prepare: () => void
+      invoke: () => Promise<unknown>
+      apiName: keyof Api
+    }> = [
+      {
+        name: 'approve',
+        initial: candidate(),
+        prepare: () => {
+          controller.setApprovalEnglishPlainText(true)
+          controller.setApprovalPublicSource(true)
+        },
+        invoke: () => controller.approve(),
+        apiName: 'approveCandidate',
+      },
+      {
+        name: 'export',
+        initial: approved(),
+        prepare: () => {},
+        invoke: () => controller.exportCandidate(),
+        apiName: 'exportCandidates',
+      },
+      {
+        name: 'recapture',
+        initial: candidate({
+          effective_status: 'failed',
+          failure: { code: 'capture_failed', message: 'Preview capture failed.' },
+          preview: {
+            ...failedPreview,
+            status: 'failed',
+            error: { code: 'capture_failed', message: 'Preview capture failed.' },
+          },
+        }),
+        prepare: () => {},
+        invoke: () => controller.recapture(),
+        apiName: 'recaptureCandidate',
+      },
+      {
+        name: 'renew',
+        initial: candidate({
+          effective_status: 'expired',
+          preview: {
+            ...expiredPreview,
+            status: 'expired',
+            expires_at: '2026-08-26T11:59:59.999Z',
+          },
+        }),
+        prepare: () => {},
+        invoke: () => controller.renew(),
+        apiName: 'renewCandidate',
+      },
+    ]
+
+    for (const terminal of ['archived', 'converted'] as const) {
+      for (const action of actions) {
+        const initial = terminal === 'archived'
+          ? { ...action.initial, campaign: { ...action.initial.campaign, status: 'archived' as const } }
+          : { ...action.initial, effective_status: 'converted' as const }
+        resetHarness(initial)
+        await controller.load()
+        action.prepare()
+        const callsBefore = apiCalls.length
+
+        await expect(action.invoke()).rejects.toBeDefined()
+
+        expect(apiCalls, `${terminal}:${action.name}`).toHaveLength(callsBefore)
+        expect(apiCalls.filter(call => call.name === action.apiName), `${terminal}:${action.name}`).toHaveLength(0)
+        const blockers = action.name === 'approve'
+          ? controller.state.view.blockers.approve
+          : action.name === 'export'
+            ? controller.state.view.blockers.export
+            : action.name === 'recapture'
+              ? controller.state.view.blockers.recapture
+              : controller.state.view.blockers.renew
+        expect(blockers, `${terminal}:${action.name}`).toContain(terminal === 'archived' ? 'campaign_archived' : 'converted')
+      }
     }
   })
 
