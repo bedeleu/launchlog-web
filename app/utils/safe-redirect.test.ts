@@ -6,13 +6,59 @@ describe('safeAuthRedirect', () => {
     expect(safeAuthRedirect('/dashboard')).toBe('/dashboard')
     expect(safeAuthRedirect('/dashboard?listing=listing-1')).toBe('/dashboard?listing=listing-1')
     expect(safeAuthRedirect('/dashboard/listings/listing-1/receipt#checks')).toBe('/dashboard/listings/listing-1/receipt#checks')
+    expect(safeAuthRedirect('/dashboard/search?q=founder%40example.com#results')).toBe('/dashboard/search?q=founder%40example.com#results')
   })
 
-  test('falls back for external, protocol-relative, malformed, and admin destinations', () => {
+  test('accepts exact admin auth destinations', () => {
+    expect(safeAuthRedirect('/admin')).toBe('/admin')
+    expect(safeAuthRedirect('/admin/')).toBe('/admin/')
+    expect(safeAuthRedirect('/admin/outreach/candidates?status=failed#review')).toBe('/admin/outreach/candidates?status=failed#review')
+    expect(safeAuthRedirect('/admin/outreach?q=founder%40example.com')).toBe('/admin/outreach?q=founder%40example.com')
+  })
+
+  test('rejects unsafe raw auth redirect paths', () => {
+    const unsafe: unknown[] = [
+      '/dashboard/%2Fadmin',
+      '/dashboard/%2fadmin',
+      '/dashboard/%5Cadmin',
+      '/dashboard/%5cadmin',
+      '/dashboard/%2e%2e/admin',
+      '/dashboard/%2E%2E/admin',
+      '/admin/%2Fdashboard',
+      '/admin/%5cdashboard',
+      '/admin/%2e%2e/dashboard',
+      'https://evil.test/dashboard',
+      'https://launchlog.ai/admin',
+      '//evil.test/dashboard',
+      String.raw`/\evil.test/dashboard`,
+      String.raw`/dashboard\admin`,
+      '/dashboard/\u0000admin',
+      '/dashboard/\u000aadmin',
+      '/login',
+      '/login?redirect=/admin',
+      '/administrator',
+      '/administrator/outreach',
+      '/administer',
+      '/dashboardish',
+      '/api/v1/admin/outreach/candidates/01ARZ3NDEKTSV4RRFFQ69G5FAV',
+      '/listing/acme',
+      'dashboard',
+      '',
+      null,
+      undefined,
+      42,
+    ]
+
+    for (const candidate of unsafe) {
+      expect(safeAuthRedirect(candidate)).toBe('/dashboard')
+    }
+  })
+
+  test('falls back for external, protocol-relative, malformed, and unrelated destinations', () => {
     expect(safeAuthRedirect('https://evil.test/dashboard')).toBe('/dashboard')
     expect(safeAuthRedirect('//evil.test/dashboard')).toBe('/dashboard')
     expect(safeAuthRedirect('/\\evil.test/dashboard')).toBe('/dashboard')
-    expect(safeAuthRedirect('/admin/listings')).toBe('/dashboard')
+    expect(safeAuthRedirect('/listing/acme')).toBe('/dashboard')
     expect(safeAuthRedirect('dashboard')).toBe('/dashboard')
     expect(safeAuthRedirect(null)).toBe('/dashboard')
   })
