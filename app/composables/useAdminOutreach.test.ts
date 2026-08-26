@@ -183,6 +183,7 @@ interface AdminOutreachModule {
   }) => OutreachClient
   mapOutreachApiError: (error: unknown) => OutreachApiErrorContract
   validateCommittedRecovery: (result: CommittedRecovery, expectedPublicId?: string) => string
+  useAdminOutreach: () => OutreachClient
 }
 
 interface FetchCall {
@@ -200,7 +201,41 @@ type QueuedRaw =
   | { kind: 'reject', error: unknown }
 
 const modulePath = ['./useAdminOutreach', 'ts'].join('.')
-const subject = await import(modulePath) as AdminOutreachModule
+const importGuards = ['fetch', 'WebSocket', 'EventSource', 'localStorage', 'sessionStorage']
+const importDescriptors = new Map<string, PropertyDescriptor | undefined>()
+const forbiddenImportSideEffect = (): never => {
+  throw new Error('Outreach module import touched a forbidden browser or network surface.')
+}
+let importedModule: unknown
+
+for (const name of importGuards) {
+  importDescriptors.set(name, Object.getOwnPropertyDescriptor(globalThis, name))
+  Object.defineProperty(globalThis, name, { get: forbiddenImportSideEffect, configurable: true })
+}
+
+const importCreateObjectUrlDescriptor = Object.getOwnPropertyDescriptor(URL, 'createObjectURL')
+const importRevokeObjectUrlDescriptor = Object.getOwnPropertyDescriptor(URL, 'revokeObjectURL')
+Object.defineProperty(URL, 'createObjectURL', { value: forbiddenImportSideEffect, configurable: true })
+Object.defineProperty(URL, 'revokeObjectURL', { value: forbiddenImportSideEffect, configurable: true })
+
+try {
+  importedModule = await import(modulePath)
+}
+finally {
+  for (const name of importGuards) {
+    const descriptor = importDescriptors.get(name)
+    if (descriptor === undefined) Reflect.deleteProperty(globalThis, name)
+    else Object.defineProperty(globalThis, name, descriptor)
+  }
+  if (importCreateObjectUrlDescriptor !== undefined) {
+    Object.defineProperty(URL, 'createObjectURL', importCreateObjectUrlDescriptor)
+  }
+  if (importRevokeObjectUrlDescriptor !== undefined) {
+    Object.defineProperty(URL, 'revokeObjectURL', importRevokeObjectUrlDescriptor)
+  }
+}
+
+const subject = importedModule as AdminOutreachModule
 
 const API = 'https://api.launchlog.test'
 const TOKEN = 'firebase-id-token'
@@ -452,6 +487,23 @@ function uniqueUlids(count: number): string[] {
   })
 }
 
+function ownReachableText(value: unknown, seen: Set<object> = new Set()): string {
+  if (typeof value === 'string') return value
+  if ((typeof value !== 'object' || value === null) && typeof value !== 'function') return ''
+  if (seen.has(value)) return ''
+  seen.add(value)
+
+  let retained = ''
+  for (const key of Reflect.ownKeys(value)) {
+    retained += String(key)
+    const descriptor = Object.getOwnPropertyDescriptor(value, key)
+    if (descriptor !== undefined && 'value' in descriptor) {
+      retained += ownReachableText(descriptor.value, seen)
+    }
+  }
+  return retained
+}
+
 beforeEach(() => {
   calls = []
   tokenCalls = 0
@@ -496,6 +548,11 @@ describe('typed LaunchLog outreach requests', () => {
       'updateDraft',
       'updateProspect',
     ])
+    expect(Reflect.ownKeys(client).map(key => String(key)).sort()).toEqual(Object.keys(client).sort())
+    expect(Object.getPrototypeOf(client)).toBe(Object.prototype)
+    for (const forbiddenSurface of ['request', 'raw', 'fetch', 'fetchUrl', 'getUrl', 'postUrl', 'send', 'deliver', 'import']) {
+      expect(forbiddenSurface in client).toBeFalse()
+    }
 
     expect(await client.listCampaigns({ signal })).toEqual([campaign])
     expect(await client.createCampaign({
@@ -606,9 +663,45 @@ describe('typed LaunchLog outreach requests', () => {
       suppressed: 0,
       page: 2,
     })
+    expect(calls[4]?.options?.body).toEqual({
+      campaign_key: campaign.key,
+      company_name: 'Acme Labs',
+      product_name: 'Acme Launch',
+      product_url: 'https://acme.test/product',
+      founder_first_name: 'Ada',
+      business_email: 'ada@acme.test',
+      country_code: 'US',
+      source_url: 'https://directory.test/acme',
+      source_context: 'Public founder profile.',
+      notes: null,
+      source_attested: true,
+    })
+    expect(calls[4]?.options?.query).toBeUndefined()
+    expect(calls[5]?.options?.body).toBeUndefined()
+    expect(calls[5]?.options?.query).toBeUndefined()
+    expect(calls[6]?.options?.body).toEqual({
+      expected_revision: 7,
+      company_name: 'Acme Labs updated',
+      source_attested: true,
+    })
+    expect(calls[6]?.options?.query).toBeUndefined()
+    expect(calls[7]?.options?.body).toEqual({
+      expected_revision: 8,
+      subject_line: 'Updated subject',
+    })
+    expect(calls[7]?.options?.query).toBeUndefined()
+    expect(calls[8]?.options?.body).toEqual({
+      expected_revision: 8,
+      confirm_english_plain_text: true,
+      confirm_public_source: true,
+    })
+    expect(calls[8]?.options?.query).toBeUndefined()
     expect(calls[9]?.options?.body).toEqual({})
+    expect(calls[9]?.options?.query).toBeUndefined()
     expect(calls[10]?.options?.body).toEqual({})
+    expect(calls[10]?.options?.query).toBeUndefined()
     expect(calls[11]?.options?.query).toEqual({ page: 1 })
+    expect(calls[11]?.options?.body).toBeUndefined()
     expect(calls[12]?.options?.body).toEqual({
       prospect_public_id: ULID,
       expected_revision: 8,
@@ -646,11 +739,62 @@ describe('typed LaunchLog outreach requests', () => {
     expect(calls).toEqual([])
   })
 
+  test('wire the Nuxt wrapper to runtime config, fresh auth, and the injected LaunchLog fetch only', async () => {
+    const runtimeDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'useRuntimeConfig')
+    const authDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'useAuth')
+    const nuxtFetchDescriptor = Object.getOwnPropertyDescriptor(globalThis, '$fetch')
+    let wrapperTokenCalls = 0
+    Object.defineProperty(globalThis, 'useRuntimeConfig', {
+      value: () => ({ public: { apiUrl: API } }),
+      configurable: true,
+    })
+    Object.defineProperty(globalThis, 'useAuth', {
+      value: () => ({
+        getIdToken: async () => {
+          wrapperTokenCalls += 1
+          return `wrapper-token-${wrapperTokenCalls}`
+        },
+      }),
+      configurable: true,
+    })
+    Object.defineProperty(globalThis, '$fetch', { value: fetcher, configurable: true })
+
+    try {
+      queueJson({ data: [campaign] })
+      queueJson({ data: detail })
+      const wrapper = subject.useAdminOutreach()
+      expect(Object.keys(wrapper).sort()).toEqual(Object.keys(client).sort())
+      expect(await wrapper.listCampaigns()).toEqual([campaign])
+      expect(await wrapper.getCandidate(ULID)).toEqual(detail)
+      expect(wrapperTokenCalls).toBe(2)
+      expect(calls.map(call => call.options?.headers)).toEqual([
+        { Authorization: 'Bearer wrapper-token-1' },
+        { Authorization: 'Bearer wrapper-token-2' },
+      ])
+      expect(calls.every(call => call.url.startsWith(`${API}/api/v1/admin/outreach/`))).toBeTrue()
+      expect(calls.every(call => call.options?.retry === 0)).toBeTrue()
+    }
+    finally {
+      if (runtimeDescriptor === undefined) Reflect.deleteProperty(globalThis, 'useRuntimeConfig')
+      else Object.defineProperty(globalThis, 'useRuntimeConfig', runtimeDescriptor)
+      if (authDescriptor === undefined) Reflect.deleteProperty(globalThis, 'useAuth')
+      else Object.defineProperty(globalThis, 'useAuth', authDescriptor)
+      if (nuxtFetchDescriptor === undefined) Reflect.deleteProperty(globalThis, '$fetch')
+      else Object.defineProperty(globalThis, '$fetch', nuxtFetchDescriptor)
+    }
+  })
+
   test('drop caller extras and keep sensitive fields body-only', async () => {
     queueJson({ data: recovery })
     queueJson({ data: detail })
     queueJson(candidatePage)
     queueJson({ data: suppression })
+    queueJson({ data: campaign })
+    queueJson({ data: { ...campaign, status: 'active' } })
+    queueJson({ data: detail })
+    queueJson({ data: detail })
+    queueJson(suppressionPage)
+    queueRaw('email,subject\r\n', null)
 
     const injectedCandidate = {
       campaign_key: campaign.key,
@@ -701,6 +845,47 @@ describe('typed LaunchLog outreach requests', () => {
       kind: 'email',
       domain: 'must-not-pass.test',
     })
+    await client.createCampaign({
+      name: campaign.name,
+      key: campaign.key,
+      sender_identity_label: campaign.sender_identity_label,
+      status: 'active',
+      candidate_count: 999,
+      token: 'must-not-pass',
+    })
+    await client.updateCampaign(campaign.key, {
+      name: 'Updated campaign',
+      status: 'active',
+      sender_identity_label: 'Warm B',
+      key: 'must-not-change',
+      candidate_count: 999,
+      created_at: 'must-not-pass',
+    })
+    await client.updateDraft(ULID, {
+      expected_revision: 7,
+      subject_line: 'Subject',
+      opening_line: 'Opening',
+      email_body: 'Body',
+      business_email: 'must-not-pass@example.test',
+      preview_url: 'https://must-not-pass.test',
+      token: 'must-not-pass',
+    })
+    await client.approveCandidate(ULID, {
+      expected_revision: 7,
+      confirm_english_plain_text: true,
+      confirm_public_source: true,
+      status: 'exported',
+      approved_by: 'must-not-pass',
+      token: 'must-not-pass',
+    })
+    await client.listSuppressions({ page: 1, q: 'must-not-query', reason: 'must-not-query' })
+    await client.exportCandidates({
+      campaign_key: campaign.key,
+      prospect_public_ids: [ULID],
+      confirm_reexport: false,
+      token: 'must-not-pass',
+      provider_campaign_id: 'must-not-pass',
+    })
 
     expect(calls[0]?.options?.body).toEqual({
       campaign_key: campaign.key,
@@ -735,27 +920,155 @@ describe('typed LaunchLog outreach requests', () => {
       source: 'manual',
       confirm: true,
     })
+    expect(calls[4]?.options?.body).toEqual({
+      name: campaign.name,
+      key: campaign.key,
+      sender_identity_label: campaign.sender_identity_label,
+    })
+    expect(calls[5]?.options?.body).toEqual({
+      name: 'Updated campaign',
+      status: 'active',
+      sender_identity_label: 'Warm B',
+    })
+    expect(calls[6]?.options?.body).toEqual({
+      expected_revision: 7,
+      subject_line: 'Subject',
+      opening_line: 'Opening',
+      email_body: 'Body',
+    })
+    expect(calls[7]?.options?.body).toEqual({
+      expected_revision: 7,
+      confirm_english_plain_text: true,
+      confirm_public_source: true,
+    })
+    expect(calls[8]?.options?.query).toEqual({ page: 1 })
+    expect(calls[9]?.options?.body).toEqual({
+      campaign_key: campaign.key,
+      prospect_public_ids: [ULID],
+      confirm_reexport: false,
+    })
     expect(JSON.stringify(calls.map(call => call.options?.query))).not.toContain('ada@')
     expect(JSON.stringify(calls.map(call => call.options?.query))).not.toContain('source_url')
     expect(JSON.stringify(calls.map(call => call.options?.query))).not.toContain('token')
+  })
+
+  test('return both full and committed branches unchanged for create and every Task 8 mutation', async () => {
+    const operations: Array<{
+      path: string
+      method: string
+      invoke: () => Promise<CandidateDetail | CommittedRecovery>
+    }> = [
+      {
+        path: '/api/v1/admin/outreach/candidates',
+        method: 'POST',
+        invoke: () => client.createCandidate({
+          campaign_key: campaign.key,
+          company_name: 'Acme Labs',
+          product_name: 'Acme Launch',
+          product_url: 'https://acme.test/product',
+          founder_first_name: null,
+          business_email: 'ada@acme.test',
+          country_code: null,
+          source_url: 'https://directory.test/acme',
+          source_context: 'Public source.',
+          notes: null,
+          source_attested: true,
+        }),
+      },
+      {
+        path: `/api/v1/admin/outreach/candidates/${ULID}/prospect`,
+        method: 'PATCH',
+        invoke: () => client.updateProspect(ULID, {
+          expected_revision: 7,
+          source_attested: true,
+          company_name: 'Acme Labs',
+        }),
+      },
+      {
+        path: `/api/v1/admin/outreach/candidates/${ULID}/draft`,
+        method: 'PATCH',
+        invoke: () => client.updateDraft(ULID, {
+          expected_revision: 7,
+          subject_line: 'Subject',
+        }),
+      },
+      {
+        path: `/api/v1/admin/outreach/candidates/${ULID}/approve`,
+        method: 'POST',
+        invoke: () => client.approveCandidate(ULID, {
+          expected_revision: 7,
+          confirm_english_plain_text: true,
+          confirm_public_source: true,
+        }),
+      },
+      {
+        path: `/api/v1/admin/outreach/candidates/${ULID}/recapture`,
+        method: 'POST',
+        invoke: () => client.recaptureCandidate(ULID),
+      },
+      {
+        path: `/api/v1/admin/outreach/candidates/${ULID}/renew`,
+        method: 'POST',
+        invoke: () => client.renewCandidate(ULID),
+      },
+    ]
+
+    for (const operation of operations) {
+      calls = []
+      queueJson({ data: detail })
+      queueJson({ data: recovery })
+      expect(await operation.invoke()).toBe(detail)
+      expect(await operation.invoke()).toBe(recovery)
+      expect(calls).toHaveLength(2)
+      expect(calls.map(call => call.url)).toEqual([
+        `${API}${operation.path}`,
+        `${API}${operation.path}`,
+      ])
+      expect(calls.map(call => call.options?.method)).toEqual([operation.method, operation.method])
+      expect(calls.every(call => call.options?.retry === 0)).toBeTrue()
+    }
   })
 
   test('reject invalid identifiers, filters, revisions, booleans, and selections before auth or fetch', async () => {
     const invalidCalls: Array<() => Promise<unknown>> = [
       () => client.getCandidate(ULID.toLowerCase()),
       () => client.getCandidate('01ARZ3NDEKTSV4RRFFQ69G5FAI'),
+      () => client.getCandidate('81ARZ3NDEKTSV4RRFFQ69G5FAV'),
+      () => client.createCampaign({ name: 'Campaign', key: 'Invalid_Key', sender_identity_label: 'Warm A' }),
+      () => client.createCampaign({ name: 'Campaign', key: 'a'.repeat(81), sender_identity_label: 'Warm A' }),
       () => client.updateCampaign('Invalid_Key', { status: 'active' }),
       () => client.updateCampaign(campaign.key, {}),
+      () => client.updateCampaign(campaign.key, { unknown: 'semantic-empty' }),
       () => client.updateProspect(ULID, { expected_revision: -1, source_attested: true, notes: null }),
+      () => client.updateProspect(ULID, { expected_revision: 1.5, source_attested: true, notes: null }),
+      () => client.updateProspect(ULID, { expected_revision: 1, source_attested: true }),
+      () => client.updateProspect(ULID, { expected_revision: 1, source_attested: false, notes: null }),
+      () => client.updateProspect(ULID.toLowerCase(), { expected_revision: 1, source_attested: true, notes: null }),
       () => client.updateDraft(ULID, { expected_revision: MAX_INTEGER + 1, subject_line: 'Subject' }),
+      () => client.updateDraft(ULID, { expected_revision: 1 }),
+      () => client.updateDraft(ULID.toLowerCase(), { expected_revision: 1, subject_line: 'Subject' }),
       () => client.approveCandidate(ULID, { expected_revision: 2, confirm_english_plain_text: false, confirm_public_source: true }),
+      () => client.approveCandidate(ULID, { expected_revision: 2, confirm_english_plain_text: true, confirm_public_source: 1 }),
+      () => client.approveCandidate(ULID.toLowerCase(), { expected_revision: 2, confirm_english_plain_text: true, confirm_public_source: true }),
+      () => client.recaptureCandidate(ULID.toLowerCase()),
+      () => client.renewCandidate(ULID.toLowerCase()),
       () => client.listCandidates({ status: 'sent' }),
+      () => client.listCandidates({ status: 'Failed preview' }),
+      () => client.listCandidates({ campaign_key: 'Invalid_Key' }),
       () => client.listCandidates({ domain: '😀'.repeat(254) }),
       () => client.listCandidates({ page: 0 }),
+      () => client.listCandidates({ page: MAX_INTEGER + 1 }),
       () => client.listCandidates({ suppressed: 'false' }),
       () => client.listSuppressions({ page: 1.5 }),
-      () => client.createCandidate({ campaign_key: 'Invalid_Key' }),
+      () => client.listSuppressions({ page: MAX_INTEGER + 1 }),
+      () => client.createCandidate({ campaign_key: 'Invalid_Key', source_attested: true }),
+      () => client.createCandidate({ campaign_key: campaign.key, source_attested: false }),
       () => client.createSuppression({ prospect_public_id: ULID, expected_revision: 1, target: 'raw_email', reason: 'Reason', source: 'manual', confirm: true }),
+      () => client.createSuppression({ prospect_public_id: ULID.toLowerCase(), expected_revision: 1, target: 'email', reason: 'Reason', source: 'manual', confirm: true }),
+      () => client.createSuppression({ prospect_public_id: ULID, expected_revision: -1, target: 'email', reason: 'Reason', source: 'manual', confirm: true }),
+      () => client.createSuppression({ prospect_public_id: ULID, expected_revision: 1, target: 'email', reason: 'Reason', source: 'provider', confirm: true }),
+      () => client.createSuppression({ prospect_public_id: ULID, expected_revision: 1, target: 'email', reason: 'Reason', source: 'manual', confirm: false }),
+      () => client.exportCandidates({ campaign_key: 'Invalid_Key', prospect_public_ids: [ULID], confirm_reexport: false }),
       () => client.exportCandidates({ campaign_key: campaign.key, prospect_public_ids: [], confirm_reexport: false }),
       () => client.exportCandidates({ campaign_key: campaign.key, prospect_public_ids: [ULID, ULID], confirm_reexport: false }),
       () => client.exportCandidates({ campaign_key: campaign.key, prospect_public_ids: uniqueUlids(101), confirm_reexport: false }),
@@ -767,6 +1080,86 @@ describe('typed LaunchLog outreach requests', () => {
     }
     expect(tokenCalls).toBe(0)
     expect(calls).toEqual([])
+  })
+
+  test('accept every exact effective-status filter and send failed rather than presentation copy', async () => {
+    const statuses: EffectiveStatus[] = [
+      'draft',
+      'preview_generating',
+      'ready_for_review',
+      'approved',
+      'exported',
+      'failed',
+      'expired',
+      'suppressed',
+      'converted',
+    ]
+    for (const status of statuses) {
+      queueJson(candidatePage)
+      await client.listCandidates({ status })
+    }
+
+    expect(calls.map(call => call.options?.query)).toEqual(statuses.map(status => ({ status })))
+    expect(JSON.stringify(calls.map(call => call.options?.query))).not.toContain('Failed preview')
+  })
+
+  test('accept exact integer and code-point edges while omitting blank optional filters', async () => {
+    queueJson(candidatePage)
+    queueJson(candidatePage)
+    queueJson(suppressionPage)
+    queueJson({ data: detail })
+    queueJson({ data: detail })
+    queueJson({ data: detail })
+    queueJson({ data: suppression })
+    queueRaw('email,subject\r\n', null)
+
+    await client.listCandidates({ domain: '  ...  ', status: undefined, page: undefined, suppressed: undefined })
+    await client.listCandidates({ domain: '😀'.repeat(253), page: MAX_INTEGER, suppressed: false })
+    await client.listSuppressions({ page: MAX_INTEGER })
+    await client.updateProspect(ULID, { expected_revision: 0, source_attested: true, notes: null })
+    await client.updateDraft(ULID, { expected_revision: MAX_INTEGER, subject_line: 'Subject' })
+    await client.approveCandidate(ULID, {
+      expected_revision: 0,
+      confirm_english_plain_text: true,
+      confirm_public_source: true,
+    })
+    await client.createSuppression({
+      prospect_public_id: ULID,
+      expected_revision: MAX_INTEGER,
+      target: 'product_domain',
+      reason: 'Reason',
+      source: 'manual',
+      confirm: true,
+    })
+    await client.exportCandidates({
+      campaign_key: campaign.key,
+      prospect_public_ids: uniqueUlids(100),
+      confirm_reexport: false,
+    })
+
+    expect(calls[0]?.options?.query).toBeUndefined()
+    expect(calls[1]?.options?.query).toEqual({ domain: '😀'.repeat(253), suppressed: 0, page: MAX_INTEGER })
+    expect(calls[2]?.options?.query).toEqual({ page: MAX_INTEGER })
+    expect(calls[3]?.options?.body).toEqual({ expected_revision: 0, source_attested: true, notes: null })
+    expect(calls[4]?.options?.body).toEqual({ expected_revision: MAX_INTEGER, subject_line: 'Subject' })
+    expect(calls[5]?.options?.body).toEqual({
+      expected_revision: 0,
+      confirm_english_plain_text: true,
+      confirm_public_source: true,
+    })
+    expect(calls[6]?.options?.body).toEqual({
+      prospect_public_id: ULID,
+      expected_revision: MAX_INTEGER,
+      target: 'product_domain',
+      reason: 'Reason',
+      source: 'manual',
+      confirm: true,
+    })
+    expect(calls[7]?.options?.body).toEqual({
+      campaign_key: campaign.key,
+      prospect_public_ids: uniqueUlids(100),
+      confirm_reexport: false,
+    })
   })
 })
 
@@ -924,6 +1317,8 @@ describe('network-free CSV browser seam', () => {
     })
 
     expect(result.filename).toBe('launchlog-outreach-founders-2026.csv')
+    expect(Reflect.ownKeys(result).map(key => String(key)).sort()).toEqual(['blob', 'filename'])
+    expect(Object.getPrototypeOf(result)).toBe(Object.prototype)
     expect(result.blob.type).toBe('text/csv;charset=UTF-8')
     expect(await result.blob.text()).toBe(csv)
     expect(Array.from(new Uint8Array(await result.blob.arrayBuffer())))
@@ -959,29 +1354,52 @@ describe('network-free CSV browser seam', () => {
   })
 
   test('map raw export failures without retaining CSV or backend payloads', async () => {
-    rejectRaw({
+    const remote = {
       status: 422,
       data: {
         message: 'REMOTE_EXPORT_SECRET',
         errors: { prospect_public_ids: ['REMOTE_ID_SECRET'] },
         csv: 'REMOTE_CSV_SECRET',
       },
-    })
+      cause: { original: 'REMOTE_CAUSE_SECRET' },
+      originalError: 'REMOTE_ORIGINAL_ERROR_SECRET',
+    }
+    const remoteSymbol = Symbol('REMOTE_SYMBOL_SECRET')
+    Object.defineProperty(remote, 'hidden', { value: 'REMOTE_HIDDEN_SECRET', enumerable: false })
+    Reflect.set(remote, remoteSymbol, 'REMOTE_SYMBOL_VALUE_SECRET')
+    rejectRaw(remote)
 
     const failure = client.exportCandidates({
       campaign_key: campaign.key,
       prospect_public_ids: [ULID],
       confirm_reexport: false,
     })
-    await expect(failure).rejects.toMatchObject({
+    let caught: unknown
+    try {
+      await failure
+    }
+    catch (error) {
+      caught = error
+    }
+    expect(caught).toMatchObject({
       kind: 'validation',
       fieldErrors: { prospect_public_ids: ['Check this field.'] },
     })
-    await failure.catch((error: unknown) => {
-      const serialized = JSON.stringify(error)
-      expect(serialized).not.toContain('REMOTE_EXPORT_SECRET')
-      expect(serialized).not.toContain('REMOTE_CSV_SECRET')
-    })
+    const retained = ownReachableText(caught)
+    for (const sentinel of [
+      'REMOTE_EXPORT_SECRET',
+      'REMOTE_ID_SECRET',
+      'REMOTE_CSV_SECRET',
+      'REMOTE_CAUSE_SECRET',
+      'REMOTE_ORIGINAL_ERROR_SECRET',
+      'REMOTE_HIDDEN_SECRET',
+      'REMOTE_SYMBOL_SECRET',
+      'REMOTE_SYMBOL_VALUE_SECRET',
+    ]) {
+      expect(retained).not.toContain(sentinel)
+    }
+    expect(ownReachableText(caught)).not.toContain('originalError')
+    expect(ownReachableText(caught)).not.toContain('cause')
     expect(calls).toHaveLength(1)
   })
 
@@ -992,6 +1410,9 @@ describe('network-free CSV browser seam', () => {
     const localStorageDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
     const sessionStorageDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'sessionStorage')
     const navigatorDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
+    const fetchDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'fetch')
+    const webSocketDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'WebSocket')
+    const eventSourceDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'EventSource')
     const fail = (): never => {
       throw new Error('Forbidden browser or delivery side effect.')
     }
@@ -1002,6 +1423,9 @@ describe('network-free CSV browser seam', () => {
     Object.defineProperty(globalThis, 'localStorage', { get: fail, configurable: true })
     Object.defineProperty(globalThis, 'sessionStorage', { get: fail, configurable: true })
     Object.defineProperty(globalThis, 'navigator', { get: fail, configurable: true })
+    Object.defineProperty(globalThis, 'fetch', { get: fail, configurable: true })
+    Object.defineProperty(globalThis, 'WebSocket', { get: fail, configurable: true })
+    Object.defineProperty(globalThis, 'EventSource', { get: fail, configurable: true })
 
     try {
       queueRaw('email,subject\r\n', null)
@@ -1025,6 +1449,12 @@ describe('network-free CSV browser seam', () => {
       else Object.defineProperty(globalThis, 'sessionStorage', sessionStorageDescriptor)
       if (navigatorDescriptor === undefined) Reflect.deleteProperty(globalThis, 'navigator')
       else Object.defineProperty(globalThis, 'navigator', navigatorDescriptor)
+      if (fetchDescriptor === undefined) Reflect.deleteProperty(globalThis, 'fetch')
+      else Object.defineProperty(globalThis, 'fetch', fetchDescriptor)
+      if (webSocketDescriptor === undefined) Reflect.deleteProperty(globalThis, 'WebSocket')
+      else Object.defineProperty(globalThis, 'WebSocket', webSocketDescriptor)
+      if (eventSourceDescriptor === undefined) Reflect.deleteProperty(globalThis, 'EventSource')
+      else Object.defineProperty(globalThis, 'EventSource', eventSourceDescriptor)
     }
   })
 })

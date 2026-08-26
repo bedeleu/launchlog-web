@@ -17,16 +17,6 @@ interface Actor {
   email: string | null
 }
 
-interface Campaign {
-  name: string
-  key: string
-  status: CampaignStatus
-  sender_identity_label: string
-  candidate_count: number
-  created_at: string
-  updated_at: string
-}
-
 interface Candidate {
   public_id: string
   campaign: {
@@ -112,14 +102,14 @@ interface Transport {
 
 interface Api {
   getCandidate: (publicId: string, transport?: Transport) => Promise<Candidate>
-  updateProspect: (publicId: string, payload: Record<string, unknown>, transport?: Transport) => Promise<Candidate | Recovery>
-  updateDraft: (publicId: string, payload: Record<string, unknown>, transport?: Transport) => Promise<Candidate | Recovery>
-  approveCandidate: (publicId: string, payload: Record<string, unknown>, transport?: Transport) => Promise<Candidate | Recovery>
-  recaptureCandidate: (publicId: string, transport?: Transport) => Promise<Candidate | Recovery>
-  renewCandidate: (publicId: string, transport?: Transport) => Promise<Candidate | Recovery>
-  updateCampaign: (key: string, payload: Record<string, unknown>, transport?: Transport) => Promise<Campaign>
-  createSuppression: (payload: Record<string, unknown>, transport?: Transport) => Promise<Suppression>
-  exportCandidates: (payload: Record<string, unknown>, transport?: Transport) => Promise<{ blob: Blob, filename: string }>
+  updateProspect: (publicId: string, payload: Record<string, unknown>, transport?: Transport) => Promise<unknown>
+  updateDraft: (publicId: string, payload: Record<string, unknown>, transport?: Transport) => Promise<unknown>
+  approveCandidate: (publicId: string, payload: Record<string, unknown>, transport?: Transport) => Promise<unknown>
+  recaptureCandidate: (publicId: string, transport?: Transport) => Promise<unknown>
+  renewCandidate: (publicId: string, transport?: Transport) => Promise<unknown>
+  updateCampaign: (key: string, payload: Record<string, unknown>, transport?: Transport) => Promise<unknown>
+  createSuppression: (payload: Record<string, unknown>, transport?: Transport) => Promise<unknown>
+  exportCandidates: (payload: Record<string, unknown>, transport?: Transport) => Promise<unknown>
 }
 
 interface ProspectForm {
@@ -137,6 +127,40 @@ interface DraftForm {
   subject_line: string
   opening_line: string
   email_body: string
+}
+
+interface ControllerView {
+  load: 'idle' | 'loading' | 'ready' | 'load_error'
+  effective: EffectiveStatus | null
+  persisted: PersistedStatus | null
+  campaign: CampaignStatus | null
+  action: ControllerState['action']
+  refresh_required: boolean
+  edits: { prospect: EditState, draft: EditState }
+  blockers: {
+    approve: string[]
+    export: string[]
+    recapture: string[]
+    renew: string[]
+    suppress: string[]
+  }
+  audit: {
+    approved_at: string | null
+    approved_by: Actor | null
+    exported_at: string | null
+    exported_by: Actor | null
+    export_count: number
+    last_export_hash: string | null
+    requires_reexport_confirmation: boolean
+  }
+  timing: {
+    expires_at: string | null
+    expiry_valid: boolean
+    remaining_ms: number | null
+    expired: boolean
+    has_review_window: boolean
+    in_renewal_window: boolean
+  }
 }
 
 interface ControllerState {
@@ -170,6 +194,7 @@ interface ControllerState {
     name: null | 'refresh' | 'activate_campaign' | 'save_prospect' | 'save_draft' | 'approve' | 'recapture' | 'renew' | 'suppress' | 'export'
     phase: 'idle' | 'pending' | 'success' | 'validation_error' | 'action_error'
   }
+  view: ControllerView
 }
 
 interface Controller {
@@ -226,10 +251,10 @@ interface ApiCall {
 }
 
 type CandidateThunk = () => Promise<Candidate>
-type MutationThunk = () => Promise<Candidate | Recovery>
-type CampaignThunk = () => Promise<Campaign>
-type SuppressionThunk = () => Promise<Suppression>
-type ExportThunk = () => Promise<{ blob: Blob, filename: string }>
+type MutationThunk = () => Promise<unknown>
+type CampaignThunk = () => Promise<unknown>
+type SuppressionThunk = () => Promise<unknown>
+type ExportThunk = () => Promise<unknown>
 
 interface Deferred<T> {
   promise: Promise<T>
@@ -241,6 +266,7 @@ const modulePath = ['./useOutreachCandidatePage', 'ts'].join('.')
 const subject = await import(modulePath) as CandidatePageModule
 
 const ULID = '01ARZ3NDEKTSV4RRFFQ69G5FAV'
+const SECOND_ULID = '01ARZ3NDEKTSV4RRFFQ69G5FAW'
 const NOW_START = Date.parse('2026-08-26T12:00:00.000Z')
 const TEN_MINUTES = 10 * 60 * 1000
 
@@ -384,6 +410,7 @@ function deferred<T>(): Deferred<T> {
 let nowMs: number
 let timers: TimerEntry[]
 let nextTimerId: number
+let abortControllers: AbortController[]
 let apiCalls: ApiCall[]
 let getQueue: CandidateThunk[]
 let prospectQueue: MutationThunk[]
@@ -474,7 +501,11 @@ function createController(): Controller {
       const timer = timers.find(entry => entry.id === handle)
       if (timer !== undefined) timer.cancelled = true
     },
-    createAbortController: () => new AbortController(),
+    createAbortController: () => {
+      const abortController = new AbortController()
+      abortControllers.push(abortController)
+      return abortController
+    },
   })
 }
 
@@ -496,10 +527,29 @@ async function flushMicrotasks(): Promise<void> {
   }
 }
 
-beforeEach(() => {
+async function expectEveryMutationBlockedWithoutApiCall(): Promise<void> {
+  const before = apiCalls.length
+  const mutations: Array<() => Promise<unknown>> = [
+    () => controller.saveProspect(),
+    () => controller.saveDraft(),
+    () => controller.approve(),
+    () => controller.recapture(),
+    () => controller.renew(),
+    () => controller.activateCampaign(),
+    () => controller.suppress(),
+    () => controller.exportCandidate(),
+  ]
+  for (const mutation of mutations) {
+    await expect(mutation()).rejects.toBeDefined()
+  }
+  expect(apiCalls).toHaveLength(before)
+}
+
+function resetHarness(initialCandidate: Candidate = candidate()): void {
   nowMs = NOW_START
   timers = []
   nextTimerId = 0
+  abortControllers = []
   apiCalls = []
   getQueue = []
   prospectQueue = []
@@ -510,9 +560,13 @@ beforeEach(() => {
   campaignQueue = []
   suppressionQueue = []
   exportQueue = []
-  serverCandidate = candidate()
+  serverCandidate = initialCandidate
   api = createApi()
   controller = createController()
+}
+
+beforeEach(() => {
+  resetHarness()
 })
 
 describe('candidate load and fixed-window polling', () => {
@@ -540,6 +594,80 @@ describe('candidate load and fixed-window polling', () => {
       confirmed_revision: null,
     })
     expect(controller.state.suppression_dirty).toBeFalse()
+    expect(controller.state.view).toMatchObject({
+      load: 'idle',
+      effective: null,
+      persisted: null,
+      campaign: null,
+      action: { name: null, phase: 'idle' },
+      refresh_required: false,
+      edits: { prospect: 'clean', draft: 'clean' },
+      audit: {
+        approved_at: null,
+        exported_at: null,
+        export_count: 0,
+        last_export_hash: null,
+        requires_reexport_confirmation: false,
+      },
+      timing: {
+        expires_at: null,
+        expiry_valid: false,
+        remaining_ms: null,
+        expired: false,
+        has_review_window: false,
+        in_renewal_window: false,
+      },
+    })
+    for (const blockers of Object.values(controller.state.view.blockers)) {
+      expect(blockers).toContain('not_loaded')
+    }
+  })
+
+  test('project every controller axis through the computed outreach view', async () => {
+    serverCandidate = approved()
+    await controller.load()
+    const loadedCandidate = controller.state.candidate
+    if (loadedCandidate === null || loadedCandidate.preview === null) {
+      throw new Error('Expected a loaded candidate with a preview.')
+    }
+
+    expect(controller.state.view.load).toBe(controller.state.load)
+    expect(controller.state.view.effective).toBe(loadedCandidate.effective_status)
+    expect(controller.state.view.persisted).toBe(loadedCandidate.persisted_status)
+    expect(controller.state.view.campaign).toBe(loadedCandidate.campaign.status)
+    expect(controller.state.view.action).toEqual(controller.state.action)
+    expect(controller.state.view.refresh_required).toBe(controller.state.refresh_required)
+    expect(controller.state.view.edits).toEqual({ prospect: 'clean', draft: 'clean' })
+    expect(controller.state.view.blockers.export).toEqual([])
+    expect(controller.state.view.audit).toEqual({
+      approved_at: '2026-08-26T11:00:00.000Z',
+      approved_by: { name: 'Admin', email: 'admin@launchlog.ai' },
+      exported_at: null,
+      exported_by: null,
+      export_count: 0,
+      last_export_hash: null,
+      requires_reexport_confirmation: false,
+    })
+    expect(controller.state.view.timing.expires_at).toBe(loadedCandidate.preview.expires_at)
+    expect(controller.state.view.timing.expiry_valid).toBeTrue()
+
+    controller.setDraftField('email_body', 'Dirty body')
+    expect(controller.state.view.edits).toEqual({ prospect: 'clean', draft: 'dirty' })
+    expect(controller.state.view.blockers.export).toContain('draft_not_clean')
+    expect(controller.state.view.blockers.approve).toContain('draft_not_clean')
+
+    const pending = deferred<Candidate | Recovery>()
+    draftQueue.push(() => pending.promise)
+    const saving = controller.saveDraft()
+    expect(controller.state.view.action).toEqual({ name: 'save_draft', phase: 'pending' })
+    for (const blockers of Object.values(controller.state.view.blockers)) {
+      expect(blockers).toContain('action_pending')
+    }
+    pending.resolve(approved({ revision: 8 }))
+    await saving
+    expect(controller.state.view.action).toEqual(controller.state.action)
+    expect(controller.state.view.edits.draft).toBe('clean')
+    expect(controller.state.view.persisted).toBe('approved')
   })
 
   test('move through loading, success, and load-error without fabricated data', async () => {
@@ -631,6 +759,189 @@ describe('candidate load and fixed-window polling', () => {
     expect(controller.state.poll_error).toBeNull()
     expect(activeTimers()).toHaveLength(0)
   })
+
+  test('allow manual one-shot refresh after deadline without restarting the expired generation window', async () => {
+    serverCandidate = generating()
+    await controller.load()
+    nowMs = NOW_START + TEN_MINUTES
+    await fireNextTimer()
+    expect(controller.state.poll_deadline_reached).toBeTrue()
+    expect(controller.state.poll_active).toBeFalse()
+    expect(activeTimers()).toHaveLength(0)
+
+    getQueue.push(async () => generating({ revision: 8 }))
+    const beforeFirst = apiCalls.length
+    await controller.refresh()
+    expect(apiCalls).toHaveLength(beforeFirst + 1)
+    expect(controller.state.candidate?.revision).toBe(8)
+    expect(controller.state.poll_deadline_reached).toBeTrue()
+    expect(controller.state.poll_active).toBeFalse()
+    expect(activeTimers()).toHaveLength(0)
+
+    getQueue.push(async () => generating({ revision: 9 }))
+    const beforeSecond = apiCalls.length
+    await controller.refresh()
+    expect(apiCalls).toHaveLength(beforeSecond + 1)
+    expect(controller.state.candidate?.revision).toBe(9)
+    expect(activeTimers()).toHaveLength(0)
+  })
+
+  test('start a fresh fixed ten-minute deadline after recapture and renew generation', async () => {
+    const scenarios: Array<{
+      initial: () => Candidate
+      enqueue: (thunk: MutationThunk) => void
+      invoke: () => Promise<void>
+    }> = [
+      {
+        initial: () => candidate({
+          persisted_status: 'draft',
+          effective_status: 'failed',
+          preview: { ...fixturePreview(), status: 'failed' },
+        }),
+        enqueue: thunk => recaptureQueue.push(thunk),
+        invoke: () => controller.recapture(),
+      },
+      {
+        initial: () => candidate({
+          persisted_status: 'draft',
+          effective_status: 'expired',
+          preview: { ...fixturePreview(), status: 'expired', expires_at: '2026-08-25T12:00:00.000Z' },
+        }),
+        enqueue: thunk => renewQueue.push(thunk),
+        invoke: () => controller.renew(),
+      },
+    ]
+
+    const resultModes: Array<'full' | 'committed'> = ['full', 'committed']
+    for (const scenario of scenarios) {
+      for (const resultMode of resultModes) {
+        resetHarness(scenario.initial())
+        await controller.load()
+        nowMs = NOW_START + 30 * 60 * 1000
+        const generationStartedAt = nowMs
+        if (resultMode === 'full') {
+          scenario.enqueue(async () => generating({ revision: 8 }))
+        }
+        else {
+          scenario.enqueue(async () => ({
+            public_id: ULID,
+            persistence_status: 'committed',
+            recovery_url: `/api/v1/admin/outreach/candidates/${ULID}`,
+          }))
+          getQueue.push(async () => generating({ revision: 8 }))
+        }
+        await scenario.invoke()
+        expect(controller.state.poll_active).toBeTrue()
+        expect(controller.state.poll_deadline_reached).toBeFalse()
+        expect(activeTimers()[0]?.delay).toBe(1800)
+
+        nowMs = generationStartedAt + TEN_MINUTES - 1
+        getQueue.push(async () => generating({ revision: 9 }))
+        const beforeFinalPoll = apiCalls.length
+        await fireNextTimer()
+        expect(apiCalls).toHaveLength(beforeFinalPoll + 1)
+        expect(controller.state.poll_active).toBeTrue()
+        expect(activeTimers()).toHaveLength(1)
+
+        nowMs = generationStartedAt + TEN_MINUTES
+        const beforeDeadline = apiCalls.length
+        await fireNextTimer()
+        expect(apiCalls).toHaveLength(beforeDeadline)
+        expect(controller.state.poll_active).toBeFalse()
+        expect(controller.state.poll_deadline_reached).toBeTrue()
+        expect(activeTimers()).toHaveLength(0)
+      }
+    }
+  })
+
+  test('drop late success, error, and finally writes after refresh, action, or disposal invalidates an epoch', async () => {
+    type LateOutcome = 'success' | 'error'
+    const outcomes: LateOutcome[] = ['success', 'error']
+    const invalidators: Array<{
+      name: 'refresh' | 'action' | 'dispose'
+      invalidate: () => Promise<void>
+    }> = [
+      {
+        name: 'refresh',
+        invalidate: async () => {
+          getQueue.push(async () => candidate({ revision: 20 }))
+          await controller.refresh()
+        },
+      },
+      {
+        name: 'action',
+        invalidate: async () => {
+          controller.setCampaignActivationConfirmed(true)
+          campaignQueue.push(async () => ({
+            name: 'Founders active',
+            key: 'founders-2026',
+            status: 'active',
+            sender_identity_label: 'Warm B',
+            candidate_count: 1,
+            created_at: '2026-08-25T10:00:00.000Z',
+            updated_at: '2026-08-26T12:00:00.000Z',
+          }))
+          await controller.activateCampaign()
+        },
+      },
+      {
+        name: 'dispose',
+        invalidate: async () => controller.dispose(),
+      },
+    ]
+
+    for (const invalidator of invalidators) {
+      for (const outcome of outcomes) {
+        resetHarness(generating({ campaign: { ...candidate().campaign, status: 'draft' } }))
+        await controller.load()
+        const latePoll = deferred<Candidate>()
+        getQueue.push(() => latePoll.promise)
+        await fireNextTimer()
+        const oldSignal = apiCalls.at(-1)?.transport?.signal
+        await invalidator.invalidate()
+        expect(oldSignal?.aborted).toBeTrue()
+        const afterInvalidation = structuredClone(controller.state)
+        const timerCount = activeTimers().length
+
+        if (outcome === 'success') latePoll.resolve(generating({ revision: 99 }))
+        else latePoll.reject(safeError('network'))
+        await flushMicrotasks()
+
+        expect(controller.state).toEqual(afterInvalidation)
+        expect(activeTimers()).toHaveLength(timerCount)
+        expect(controller.state.candidate?.revision ?? null).not.toBe(99)
+        if (invalidator.name === 'dispose') expect(controller.state.candidate).toBeNull()
+      }
+    }
+  })
+
+  test('never clear refresh-required from a stale timer or failed explicit GET', async () => {
+    resetHarness(generating({ campaign: { ...candidate().campaign, status: 'draft' } }))
+    await controller.load()
+    const staleTimer = activeTimers()[0]
+    if (staleTimer === undefined) throw new Error('Expected the generating poll timer.')
+    controller.setCampaignActivationConfirmed(true)
+    campaignQueue.push(async () => { throw safeError('network') })
+    await expect(controller.activateCampaign()).rejects.toMatchObject({ kind: 'network' })
+    expect(controller.state.refresh_required).toBeTrue()
+    expect(controller.state.poll_active).toBeFalse()
+
+    const beforeStaleTimer = apiCalls.length
+    staleTimer.callback()
+    await flushMicrotasks()
+    expect(apiCalls).toHaveLength(beforeStaleTimer)
+    expect(controller.state.refresh_required).toBeTrue()
+
+    getQueue.push(async () => { throw safeError('network') })
+    await expect(controller.refresh()).rejects.toMatchObject({ kind: 'network' })
+    expect(controller.state.refresh_required).toBeTrue()
+    await expectEveryMutationBlockedWithoutApiCall()
+
+    getQueue.push(async () => candidate({ revision: 21 }))
+    await controller.refresh()
+    expect(controller.state.refresh_required).toBeFalse()
+    expect(controller.state.candidate?.revision).toBe(21)
+  })
 })
 
 describe('dirty forms, confirmation binding, and full refresh', () => {
@@ -710,20 +1021,53 @@ describe('revision-bound mutations and recovery', () => {
 
     await controller.saveProspect()
 
-    expect(apiCalls.at(-1)).toMatchObject({
-      name: 'updateProspect',
-      publicId: ULID,
-      payload: {
-        expected_revision: 7,
-        source_attested: true,
-        company_name: 'Acme Updated',
-      },
+    expect(apiCalls.at(-1)?.name).toBe('updateProspect')
+    expect(apiCalls.at(-1)?.publicId).toBe(ULID)
+    expect(apiCalls.at(-1)?.payload).toEqual({
+      expected_revision: 7,
+      source_attested: true,
+      company_name: 'Acme Updated',
+      product_name: 'Acme Launch',
+      founder_first_name: 'Ada',
+      business_email: 'ada@acme.test',
+      country_code: 'US',
+      source_url: 'https://directory.test/acme',
+      source_context: 'Public founder profile.',
+      notes: null,
     })
     expect(controller.state.candidate?.revision).toBe(11)
     expect(controller.state.prospect_edit).toBe('clean')
     expect(controller.state.prospect_form.company_name).toBe('Acme Updated')
     expect(controller.state.draft_edit).toBe('stale')
     expect(controller.state.draft_form.email_body).toBe('DIRTY_OTHER_DRAFT')
+  })
+
+  test('save draft with the exact current revision and exact form snapshot', async () => {
+    await controller.load()
+    controller.setDraftField('subject_line', 'Updated subject')
+    controller.setDraftField('opening_line', 'Updated opening')
+    controller.setDraftField('email_body', 'Updated body')
+    draftQueue.push(async () => candidate({
+      revision: 8,
+      draft: {
+        subject_line: 'Updated subject',
+        opening_line: 'Updated opening',
+        email_body: 'Updated body',
+      },
+    }))
+
+    await controller.saveDraft()
+
+    expect(apiCalls.at(-1)?.name).toBe('updateDraft')
+    expect(apiCalls.at(-1)?.publicId).toBe(ULID)
+    expect(apiCalls.at(-1)?.payload).toEqual({
+      expected_revision: 7,
+      subject_line: 'Updated subject',
+      opening_line: 'Updated opening',
+      email_body: 'Updated body',
+    })
+    expect(controller.state.candidate?.revision).toBe(8)
+    expect(controller.state.draft_edit).toBe('clean')
   })
 
   test('use one validated GET for committed recovery and never fetch the returned URL', async () => {
@@ -742,6 +1086,192 @@ describe('revision-bound mutations and recovery', () => {
     expect(apiCalls.at(-1)?.publicId).toBe(ULID)
     expect(controller.state.candidate?.revision).toBe(9)
     expect(controller.state.draft_edit).toBe('clean')
+  })
+
+  test('handle full and committed recovery exactly once for every Task 8 mutation', async () => {
+    const scenarios: Array<{
+      initial: () => Candidate
+      prepare: () => void
+      enqueue: (thunk: MutationThunk) => void
+      invoke: () => Promise<void>
+      callName: keyof Api
+      full: (revision: number) => Candidate
+    }> = [
+      {
+        initial: () => candidate(),
+        prepare: () => controller.setProspectField('company_name', 'Updated company'),
+        enqueue: thunk => prospectQueue.push(thunk),
+        invoke: () => controller.saveProspect(),
+        callName: 'updateProspect',
+        full: revision => candidate({ revision, prospect: { ...candidate().prospect, company_name: 'Updated company' } }),
+      },
+      {
+        initial: () => candidate(),
+        prepare: () => controller.setDraftField('subject_line', 'Updated subject'),
+        enqueue: thunk => draftQueue.push(thunk),
+        invoke: () => controller.saveDraft(),
+        callName: 'updateDraft',
+        full: revision => candidate({ revision, draft: { ...fixtureDraft(), subject_line: 'Updated subject' } }),
+      },
+      {
+        initial: () => candidate(),
+        prepare: () => {
+          controller.setApprovalEnglishPlainText(true)
+          controller.setApprovalPublicSource(true)
+        },
+        enqueue: thunk => approveQueue.push(thunk),
+        invoke: () => controller.approve(),
+        callName: 'approveCandidate',
+        full: revision => approved({ revision }),
+      },
+      {
+        initial: () => candidate({
+          persisted_status: 'draft',
+          effective_status: 'failed',
+          preview: { ...fixturePreview(), status: 'failed' },
+        }),
+        prepare: () => undefined,
+        enqueue: thunk => recaptureQueue.push(thunk),
+        invoke: () => controller.recapture(),
+        callName: 'recaptureCandidate',
+        full: revision => generating({ revision }),
+      },
+      {
+        initial: () => candidate({
+          persisted_status: 'draft',
+          effective_status: 'expired',
+          preview: { ...fixturePreview(), status: 'expired', expires_at: '2026-08-25T12:00:00.000Z' },
+        }),
+        prepare: () => undefined,
+        enqueue: thunk => renewQueue.push(thunk),
+        invoke: () => controller.renew(),
+        callName: 'renewCandidate',
+        full: revision => generating({ revision }),
+      },
+    ]
+
+    for (const scenario of scenarios) {
+      resetHarness(scenario.initial())
+      await controller.load()
+      scenario.prepare()
+      scenario.enqueue(async () => scenario.full(8))
+      await scenario.invoke()
+      expect(apiCalls.filter(call => call.name === scenario.callName)).toHaveLength(1)
+      expect(apiCalls.filter(call => call.name === 'getCandidate')).toHaveLength(1)
+      expect(controller.state.candidate?.revision).toBe(8)
+
+      resetHarness(scenario.initial())
+      await controller.load()
+      scenario.prepare()
+      scenario.enqueue(async () => ({
+        public_id: ULID,
+        persistence_status: 'committed',
+        recovery_url: `/api/v1/admin/outreach/candidates/${ULID}`,
+      }))
+      getQueue.push(async () => scenario.full(9))
+      await scenario.invoke()
+      expect(apiCalls.filter(call => call.name === scenario.callName)).toHaveLength(1)
+      expect(apiCalls.filter(call => call.name === 'getCandidate')).toHaveLength(2)
+      expect(apiCalls.at(-1)?.name).toBe('getCandidate')
+      expect(apiCalls.at(-1)?.publicId).toBe(ULID)
+      expect(apiCalls.at(-1)?.key).toBeUndefined()
+      expect(apiCalls.at(-1)?.payload).toBeUndefined()
+      expect(controller.state.candidate?.revision).toBe(9)
+    }
+  })
+
+  test('reject malformed or mismatched recovery for every Task 8 mutation without GET or replay', async () => {
+    const scenarios: Array<{
+      initial: () => Candidate
+      prepare: () => void
+      enqueue: (thunk: MutationThunk) => void
+      invoke: () => Promise<void>
+      callName: keyof Api
+      malformed: Record<string, unknown>
+    }> = [
+      {
+        initial: () => candidate(),
+        prepare: () => controller.setProspectField('company_name', 'Updated company'),
+        enqueue: thunk => prospectQueue.push(thunk),
+        invoke: () => controller.saveProspect(),
+        callName: 'updateProspect',
+        malformed: {
+          public_id: SECOND_ULID,
+          persistence_status: 'committed',
+          recovery_url: `/api/v1/admin/outreach/candidates/${SECOND_ULID}`,
+        },
+      },
+      {
+        initial: () => candidate(),
+        prepare: () => controller.setDraftField('subject_line', 'Updated subject'),
+        enqueue: thunk => draftQueue.push(thunk),
+        invoke: () => controller.saveDraft(),
+        callName: 'updateDraft',
+        malformed: {
+          public_id: ULID,
+          persistence_status: 'committed',
+          recovery_url: `/api/v1/admin/outreach/candidates/${SECOND_ULID}`,
+        },
+      },
+      {
+        initial: () => candidate(),
+        prepare: () => {
+          controller.setApprovalEnglishPlainText(true)
+          controller.setApprovalPublicSource(true)
+        },
+        enqueue: thunk => approveQueue.push(thunk),
+        invoke: () => controller.approve(),
+        callName: 'approveCandidate',
+        malformed: {
+          public_id: ULID.toLowerCase(),
+          persistence_status: 'committed',
+          recovery_url: `/api/v1/admin/outreach/candidates/${ULID.toLowerCase()}`,
+        },
+      },
+      {
+        initial: () => candidate({
+          persisted_status: 'draft',
+          effective_status: 'failed',
+          preview: { ...fixturePreview(), status: 'failed' },
+        }),
+        prepare: () => undefined,
+        enqueue: thunk => recaptureQueue.push(thunk),
+        invoke: () => controller.recapture(),
+        callName: 'recaptureCandidate',
+        malformed: {
+          public_id: ULID,
+          persistence_status: 'committed',
+          recovery_url: `https://evil.test/api/v1/admin/outreach/candidates/${ULID}`,
+        },
+      },
+      {
+        initial: () => candidate({
+          persisted_status: 'draft',
+          effective_status: 'expired',
+          preview: { ...fixturePreview(), status: 'expired', expires_at: '2026-08-25T12:00:00.000Z' },
+        }),
+        prepare: () => undefined,
+        enqueue: thunk => renewQueue.push(thunk),
+        invoke: () => controller.renew(),
+        callName: 'renewCandidate',
+        malformed: { public_id: ULID, persistence_status: 'committed' },
+      },
+    ]
+
+    for (const scenario of scenarios) {
+      resetHarness(scenario.initial())
+      await controller.load()
+      scenario.prepare()
+      scenario.enqueue(async () => scenario.malformed)
+      await expect(scenario.invoke()).rejects.toBeDefined()
+      expect(controller.state.refresh_required).toBeTrue()
+      expect(controller.state.candidate?.revision).toBe(7)
+      expect(apiCalls.filter(call => call.name === scenario.callName)).toHaveLength(1)
+      expect(apiCalls.filter(call => call.name === 'getCandidate')).toHaveLength(1)
+      const count = apiCalls.length
+      await expect(scenario.invoke()).rejects.toBeDefined()
+      expect(apiCalls).toHaveLength(count)
+    }
   })
 
   test('latch refresh-required after committed recovery GET failure', async () => {
@@ -787,11 +1317,13 @@ describe('revision-bound mutations and recovery', () => {
       prepare: () => void
       invoke: () => Promise<unknown>
       queue: MutationThunk[] | CampaignThunk[] | SuppressionThunk[] | ExportThunk[]
+      dirty: boolean
     }> = [
       {
         prepare: () => controller.setProspectField('company_name', 'Changed'),
         invoke: () => controller.saveProspect(),
         queue: prospectQueue,
+        dirty: true,
       },
       {
         prepare: () => {
@@ -800,6 +1332,7 @@ describe('revision-bound mutations and recovery', () => {
         },
         invoke: () => controller.approve(),
         queue: approveQueue,
+        dirty: false,
       },
     ]
 
@@ -816,9 +1349,347 @@ describe('revision-bound mutations and recovery', () => {
       expect(apiCalls).toHaveLength(callsBefore)
 
       getQueue.push(async () => candidate({ revision: 10 }))
-      await controller.refresh()
+      if (scenario.dirty) {
+        const callsBeforeRefresh = apiCalls.length
+        await controller.refresh()
+        expect(apiCalls).toHaveLength(callsBeforeRefresh)
+        expect(controller.state.discard_confirmation_required).toBeTrue()
+        expect(controller.state.refresh_required).toBeTrue()
+        await controller.confirmDiscardAndRefresh()
+      }
+      else {
+        await controller.refresh()
+      }
       expect(controller.state.refresh_required).toBeFalse()
       expect(controller.state.candidate?.revision).toBe(10)
+    }
+  })
+
+  test('latch network, server, malformed-success, and live-abort outcomes for every mutation surface', async () => {
+    type Outcome = 'network' | 'server' | 'malformed' | 'aborted'
+    const outcomes: Outcome[] = ['network', 'server', 'malformed', 'aborted']
+    const scenarios: Array<{
+      initial: () => Candidate
+      prepare: () => void
+      enqueue: (thunk: () => Promise<unknown>) => void
+      invoke: () => Promise<unknown>
+      callName: keyof Api
+      malformed: Record<string, unknown>
+      dirty: boolean
+    }> = [
+      {
+        initial: () => candidate(),
+        prepare: () => controller.setProspectField('company_name', 'UNCERTAIN_PROSPECT_SENTINEL'),
+        enqueue: thunk => prospectQueue.push(thunk),
+        invoke: () => controller.saveProspect(),
+        callName: 'updateProspect',
+        malformed: { data: 'not-a-candidate' },
+        dirty: true,
+      },
+      {
+        initial: () => candidate(),
+        prepare: () => controller.setDraftField('email_body', 'UNCERTAIN_DRAFT_SENTINEL'),
+        enqueue: thunk => draftQueue.push(thunk),
+        invoke: () => controller.saveDraft(),
+        callName: 'updateDraft',
+        malformed: { public_id: ULID, revision: 'not-an-integer' },
+        dirty: true,
+      },
+      {
+        initial: () => candidate(),
+        prepare: () => {
+          controller.setApprovalEnglishPlainText(true)
+          controller.setApprovalPublicSource(true)
+        },
+        enqueue: thunk => approveQueue.push(thunk),
+        invoke: () => controller.approve(),
+        callName: 'approveCandidate',
+        malformed: { public_id: ULID, persisted_status: 'approved' },
+        dirty: false,
+      },
+      {
+        initial: () => candidate({
+          persisted_status: 'draft',
+          effective_status: 'failed',
+          preview: { ...fixturePreview(), status: 'failed' },
+        }),
+        prepare: () => undefined,
+        enqueue: thunk => recaptureQueue.push(thunk),
+        invoke: () => controller.recapture(),
+        callName: 'recaptureCandidate',
+        malformed: { status: 'generating' },
+        dirty: false,
+      },
+      {
+        initial: () => candidate({
+          persisted_status: 'draft',
+          effective_status: 'expired',
+          preview: { ...fixturePreview(), status: 'expired', expires_at: '2026-08-25T12:00:00.000Z' },
+        }),
+        prepare: () => undefined,
+        enqueue: thunk => renewQueue.push(thunk),
+        invoke: () => controller.renew(),
+        callName: 'renewCandidate',
+        malformed: { persistence_status: 'committed', public_id: ULID },
+        dirty: false,
+      },
+      {
+        initial: () => generating({ campaign: { ...candidate().campaign, status: 'draft' } }),
+        prepare: () => controller.setCampaignActivationConfirmed(true),
+        enqueue: thunk => campaignQueue.push(thunk),
+        invoke: () => controller.activateCampaign(),
+        callName: 'updateCampaign',
+        malformed: { name: 'Missing required campaign resource fields' },
+        dirty: false,
+      },
+      {
+        initial: () => candidate(),
+        prepare: () => {
+          controller.setSuppressionTarget('email')
+          controller.setSuppressionReason('UNCERTAIN_SUPPRESSION_SENTINEL')
+          controller.setSuppressionConfirmed(true)
+        },
+        enqueue: thunk => suppressionQueue.push(thunk),
+        invoke: () => controller.suppress(),
+        callName: 'createSuppression',
+        malformed: { kind: 'email', value: 'missing-resource-fields' },
+        dirty: true,
+      },
+      {
+        initial: () => approved(),
+        prepare: () => undefined,
+        enqueue: thunk => exportQueue.push(thunk),
+        invoke: () => controller.exportCandidate(),
+        callName: 'exportCandidates',
+        malformed: { blob: 'not-a-blob', filename: '../unsafe.csv' },
+        dirty: false,
+      },
+    ]
+
+    for (const scenario of scenarios) {
+      for (const outcome of outcomes) {
+        resetHarness(scenario.initial())
+        await controller.load()
+        scenario.prepare()
+        const lastGoodCandidate = structuredClone(controller.state.candidate)
+        const lastProspect = structuredClone(controller.state.prospect_form)
+        const lastDraft = structuredClone(controller.state.draft_form)
+        const lastSuppression = structuredClone(controller.state.suppression_draft)
+
+        if (outcome === 'network' || outcome === 'server') {
+          scenario.enqueue(async () => { throw safeError(outcome) })
+          await expect(scenario.invoke()).rejects.toMatchObject({ kind: outcome })
+        }
+        else if (outcome === 'malformed') {
+          scenario.enqueue(async () => scenario.malformed)
+          await expect(scenario.invoke()).rejects.toBeDefined()
+        }
+        else {
+          const pending = deferred<unknown>()
+          scenario.enqueue(() => pending.promise)
+          const operation = scenario.invoke()
+          await flushMicrotasks()
+          const signal = apiCalls.filter(call => call.name === scenario.callName).at(-1)?.transport?.signal
+          const requestController = abortControllers.find(abortController => abortController.signal === signal)
+          expect(requestController).toBeDefined()
+          requestController?.abort()
+          pending.reject(safeError('aborted'))
+          await expect(operation).rejects.toMatchObject({ kind: 'aborted' })
+        }
+
+        expect(apiCalls.filter(call => call.name === scenario.callName)).toHaveLength(1)
+        expect(controller.state.refresh_required).toBeTrue()
+        expect(controller.state.poll_active).toBeFalse()
+        expect(controller.state.candidate).toEqual(lastGoodCandidate)
+        expect(controller.state.prospect_form).toEqual(lastProspect)
+        expect(controller.state.draft_form).toEqual(lastDraft)
+        expect(controller.state.suppression_draft).toEqual(lastSuppression)
+        expect(controller.state.view.refresh_required).toBeTrue()
+        for (const blockers of Object.values(controller.state.view.blockers)) {
+          expect(blockers).toContain('refresh_required')
+        }
+        await expectEveryMutationBlockedWithoutApiCall()
+
+        getQueue.push(async () => candidate({ revision: 10 }))
+        if (scenario.dirty) {
+          const beforeRefresh = apiCalls.length
+          await controller.refresh()
+          expect(apiCalls).toHaveLength(beforeRefresh)
+          expect(controller.state.discard_confirmation_required).toBeTrue()
+          expect(controller.state.refresh_required).toBeTrue()
+          await controller.confirmDiscardAndRefresh()
+        }
+        else {
+          await controller.refresh()
+        }
+        expect(controller.state.refresh_required).toBeFalse()
+        expect(controller.state.candidate?.revision).toBe(10)
+      }
+    }
+  })
+})
+
+describe('committed mutation follow-up refresh failures', () => {
+  test('latch every candidate, suppression, and export follow-up GET failure without replay', async () => {
+    const scenarios: Array<{
+      initial: () => Candidate
+      prepare: () => void
+      enqueueSuccess: () => void
+      invoke: () => Promise<unknown>
+      callName: keyof Api
+      dirtyAfterCommit: boolean
+      returnsDownload: boolean
+    }> = [
+      {
+        initial: () => candidate(),
+        prepare: () => controller.setProspectField('company_name', 'Committed prospect'),
+        enqueueSuccess: () => prospectQueue.push(async () => ({
+          public_id: ULID,
+          persistence_status: 'committed',
+          recovery_url: `/api/v1/admin/outreach/candidates/${ULID}`,
+        })),
+        invoke: () => controller.saveProspect(),
+        callName: 'updateProspect',
+        dirtyAfterCommit: true,
+        returnsDownload: false,
+      },
+      {
+        initial: () => candidate(),
+        prepare: () => controller.setDraftField('subject_line', 'Committed draft'),
+        enqueueSuccess: () => draftQueue.push(async () => ({
+          public_id: ULID,
+          persistence_status: 'committed',
+          recovery_url: `/api/v1/admin/outreach/candidates/${ULID}`,
+        })),
+        invoke: () => controller.saveDraft(),
+        callName: 'updateDraft',
+        dirtyAfterCommit: true,
+        returnsDownload: false,
+      },
+      {
+        initial: () => candidate(),
+        prepare: () => {
+          controller.setApprovalEnglishPlainText(true)
+          controller.setApprovalPublicSource(true)
+        },
+        enqueueSuccess: () => approveQueue.push(async () => ({
+          public_id: ULID,
+          persistence_status: 'committed',
+          recovery_url: `/api/v1/admin/outreach/candidates/${ULID}`,
+        })),
+        invoke: () => controller.approve(),
+        callName: 'approveCandidate',
+        dirtyAfterCommit: false,
+        returnsDownload: false,
+      },
+      {
+        initial: () => candidate({
+          persisted_status: 'draft',
+          effective_status: 'failed',
+          preview: { ...fixturePreview(), status: 'failed' },
+        }),
+        prepare: () => undefined,
+        enqueueSuccess: () => recaptureQueue.push(async () => ({
+          public_id: ULID,
+          persistence_status: 'committed',
+          recovery_url: `/api/v1/admin/outreach/candidates/${ULID}`,
+        })),
+        invoke: () => controller.recapture(),
+        callName: 'recaptureCandidate',
+        dirtyAfterCommit: false,
+        returnsDownload: false,
+      },
+      {
+        initial: () => candidate({
+          persisted_status: 'draft',
+          effective_status: 'expired',
+          preview: { ...fixturePreview(), status: 'expired', expires_at: '2026-08-25T12:00:00.000Z' },
+        }),
+        prepare: () => undefined,
+        enqueueSuccess: () => renewQueue.push(async () => ({
+          public_id: ULID,
+          persistence_status: 'committed',
+          recovery_url: `/api/v1/admin/outreach/candidates/${ULID}`,
+        })),
+        invoke: () => controller.renew(),
+        callName: 'renewCandidate',
+        dirtyAfterCommit: false,
+        returnsDownload: false,
+      },
+      {
+        initial: () => candidate(),
+        prepare: () => {
+          controller.setSuppressionTarget('email')
+          controller.setSuppressionReason('Committed suppression')
+          controller.setSuppressionConfirmed(true)
+        },
+        enqueueSuccess: () => suppressionQueue.push(async () => ({
+          kind: 'email',
+          value: 'ada@acme.test',
+          reason: 'Committed suppression',
+          source: 'manual',
+          created_by: null,
+          created_at: '2026-08-26T12:00:00.000Z',
+          updated_at: '2026-08-26T12:00:00.000Z',
+        })),
+        invoke: () => controller.suppress(),
+        callName: 'createSuppression',
+        dirtyAfterCommit: false,
+        returnsDownload: false,
+      },
+      {
+        initial: () => approved(),
+        prepare: () => undefined,
+        enqueueSuccess: () => exportQueue.push(async () => ({
+          blob: new Blob(['FOLLOW_UP_DOWNLOAD_SENTINEL']),
+          filename: 'launchlog-outreach-founders-2026.csv',
+        })),
+        invoke: () => controller.exportCandidate(),
+        callName: 'exportCandidates',
+        dirtyAfterCommit: false,
+        returnsDownload: true,
+      },
+    ]
+
+    const followUpKinds: ErrorKind[] = ['network', 'server']
+    for (const scenario of scenarios) {
+      for (const kind of followUpKinds) {
+        resetHarness(scenario.initial())
+        await controller.load()
+        scenario.prepare()
+        const lastGood = structuredClone(controller.state.candidate)
+        scenario.enqueueSuccess()
+        getQueue.push(async () => { throw safeError(kind) })
+
+        if (scenario.returnsDownload) {
+          const result = await scenario.invoke()
+          expect(result).toMatchObject({ filename: 'launchlog-outreach-founders-2026.csv' })
+        }
+        else {
+          await expect(scenario.invoke()).rejects.toMatchObject({ kind })
+        }
+
+        expect(apiCalls.filter(call => call.name === scenario.callName)).toHaveLength(1)
+        expect(apiCalls.filter(call => call.name === 'getCandidate')).toHaveLength(2)
+        expect(controller.state.refresh_required).toBeTrue()
+        expect(controller.state.candidate).toEqual(lastGood)
+        expect(controller.state.poll_active).toBeFalse()
+        await expectEveryMutationBlockedWithoutApiCall()
+
+        getQueue.push(async () => candidate({ revision: 15 }))
+        if (scenario.dirtyAfterCommit) {
+          const beforeRefresh = apiCalls.length
+          await controller.refresh()
+          expect(apiCalls).toHaveLength(beforeRefresh)
+          expect(controller.state.discard_confirmation_required).toBeTrue()
+          await controller.confirmDiscardAndRefresh()
+        }
+        else {
+          await controller.refresh()
+        }
+        expect(controller.state.refresh_required).toBeFalse()
+        expect(controller.state.candidate?.revision).toBe(15)
+      }
     }
   })
 })
@@ -834,13 +1705,12 @@ describe('approval, lifecycle, suppression, and export actions', () => {
     controller.setApprovalPublicSource(true)
     approveQueue.push(async () => approved({ revision: 8 }))
     await controller.approve()
-    expect(apiCalls.at(-1)).toMatchObject({
-      name: 'approveCandidate',
-      payload: {
-        expected_revision: 7,
-        confirm_english_plain_text: true,
-        confirm_public_source: true,
-      },
+    expect(apiCalls.at(-1)?.name).toBe('approveCandidate')
+    expect(apiCalls.at(-1)?.publicId).toBe(ULID)
+    expect(apiCalls.at(-1)?.payload).toEqual({
+      expected_revision: 7,
+      confirm_english_plain_text: true,
+      confirm_public_source: true,
     })
     expect(controller.state.candidate?.revision).toBe(8)
     expect(controller.state.approval_english_plain_text).toBeFalse()
@@ -868,11 +1738,9 @@ describe('approval, lifecycle, suppression, and export actions', () => {
     }))
     await controller.activateCampaign()
 
-    expect(apiCalls.at(-1)).toMatchObject({
-      name: 'updateCampaign',
-      key: 'founders-2026',
-      payload: { status: 'active' },
-    })
+    expect(apiCalls.at(-1)?.name).toBe('updateCampaign')
+    expect(apiCalls.at(-1)?.key).toBe('founders-2026')
+    expect(apiCalls.at(-1)?.payload).toEqual({ status: 'active' })
     expect(controller.state.candidate?.campaign).toEqual({
       name: 'Founders active',
       key: 'founders-2026',
@@ -967,9 +1835,48 @@ describe('approval, lifecycle, suppression, and export actions', () => {
     const result = await controller.exportCandidate()
     expect(result.blob).toBe(blob)
     expect(await result.blob.text()).toBe('PII_BLOB_SENTINEL')
+    expect(apiCalls.find(call => call.name === 'exportCandidates')?.payload).toEqual({
+      campaign_key: 'founders-2026',
+      prospect_public_ids: [ULID],
+      confirm_reexport: false,
+    })
     expect(controller.state.refresh_required).toBeTrue()
     expect(controller.state.action_error?.kind).toBe('network')
     expect(apiCalls.slice(-2).map(call => call.name)).toEqual(['exportCandidates', 'getCandidate'])
+    expect(controller.state.reexport_confirmed).toBeFalse()
+  })
+
+  test('require re-export confirmation and send the exact true payload', async () => {
+    serverCandidate = approved({
+      persisted_status: 'exported',
+      effective_status: 'exported',
+      audit: {
+        approved_at: '2026-08-26T10:00:00.000Z',
+        approved_by: { name: 'Admin', email: null },
+        exported_at: '2026-08-26T11:00:00.000Z',
+        exported_by: { name: 'Admin', email: null },
+        export_count: 1,
+        last_export_hash: 'a'.repeat(64),
+      },
+    })
+    await controller.load()
+    const before = apiCalls.length
+    await expect(controller.exportCandidate()).rejects.toBeDefined()
+    expect(apiCalls).toHaveLength(before)
+
+    controller.setReexportConfirmed(true)
+    exportQueue.push(async () => ({
+      blob: new Blob(['email,subject\r\n']),
+      filename: 'launchlog-outreach-founders-2026.csv',
+    }))
+    getQueue.push(async () => structuredClone(serverCandidate))
+    await controller.exportCandidate()
+
+    expect(apiCalls.find(call => call.name === 'exportCandidates')?.payload).toEqual({
+      campaign_key: 'founders-2026',
+      prospect_public_ids: [ULID],
+      confirm_reexport: true,
+    })
     expect(controller.state.reexport_confirmed).toBeFalse()
   })
 

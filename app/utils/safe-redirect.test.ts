@@ -16,6 +16,13 @@ describe('safeAuthRedirect', () => {
     expect(safeAuthRedirect('/admin/outreach?q=founder%40example.com')).toBe('/admin/outreach?q=founder%40example.com')
   })
 
+  test('keeps dangerous path encodings inert inside query and fragment values', () => {
+    expect(safeAuthRedirect('/dashboard?next=%2Fadmin&backslash=%5C&dot=%2e%2e'))
+      .toBe('/dashboard?next=%2Fadmin&backslash=%5C&dot=%2e%2e')
+    expect(safeAuthRedirect('/dashboard/outreach#next=%2Fadmin&backslash=%5C&dot=%2e%2e'))
+      .toBe('/dashboard/outreach#next=%2Fadmin&backslash=%5C&dot=%2e%2e')
+  })
+
   test('rejects unsafe raw auth redirect paths', () => {
     const unsafe: unknown[] = [
       '/dashboard/%2Fadmin',

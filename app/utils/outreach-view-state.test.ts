@@ -359,7 +359,10 @@ describe('campaign and effective-state matrix', () => {
         last_export_hash: 'a'.repeat(64),
       },
     })))
+    expect(suppressed.blockers.approve).toContain('suppressed')
     expect(suppressed.blockers.export).toContain('suppressed')
+    expect(suppressed.blockers.recapture).toContain('suppressed')
+    expect(suppressed.blockers.renew).toContain('suppressed')
     expect(suppressed.blockers.suppress).toEqual([])
     expect(suppressed.audit.export_count).toBe(2)
     expect(suppressed.audit.last_export_hash).toBe('a'.repeat(64))
@@ -371,6 +374,10 @@ describe('campaign and effective-state matrix', () => {
     const generating = subject.outreachViewState(input(generatingCandidate))
     expect(generating.blockers.approve).toContain('preview_generating')
     expect(generating.blockers.export).toContain('preview_generating')
+    expect(generating.blockers.recapture).toContain('preview_generating')
+    expect(generating.blockers.recapture).toContain('recapture_not_available')
+    expect(generating.blockers.renew).toContain('preview_generating')
+    expect(generating.blockers.renew).toContain('renewal_not_available')
     expect(generating.blockers.suppress).toEqual([])
 
     const failedCandidate = preview(readyCandidate({ effective_status: 'failed', persisted_status: 'draft' }), 'failed', isoFromNow(72))
@@ -467,14 +474,22 @@ describe('validation, confirmation, and concurrency blockers', () => {
   })
 
   test('require ready-for-review status and both approval confirmations', () => {
-    const missingEnglish = subject.outreachViewState(input(readyCandidate(), {
-      confirmations: {
-        approval_english_plain_text: false,
-        approval_public_source: true,
-        reexport: false,
-      },
-    }))
-    expect(missingEnglish.blockers.approve).toContain('approval_confirmation_required')
+    const confirmationCases: Array<[boolean, boolean, string[]]> = [
+      [false, true, ['approval_confirmation_required']],
+      [true, false, ['approval_confirmation_required']],
+      [false, false, ['approval_confirmation_required']],
+      [true, true, []],
+    ]
+    for (const [english, publicSource, expected] of confirmationCases) {
+      const state = subject.outreachViewState(input(readyCandidate(), {
+        confirmations: {
+          approval_english_plain_text: english,
+          approval_public_source: publicSource,
+          reexport: false,
+        },
+      }))
+      expect(state.blockers.approve).toEqual(expected)
+    }
 
     for (const candidate of [approvedCandidate(), approvedCandidate({ persisted_status: 'exported', effective_status: 'exported' })]) {
       expect(subject.outreachViewState(input(candidate)).blockers.approve).toContain('approval_not_available')
@@ -509,6 +524,26 @@ describe('validation, confirmation, and concurrency blockers', () => {
       },
     }))
     expect(confirmed.blockers.export).toEqual([])
+  })
+
+  test('fail export closed when approved status has no approval audit', () => {
+    const missingAudit = readyCandidate({
+      persisted_status: 'approved',
+      effective_status: 'approved',
+      audit: {
+        approved_at: null,
+        approved_by: null,
+        exported_at: null,
+        exported_by: null,
+        export_count: 0,
+        last_export_hash: null,
+      },
+    })
+    const state = subject.outreachViewState(input(missingAudit))
+
+    expect(state.blockers.export).toContain('not_approved')
+    expect(state.audit.approved_at).toBeNull()
+    expect(state.audit.approved_by).toBeNull()
   })
 
   test('bind suppression to a target, valid reason, and current confirmation', () => {

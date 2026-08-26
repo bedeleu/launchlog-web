@@ -59,6 +59,12 @@ const candidateCreate = {
   source_attested: true,
 }
 
+const prospectEdit = {
+  expected_revision: 7,
+  source_attested: true,
+  company_name: 'Acme Labs',
+}
+
 function parse(schema: ObjectSchema, input: unknown): Record<string, unknown> {
   const result = schema.safeParse(input)
   expect(result.success).toBeTrue()
@@ -86,6 +92,11 @@ function astral(count: number): string {
 function urlAtCodePoints(count: number): string {
   const prefix = 'https://example.test/'
   return `${prefix}${'a'.repeat(count - Array.from(prefix).length)}`
+}
+
+function astralUrlAtCodePoints(count: number): string {
+  const prefix = 'https://example.test/'
+  return `${prefix}${astral(count - Array.from(prefix).length)}`
 }
 
 function emailAtCodePoints(count: number): string {
@@ -138,6 +149,8 @@ describe('outreach campaign schemas', () => {
     reject(schemas.outreachCampaignUpdateSchema, { status: 'paused' }, 'status')
     parse(schemas.outreachCampaignUpdateSchema, { name: astral(120) })
     reject(schemas.outreachCampaignUpdateSchema, { name: astral(121) }, 'name')
+    parse(schemas.outreachCampaignUpdateSchema, { sender_identity_label: astral(120) })
+    reject(schemas.outreachCampaignUpdateSchema, { sender_identity_label: astral(121) }, 'sender_identity_label')
   })
 })
 
@@ -191,6 +204,17 @@ describe('candidate and prospect schemas', () => {
     ]) {
       reject(schemas.outreachCandidateCreateSchema, { ...candidateCreate, product_url }, 'product_url')
     }
+
+    for (const source_url of [
+      'ftp://directory.test/acme',
+      'https://user:secret@directory.test/acme',
+      'https:///missing-host',
+      '/relative-source',
+      'not a source url',
+    ]) {
+      reject(schemas.outreachCandidateCreateSchema, { ...candidateCreate, source_url }, 'source_url')
+      reject(schemas.outreachProspectEditSchema, { ...prospectEdit, source_url }, 'source_url')
+    }
   })
 
   test('enforce every candidate string cap by Unicode code point', () => {
@@ -210,6 +234,8 @@ describe('candidate and prospect schemas', () => {
     for (const field of ['product_url', 'source_url']) {
       parse(schemas.outreachCandidateCreateSchema, { ...candidateCreate, [field]: urlAtCodePoints(2048) })
       reject(schemas.outreachCandidateCreateSchema, { ...candidateCreate, [field]: urlAtCodePoints(2049) }, field)
+      parse(schemas.outreachCandidateCreateSchema, { ...candidateCreate, [field]: astralUrlAtCodePoints(2048) })
+      reject(schemas.outreachCandidateCreateSchema, { ...candidateCreate, [field]: astralUrlAtCodePoints(2049) }, field)
     }
 
     parse(schemas.outreachCandidateCreateSchema, { ...candidateCreate, business_email: emailAtCodePoints(255) })
@@ -230,6 +256,59 @@ describe('candidate and prospect schemas', () => {
     reject(schemas.outreachProspectEditSchema, { expected_revision: MAX_INTEGER + 1, source_attested: true, notes: null }, 'expected_revision')
     parse(schemas.outreachProspectEditSchema, { expected_revision: 0, source_attested: true, notes: null })
     parse(schemas.outreachProspectEditSchema, { expected_revision: MAX_INTEGER, source_attested: true, notes: 'reviewed' })
+  })
+
+  test('enforce every prospect-edit field boundary independently', () => {
+    const textFields: Array<[string, number]> = [
+      ['company_name', 120],
+      ['product_name', 120],
+      ['founder_first_name', 80],
+      ['source_context', 300],
+      ['notes', 2000],
+    ]
+    for (const [field, limit] of textFields) {
+      parse(schemas.outreachProspectEditSchema, {
+        expected_revision: 7,
+        source_attested: true,
+        [field]: astral(limit),
+      })
+      reject(schemas.outreachProspectEditSchema, {
+        expected_revision: 7,
+        source_attested: true,
+        [field]: astral(limit + 1),
+      }, field)
+    }
+
+    parse(schemas.outreachProspectEditSchema, {
+      expected_revision: 7,
+      source_attested: true,
+      business_email: emailAtCodePoints(255),
+    })
+    reject(schemas.outreachProspectEditSchema, {
+      expected_revision: 7,
+      source_attested: true,
+      business_email: emailAtCodePoints(256),
+    }, 'business_email')
+    parse(schemas.outreachProspectEditSchema, {
+      expected_revision: 7,
+      source_attested: true,
+      source_url: astralUrlAtCodePoints(2048),
+    })
+    reject(schemas.outreachProspectEditSchema, {
+      expected_revision: 7,
+      source_attested: true,
+      source_url: astralUrlAtCodePoints(2049),
+    }, 'source_url')
+    expect(parse(schemas.outreachProspectEditSchema, {
+      expected_revision: 7,
+      source_attested: true,
+      country_code: ' ro ',
+    }).country_code).toBe('RO')
+    reject(schemas.outreachProspectEditSchema, {
+      expected_revision: 7,
+      source_attested: true,
+      country_code: 'ROU',
+    }, 'country_code')
   })
 })
 
@@ -275,6 +354,42 @@ describe('draft, approval, suppression, and export schemas', () => {
     }, 'confirm_public_source')
   })
 
+  test('enforce zero, maximum, overflow, fractional, and wrong-type revisions in every revision-bound schema', () => {
+    const revisionCases: Array<{ schema: ObjectSchema, input: Record<string, unknown> }> = [
+      {
+        schema: schemas.outreachProspectEditSchema,
+        input: { source_attested: true, notes: null },
+      },
+      {
+        schema: schemas.outreachDraftEditSchema,
+        input: { subject_line: 'Subject' },
+      },
+      {
+        schema: schemas.outreachApprovalSchema,
+        input: { confirm_english_plain_text: true, confirm_public_source: true },
+      },
+      {
+        schema: schemas.outreachSuppressionSchema,
+        input: {
+          prospect_public_id: ULID,
+          target: 'email',
+          reason: 'Reason',
+          source: 'manual',
+          confirm: true,
+        },
+      },
+    ]
+
+    for (const revisionCase of revisionCases) {
+      parse(revisionCase.schema, { ...revisionCase.input, expected_revision: 0 })
+      parse(revisionCase.schema, { ...revisionCase.input, expected_revision: MAX_INTEGER })
+      reject(revisionCase.schema, { ...revisionCase.input, expected_revision: -1 }, 'expected_revision')
+      reject(revisionCase.schema, { ...revisionCase.input, expected_revision: MAX_INTEGER + 1 }, 'expected_revision')
+      reject(revisionCase.schema, { ...revisionCase.input, expected_revision: 1.5 }, 'expected_revision')
+      reject(revisionCase.schema, { ...revisionCase.input, expected_revision: '1' }, 'expected_revision')
+    }
+  })
+
   test('validate suppression target, source, confirmation, and reason code points', () => {
     const base = {
       prospect_public_id: ULID,
@@ -288,6 +403,10 @@ describe('draft, approval, suppression, and export schemas', () => {
       ...base,
       reason: 'Asked not to be contacted',
     })
+
+    for (const target of ['email', 'product_domain', 'effective_domain']) {
+      expect(parse(schemas.outreachSuppressionSchema, { ...base, target }).target).toBe(target)
+    }
 
     for (const target of ['raw_email', 'domain', null]) {
       reject(schemas.outreachSuppressionSchema, { ...base, target }, 'target')
