@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Menu, Search, X } from '@lucide/vue'
+import { LayoutDashboard, Menu, Search, ShieldCheck, X } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 
 const route = useRoute()
@@ -74,11 +74,29 @@ watch(user, async () => {
           <Search class="size-5" />
         </NuxtLink>
         <template v-if="authReady">
-          <NuxtLink v-if="admin" to="/admin" class="px-3 py-2 text-sm font-medium text-emerald-300 transition-colors hover:text-brand-fg">
+          <Button
+            v-if="user"
+            as-child
+            variant="outline"
+            size="sm"
+            class="border-brand-border bg-white/[0.03] text-brand-fg hover:bg-white/[0.07]"
+          >
+            <NuxtLink
+              to="/dashboard"
+              :aria-current="isActive('/dashboard') ? 'page' : undefined"
+            >
+              <LayoutDashboard aria-hidden="true" />
+              Dashboard
+            </NuxtLink>
+          </Button>
+          <NuxtLink
+            v-if="admin"
+            to="/admin"
+            :aria-current="isActive('/admin') ? 'page' : undefined"
+            class="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-emerald-300 transition-colors hover:text-brand-fg"
+          >
+            <ShieldCheck aria-hidden="true" class="size-4" />
             Admin
-          </NuxtLink>
-          <NuxtLink v-if="user && !admin" to="/dashboard" class="px-3 py-2 text-sm font-medium text-brand-muted transition-colors hover:text-brand-fg">
-            Dashboard
           </NuxtLink>
           <button v-if="user" type="button" class="px-3 py-2 text-sm font-medium text-brand-muted transition-colors hover:text-brand-fg" @click="signOut">
             Sign out
@@ -121,22 +139,43 @@ watch(user, async () => {
           >
             {{ item.label }}
           </NuxtLink>
-          <div class="mt-2 flex items-center gap-2 border-t border-brand-border pt-3">
+          <div class="mt-2 grid gap-2 border-t border-brand-border pt-3">
             <template v-if="authReady">
-              <NuxtLink v-if="admin" to="/admin" class="flex-1 rounded-md px-3 py-2.5 text-center text-sm font-medium text-emerald-300 hover:text-brand-fg">
-                Admin
-              </NuxtLink>
-              <NuxtLink v-else-if="user" to="/dashboard" class="flex-1 rounded-md px-3 py-2.5 text-center text-sm font-medium text-brand-muted hover:text-brand-fg">
-                Dashboard
-              </NuxtLink>
-              <NuxtLink v-else to="/login" class="flex-1 rounded-md px-3 py-2.5 text-center text-sm font-medium text-brand-muted hover:text-brand-fg">
+              <template v-if="user">
+                <Button
+                  as-child
+                  variant="outline"
+                  size="lg"
+                  class="w-full border-brand-border bg-white/[0.03] text-brand-fg hover:bg-white/[0.07]"
+                >
+                  <NuxtLink
+                    to="/dashboard"
+                    :aria-current="isActive('/dashboard') ? 'page' : undefined"
+                  >
+                    <LayoutDashboard aria-hidden="true" />
+                    Dashboard
+                  </NuxtLink>
+                </Button>
+                <div class="grid gap-2" :class="admin ? 'grid-cols-2' : 'grid-cols-1'">
+                  <NuxtLink
+                    v-if="admin"
+                    to="/admin"
+                    :aria-current="isActive('/admin') ? 'page' : undefined"
+                    class="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md px-3 text-sm font-medium text-emerald-300 transition-colors hover:bg-white/[0.05] hover:text-brand-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent"
+                  >
+                    <ShieldCheck aria-hidden="true" class="size-4" />
+                    Admin
+                  </NuxtLink>
+                  <button type="button" class="min-h-11 rounded-md px-3 text-center text-sm font-medium text-brand-muted transition-colors hover:bg-white/[0.05] hover:text-brand-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent" @click="signOut">
+                    Sign out
+                  </button>
+                </div>
+              </template>
+              <NuxtLink v-else to="/login" class="min-h-11 rounded-md px-3 py-2.5 text-center text-sm font-medium text-brand-muted hover:bg-white/[0.05] hover:text-brand-fg">
                 Login
               </NuxtLink>
-              <button v-if="user" type="button" class="flex-1 rounded-md px-3 py-2.5 text-center text-sm font-medium text-brand-muted hover:text-brand-fg" @click="signOut">
-                Sign out
-              </button>
             </template>
-            <Button as-child class="flex-1">
+            <Button as-child size="lg" class="w-full">
               <NuxtLink to="/submit">Get started</NuxtLink>
             </Button>
           </div>

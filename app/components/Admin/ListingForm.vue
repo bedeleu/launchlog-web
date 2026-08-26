@@ -82,9 +82,12 @@ function onSubmit() {
       <span class="text-brand-muted">Tier</span>
       <select v-model="form.tier" :class="inputClass">
         <option value="">— none —</option>
-        <option value="basic">Standard</option>
-        <option value="featured">Featured</option>
+        <option value="basic">Standard — manual placement</option>
+        <option value="featured">Featured — manual placement</option>
       </select>
+      <span class="text-xs leading-5 text-brand-muted">
+        Admin placements are published without checkout or a Stripe subscription.
+      </span>
     </label>
 
     <label class="flex flex-col gap-1.5 text-sm">
