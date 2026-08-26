@@ -1,11 +1,25 @@
 import type {
   AdminOutreachClient,
+  OutreachActorSummary,
+  OutreachAdminPreview,
   OutreachApiErrorKind,
+  OutreachAudit,
   OutreachCampaign,
+  OutreachCampaignStatus,
+  OutreachCandidateCampaign,
   OutreachCandidateDetail,
+  OutreachCandidateSuppression,
   OutreachCommittedRecovery,
+  OutreachDraft,
+  OutreachDraftValidationErrors,
+  OutreachEffectiveStatus,
   OutreachExportResult,
+  OutreachMatchedSuppressionTarget,
+  OutreachPersistedStatus,
+  OutreachPreviewStatus,
+  OutreachProspectDetail,
   OutreachSuppression,
+  OutreachSuppressionKind,
   OutreachSuppressionSource,
   OutreachSuppressionTarget,
   OutreachTransportOptions,
@@ -13,9 +27,11 @@ import type {
 import {
   OutreachApiError,
   mapOutreachApiError,
+  sanitizeOutreachValidationErrors,
   useAdminOutreach,
   validateCommittedRecovery,
 } from './useAdminOutreach'
+import { reactive } from 'vue'
 import { outreachSuppressionReasonSchema } from '../utils/outreach-form-schema'
 import type {
   OutreachActionName,
@@ -29,6 +45,13 @@ import { outreachViewState } from '../utils/outreach-view-state'
 const POLL_DELAY_MS = 1_800
 const GENERATION_WINDOW_MS = 10 * 60 * 1000
 const MAX_INTEGER = 2_147_483_647
+const CAMPAIGN_STATUSES = ['draft', 'active', 'archived'] as const
+const PERSISTED_STATUSES = ['draft', 'ready_for_review', 'approved', 'exported'] as const
+const EFFECTIVE_STATUSES = ['draft', 'preview_generating', 'ready_for_review', 'approved', 'exported', 'failed', 'expired', 'suppressed', 'converted'] as const
+const PREVIEW_STATUSES = ['generating', 'ready', 'failed', 'converted', 'expired'] as const
+const SUPPRESSION_KINDS = ['email', 'domain'] as const
+const SUPPRESSION_SOURCES = ['manual', 'opt_out'] as const
+const MATCHED_SUPPRESSION_TARGETS = ['email', 'product_domain', 'effective_domain', 'email_domain'] as const
 const SAFE_ERROR_KINDS = new Set<OutreachApiErrorKind>([
   'unauthenticated',
   'forbidden',
@@ -198,49 +221,209 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function isStringRecord(value: unknown, keys: string[]): value is Record<string, unknown> {
-  return isRecord(value) && keys.every(key => typeof value[key] === 'string')
+function invalidServerPayload(): never {
+  throw new OutreachApiError('server')
 }
 
-function isCandidate(value: unknown, publicId: string): value is OutreachCandidateDetail {
-  if (!isRecord(value) || value.public_id !== publicId) return false
-  if (typeof value.revision !== 'number' || !Number.isInteger(value.revision) || value.revision < 0 || value.revision > MAX_INTEGER) return false
-  if (!isStringRecord(value.campaign, ['name', 'key', 'status', 'sender_identity_label'])) return false
-  if (!isStringRecord(value.prospect, [
-    'company_name',
-    'product_name',
-    'product_url',
-    'normalized_domain',
-    'business_email',
-    'source_url',
-    'source_context',
-    'source_attested_at',
-  ])) return false
-  if (typeof value.persisted_status !== 'string' || typeof value.effective_status !== 'string') return false
-  if (!isRecord(value.audit) || typeof value.audit.export_count !== 'number') return false
-  if (!Array.isArray(value.suppressions) || (!Array.isArray(value.validation_errors) && !isRecord(value.validation_errors))) return false
-  if (value.draft !== null && !isStringRecord(value.draft, ['subject_line', 'opening_line', 'email_body'])) return false
-  if (value.preview !== null) {
-    if (!isRecord(value.preview) || typeof value.preview.status !== 'string' || typeof value.preview.preview_url !== 'string') return false
-    if (!isRecord(value.preview.capabilities)) return false
+function recordValue(value: unknown): Record<string, unknown> {
+  if (!isRecord(value)) invalidServerPayload()
+  return value
+}
+
+function stringValue(value: unknown): string {
+  if (typeof value !== 'string') invalidServerPayload()
+  return value
+}
+
+function nullableString(value: unknown): string | null {
+  if (value !== null && typeof value !== 'string') invalidServerPayload()
+  return value
+}
+
+function boundedInteger(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > MAX_INTEGER) {
+    invalidServerPayload()
   }
-  return typeof value.created_at === 'string' && typeof value.updated_at === 'string'
+  return value
 }
 
-function isCampaign(value: unknown): value is OutreachCampaign {
-  return isStringRecord(value, [
-    'name',
-    'key',
-    'status',
-    'sender_identity_label',
-    'created_at',
-    'updated_at',
-  ]) && typeof value.candidate_count === 'number'
+function literalValue<T extends string>(value: unknown, allowed: readonly T[]): T {
+  if (typeof value !== 'string' || !allowed.includes(value as T)) invalidServerPayload()
+  return value as T
 }
 
-function isSuppression(value: unknown): value is OutreachSuppression {
-  return isStringRecord(value, ['kind', 'value', 'reason', 'source', 'created_at', 'updated_at'])
-    && (value.created_by === null || isRecord(value.created_by))
+function projectActor(value: unknown): OutreachActorSummary {
+  const source = recordValue(value)
+  return {
+    name: nullableString(source.name),
+    email: nullableString(source.email),
+  }
+}
+
+function projectNullableActor(value: unknown): OutreachActorSummary | null {
+  return value === null ? null : projectActor(value)
+}
+
+function projectFailure(value: unknown): { code: string, message: string } | null {
+  if (value === null) return null
+  const source = recordValue(value)
+  return { code: stringValue(source.code), message: stringValue(source.message) }
+}
+
+function projectCandidateCampaign(value: unknown): OutreachCandidateCampaign {
+  const source = recordValue(value)
+  return {
+    name: stringValue(source.name),
+    key: stringValue(source.key),
+    status: literalValue<OutreachCampaignStatus>(source.status, CAMPAIGN_STATUSES),
+    sender_identity_label: stringValue(source.sender_identity_label),
+  }
+}
+
+function projectProspect(value: unknown): OutreachProspectDetail {
+  const source = recordValue(value)
+  return {
+    company_name: stringValue(source.company_name),
+    product_name: stringValue(source.product_name),
+    product_url: stringValue(source.product_url),
+    normalized_domain: stringValue(source.normalized_domain),
+    founder_first_name: nullableString(source.founder_first_name),
+    business_email: stringValue(source.business_email),
+    country_code: nullableString(source.country_code),
+    source_url: stringValue(source.source_url),
+    source_context: stringValue(source.source_context),
+    notes: nullableString(source.notes),
+    source_attested_at: stringValue(source.source_attested_at),
+    source_attested_by: projectActor(source.source_attested_by),
+  }
+}
+
+function projectPreview(value: unknown): OutreachAdminPreview | null {
+  if (value === null) return null
+  const source = recordValue(value)
+  const capabilities = recordValue(source.capabilities)
+  if (capabilities.edit !== false || capabilities.recapture !== false || typeof capabilities.checkout !== 'boolean') {
+    invalidServerPayload()
+  }
+  return {
+    status: literalValue<OutreachPreviewStatus>(source.status, PREVIEW_STATUSES),
+    preview_url: stringValue(source.preview_url),
+    url: stringValue(source.url),
+    normalized_domain: nullableString(source.normalized_domain),
+    title: nullableString(source.title),
+    tagline: nullableString(source.tagline),
+    description: nullableString(source.description),
+    screenshot_url: nullableString(source.screenshot_url),
+    error: projectFailure(source.error),
+    expires_at: nullableString(source.expires_at),
+    capabilities: {
+      edit: false,
+      recapture: false,
+      checkout: capabilities.checkout,
+    },
+  }
+}
+
+function projectDraft(value: unknown): OutreachDraft | null {
+  if (value === null) return null
+  const source = recordValue(value)
+  return {
+    subject_line: stringValue(source.subject_line),
+    opening_line: stringValue(source.opening_line),
+    email_body: stringValue(source.email_body),
+  }
+}
+
+function projectValidationErrors(value: unknown): OutreachDraftValidationErrors {
+  if (Array.isArray(value)) {
+    if (value.length !== 0) invalidServerPayload()
+    return []
+  }
+  if (!isRecord(value)) invalidServerPayload()
+  const sanitized = sanitizeOutreachValidationErrors(value)
+  const projected: Partial<Record<keyof OutreachDraft, string[]>> = {}
+  for (const field of ['subject_line', 'opening_line', 'email_body'] as const) {
+    if (sanitized[field] !== undefined) projected[field] = sanitized[field]
+  }
+  return projected
+}
+
+function projectCandidateSuppression(value: unknown): OutreachCandidateSuppression {
+  const source = recordValue(value)
+  if (!Array.isArray(source.matched_targets)) invalidServerPayload()
+  return {
+    kind: literalValue<OutreachSuppressionKind>(source.kind, SUPPRESSION_KINDS),
+    value: stringValue(source.value),
+    reason: stringValue(source.reason),
+    source: literalValue<OutreachSuppressionSource>(source.source, SUPPRESSION_SOURCES),
+    created_by: projectNullableActor(source.created_by),
+    created_at: stringValue(source.created_at),
+    updated_at: stringValue(source.updated_at),
+    matched_targets: source.matched_targets.map(target => literalValue<OutreachMatchedSuppressionTarget>(target, MATCHED_SUPPRESSION_TARGETS)),
+  }
+}
+
+function projectAudit(value: unknown): OutreachAudit {
+  const source = recordValue(value)
+  return {
+    approved_at: nullableString(source.approved_at),
+    approved_by: projectNullableActor(source.approved_by),
+    exported_at: nullableString(source.exported_at),
+    exported_by: projectNullableActor(source.exported_by),
+    export_count: boundedInteger(source.export_count),
+    last_export_hash: nullableString(source.last_export_hash),
+  }
+}
+
+function parseCandidate(value: unknown, publicId: string): OutreachCandidateDetail {
+  const source = recordValue(value)
+  if (source.public_id !== publicId) invalidServerPayload()
+  if (!Array.isArray(source.suppressions)) invalidServerPayload()
+  return {
+    public_id: publicId,
+    campaign: projectCandidateCampaign(source.campaign),
+    prospect: projectProspect(source.prospect),
+    persisted_status: literalValue<OutreachPersistedStatus>(source.persisted_status, PERSISTED_STATUSES),
+    effective_status: literalValue<OutreachEffectiveStatus>(source.effective_status, EFFECTIVE_STATUSES),
+    revision: boundedInteger(source.revision),
+    failure: projectFailure(source.failure),
+    preview: projectPreview(source.preview),
+    draft: projectDraft(source.draft),
+    validation_errors: projectValidationErrors(source.validation_errors),
+    suppressions: source.suppressions.map(projectCandidateSuppression),
+    audit: projectAudit(source.audit),
+    created_at: stringValue(source.created_at),
+    updated_at: stringValue(source.updated_at),
+  }
+}
+
+function parseCampaign(
+  value: unknown,
+  expectedKey: string,
+  expectedStatus: OutreachCampaignStatus,
+): OutreachCampaign {
+  const source = recordValue(value)
+  const campaign: OutreachCampaign = {
+    ...projectCandidateCampaign(source),
+    candidate_count: boundedInteger(source.candidate_count),
+    created_at: stringValue(source.created_at),
+    updated_at: stringValue(source.updated_at),
+  }
+  if (campaign.key !== expectedKey || campaign.status !== expectedStatus) invalidServerPayload()
+  return campaign
+}
+
+function parseSuppression(value: unknown): OutreachSuppression {
+  const source = recordValue(value)
+  return {
+    kind: literalValue<OutreachSuppressionKind>(source.kind, SUPPRESSION_KINDS),
+    value: stringValue(source.value),
+    reason: stringValue(source.reason),
+    source: literalValue<OutreachSuppressionSource>(source.source, SUPPRESSION_SOURCES),
+    created_by: projectNullableActor(source.created_by),
+    created_at: stringValue(source.created_at),
+    updated_at: stringValue(source.updated_at),
+  }
 }
 
 function isDownload(value: unknown): value is OutreachExportResult {
@@ -251,14 +434,7 @@ function normalizeError(error: unknown): OutreachApiError {
   if (error instanceof OutreachApiError) return error
   if (isRecord(error) && typeof error.kind === 'string' && SAFE_ERROR_KINDS.has(error.kind as OutreachApiErrorKind)) {
     const status = typeof error.status === 'number' ? error.status : null
-    const fieldErrors: Record<string, string[]> = {}
-    if (isRecord(error.fieldErrors)) {
-      for (const [field, messages] of Object.entries(error.fieldErrors)) {
-        if (Array.isArray(messages) && messages.every(message => typeof message === 'string')) {
-          fieldErrors[field] = [...messages]
-        }
-      }
-    }
+    const fieldErrors = sanitizeOutreachValidationErrors(error.fieldErrors)
     return new OutreachApiError(error.kind as OutreachApiErrorKind, status, fieldErrors)
   }
   return mapOutreachApiError(error)
@@ -281,9 +457,10 @@ function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
   })
 }
 
-export function createOutreachCandidatePageController(
+function buildOutreachCandidatePageController(
   publicId: string,
   deps: OutreachCandidatePageDependencies,
+  createState: (initial: OutreachCandidatePageState) => OutreachCandidatePageState,
 ): OutreachCandidatePageController {
   let disposed = false
   let epoch = 0
@@ -295,7 +472,7 @@ export function createOutreachCandidatePageController(
   let draftUnsaved = false
   const activeRequests = new Set<AbortController>()
 
-  const state: OutreachCandidatePageState = {
+  const state = createState({
     candidate: null,
     load: 'idle',
     prospect_form: emptyProspectForm(),
@@ -346,7 +523,7 @@ export function createOutreachCandidatePageController(
         nowMs: deps.now(),
       })
     },
-  }
+  })
 
   function clearTimer(): void {
     if (timerHandle !== null) deps.clearTimeout(timerHandle)
@@ -394,13 +571,16 @@ export function createOutreachCandidatePageController(
   function adoptCandidate(candidate: OutreachCandidateDetail, options: AdoptOptions = {}): void {
     const previousRevision = state.candidate?.revision ?? null
     const revisionChanged = previousRevision !== null && previousRevision !== candidate.revision
+    const preserveSaveErrorValidation = !revisionChanged
+      && (state.prospect_edit === 'save_error' || state.draft_edit === 'save_error')
+    const previousValidationErrors = state.validation_errors
     state.candidate = candidate
     state.load = 'ready'
     state.load_error = null
     state.poll_error = null
-    state.validation_errors = {}
 
     if (options.explicit) {
+      state.validation_errors = {}
       state.prospect_form = prospectForm(candidate)
       state.draft_form = draftForm(candidate)
       state.prospect_edit = 'clean'
@@ -415,6 +595,10 @@ export function createOutreachCandidatePageController(
       state.refresh_required = false
       return
     }
+
+    state.validation_errors = preserveSaveErrorValidation
+      ? previousValidationErrors
+      : sanitizeOutreachValidationErrors(candidate.validation_errors)
 
     if (revisionChanged) resetRevisionConfirmations()
 
@@ -474,9 +658,9 @@ export function createOutreachCandidatePageController(
     try {
       const result = await request(transport => deps.api.getCandidate(publicId, transport))
       if (disposed || pollEpoch !== epoch) return
-      if (!isCandidate(result, publicId)) throw new OutreachApiError('server')
-      adoptCandidate(result)
-      if (result.effective_status === 'preview_generating') schedulePoll()
+      const candidate = parseCandidate(result, publicId)
+      adoptCandidate(candidate)
+      if (candidate.effective_status === 'preview_generating') schedulePoll()
       else stopPolling()
     }
     catch (error) {
@@ -561,8 +745,8 @@ export function createOutreachCandidatePageController(
     try {
       const result = await request(transport => deps.api.getCandidate(publicId, transport))
       if (disposed || refreshEpoch !== epoch) throw abortedError()
-      if (!isCandidate(result, publicId)) throw new OutreachApiError('server')
-      adoptCandidate(result, { explicit: true })
+      const candidate = parseCandidate(result, publicId)
+      adoptCandidate(candidate, { explicit: true })
       if (!isInitial) finishAction('refresh')
       updatePollingAfterAdoption(false)
     }
@@ -622,6 +806,7 @@ export function createOutreachCandidatePageController(
 
   function setProspectField(field: keyof OutreachProspectForm, value: string | null): void {
     ensureNoPendingAction()
+    if (state.prospect_edit === 'stale') throw localConflict()
     if (state.prospect_form[field] === value) return
     Object.assign(state.prospect_form, { [field]: value })
     state.prospect_edit = 'dirty'
@@ -633,6 +818,7 @@ export function createOutreachCandidatePageController(
 
   function setDraftField(field: keyof OutreachDraftForm, value: string): void {
     ensureNoPendingAction()
+    if (state.draft_edit === 'stale') throw localConflict()
     if (state.draft_form[field] === value) return
     state.draft_form[field] = value
     state.draft_edit = 'dirty'
@@ -661,13 +847,12 @@ export function createOutreachCandidatePageController(
       if (isRecord(result) && result.persistence_status === 'committed') {
         const recoveredId = validateCommittedRecovery(result as unknown as OutreachCommittedRecovery, publicId)
         committed = true
-        candidate = await request(transport => deps.api.getCandidate(recoveredId, transport))
+        candidate = parseCandidate(await request(transport => deps.api.getCandidate(recoveredId, transport)), publicId)
         if (disposed || actionEpoch !== epoch) throw abortedError()
       }
       else {
-        candidate = result as OutreachCandidateDetail
+        candidate = parseCandidate(result, publicId)
       }
-      if (!isCandidate(candidate, publicId)) throw new OutreachApiError('server')
       adoptCandidate(candidate, { submitted: options.submitted })
       if (options.resetApproval) {
         state.approval_english_plain_text = false
@@ -709,6 +894,10 @@ export function createOutreachCandidatePageController(
 
   async function saveProspect(): Promise<void> {
     const candidate = ensureCurrentCandidate()
+    if (prospectBaseRevision === null || prospectBaseRevision !== candidate.revision) {
+      state.prospect_edit = 'stale'
+      throw localConflict()
+    }
     if (
       candidate.campaign.status === 'archived'
       || candidate.effective_status === 'converted'
@@ -717,7 +906,7 @@ export function createOutreachCandidatePageController(
       throw localConflict()
     }
     const payload = {
-      expected_revision: candidate.revision,
+      expected_revision: prospectBaseRevision,
       source_attested: true as const,
       ...state.prospect_form,
     }
@@ -730,6 +919,10 @@ export function createOutreachCandidatePageController(
 
   async function saveDraft(): Promise<void> {
     const candidate = ensureCurrentCandidate()
+    if (draftBaseRevision === null || draftBaseRevision !== candidate.revision) {
+      state.draft_edit = 'stale'
+      throw localConflict()
+    }
     if (
       candidate.campaign.status === 'archived'
       || candidate.effective_status === 'converted'
@@ -737,7 +930,7 @@ export function createOutreachCandidatePageController(
     ) {
       throw localConflict()
     }
-    const payload = { expected_revision: candidate.revision, ...state.draft_form }
+    const payload = { expected_revision: draftBaseRevision, ...state.draft_form }
     await candidateMutation(
       'save_draft',
       transport => deps.api.updateDraft(publicId, payload, transport),
@@ -780,9 +973,12 @@ export function createOutreachCandidatePageController(
     if (candidate.campaign.status !== 'draft' || !state.campaign_activation_confirmed) throw localConflict()
     const actionEpoch = beginAction('activate_campaign')
     try {
-      const campaign = await request(transport => deps.api.updateCampaign(candidate.campaign.key, { status: 'active' }, transport))
+      const campaign = parseCampaign(
+        await request(transport => deps.api.updateCampaign(candidate.campaign.key, { status: 'active' }, transport)),
+        candidate.campaign.key,
+        'active',
+      )
       if (disposed || actionEpoch !== epoch) throw abortedError()
-      if (!isCampaign(campaign)) throw new OutreachApiError('server')
       if (state.candidate !== null) {
         state.candidate = {
           ...state.candidate,
@@ -896,15 +1092,13 @@ export function createOutreachCandidatePageController(
     const actionEpoch = beginAction('suppress')
     let committed = false
     try {
-      const result = await request(transport => deps.api.createSuppression(payload, transport))
+      parseSuppression(await request(transport => deps.api.createSuppression(payload, transport)))
       if (disposed || actionEpoch !== epoch) throw abortedError()
-      if (!isSuppression(result)) throw new OutreachApiError('server')
       committed = true
       state.suppression_draft = emptySuppressionDraft()
       const refreshed = await request(transport => deps.api.getCandidate(publicId, transport))
       if (disposed || actionEpoch !== epoch) throw abortedError()
-      if (!isCandidate(refreshed, publicId)) throw new OutreachApiError('server')
-      adoptCandidate(refreshed)
+      adoptCandidate(parseCandidate(refreshed, publicId))
       finishAction('suppress')
       updatePollingAfterAdoption(false)
     }
@@ -947,8 +1141,7 @@ export function createOutreachCandidatePageController(
       try {
         const refreshed = await request(transport => deps.api.getCandidate(publicId, transport))
         if (disposed || actionEpoch !== epoch) throw abortedError()
-        if (!isCandidate(refreshed, publicId)) throw new OutreachApiError('server')
-        adoptCandidate(refreshed)
+        adoptCandidate(parseCandidate(refreshed, publicId))
         finishAction('export')
         updatePollingAfterAdoption(false)
       }
@@ -1045,15 +1238,22 @@ export function createOutreachCandidatePageController(
   }
 }
 
+export function createOutreachCandidatePageController(
+  publicId: string,
+  deps: OutreachCandidatePageDependencies,
+): OutreachCandidatePageController {
+  return buildOutreachCandidatePageController(publicId, deps, initial => initial)
+}
+
 export function useOutreachCandidatePage(publicId: string): OutreachCandidatePageController {
   const api = useAdminOutreach()
-  const controller = createOutreachCandidatePageController(publicId, {
+  const controller = buildOutreachCandidatePageController(publicId, {
     api,
     now: () => Date.now(),
     setTimeout: (callback, delay) => globalThis.setTimeout(callback, delay) as unknown as number,
     clearTimeout: handle => globalThis.clearTimeout(handle),
     createAbortController: () => new AbortController(),
-  })
+  }, initial => reactive(initial) as OutreachCandidatePageState)
   onScopeDispose(controller.dispose)
   return controller
 }

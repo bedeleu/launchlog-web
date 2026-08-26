@@ -339,9 +339,8 @@ function errorData(error: Record<string, unknown>): Record<string, unknown> | nu
   return null
 }
 
-function validationFieldErrors(data: Record<string, unknown> | null): Record<string, string[]> {
-  if (data === null || !isRecord(data.errors)) return {}
-  const source = data.errors
+export function sanitizeOutreachValidationErrors(value: unknown): Record<string, string[]> {
+  if (!isRecord(value)) return {}
   const result: Record<string, string[]> = {}
   const orderedFields = [
     ...VALIDATION_FIELDS,
@@ -350,12 +349,16 @@ function validationFieldErrors(data: Record<string, unknown> | null): Record<str
 
   for (const field of orderedFields) {
     if (Object.keys(result).length >= 32) break
-    const messages = source[field]
+    const messages = value[field]
     if (Array.isArray(messages) && messages.some(message => typeof message === 'string')) {
       result[field] = ['Check this field.']
     }
   }
   return result
+}
+
+function validationFieldErrors(data: Record<string, unknown> | null): Record<string, string[]> {
+  return sanitizeOutreachValidationErrors(data?.errors)
 }
 
 export function mapOutreachApiError(error: unknown): OutreachApiError {
@@ -486,6 +489,7 @@ export function createAdminOutreachClient(deps: AdminOutreachClientDependencies)
       return await deps.fetch(`${base}${path}`, options) as T
     }
     catch (error) {
+      if (transport?.signal?.aborted) throw new OutreachApiError('aborted')
       throw mapOutreachApiError(error)
     }
   }
@@ -613,6 +617,7 @@ export function createAdminOutreachClient(deps: AdminOutreachClientDependencies)
       }
     }
     catch (error) {
+      if (transport?.signal?.aborted) throw new OutreachApiError('aborted')
       throw mapOutreachApiError(error)
     }
   }

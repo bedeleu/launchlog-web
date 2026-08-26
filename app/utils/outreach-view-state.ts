@@ -259,7 +259,9 @@ export function outreachViewState(input: OutreachViewStateInput): OutreachViewSt
       approve.push('invalid_draft')
       exportBlockers.push('invalid_draft')
     }
-    if (candidate.persisted_status !== 'ready_for_review') approve.push('approval_not_available')
+    if (candidate.persisted_status !== 'ready_for_review' || candidate.effective_status !== 'ready_for_review') {
+      approve.push('approval_not_available')
+    }
     if (!input.confirmations.approval_english_plain_text || !input.confirmations.approval_public_source) {
       approve.push('approval_confirmation_required')
     }
