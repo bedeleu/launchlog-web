@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { CustomerListing, CustomerListingStatus, CustomerListingUpdate } from '~/composables/useCustomerListings'
-import { receiptUnavailableLabel } from '~/utils/customer-receipt'
+import { receiptArtifactUrl, receiptRows, receiptUnavailableLabel } from '~/utils/customer-receipt'
 import { toErrorLike } from '~/utils/error-like'
 
 definePageMeta({ middleware: 'auth' })
@@ -53,13 +53,6 @@ const statusClasses: Record<CustomerListingStatus, string> = {
   spam: 'border-red-400/30 bg-red-400/10 text-red-300',
   rejected: 'border-red-400/30 bg-red-400/10 text-red-300',
 }
-
-const receiptRows = [
-  { key: 'published' as const, label: 'Public listing', linkKey: 'public_url' as const },
-  { key: 'schema' as const, label: 'Structured data', linkKey: 'public_url' as const },
-  { key: 'markdown' as const, label: 'Markdown response', linkKey: 'markdown_url' as const },
-  { key: 'llms' as const, label: 'AI discovery feed', linkKey: 'llms_url' as const },
-]
 
 function messageFrom(errorValue: unknown, fallback: string): string {
   const value = toErrorLike(errorValue)
@@ -395,13 +388,13 @@ const tierLabel = (tier: string | null | undefined): string => {
                 <span class="min-w-0 flex-1 text-sm text-white">{{ row.label }}</span>
                 <a
                   v-if="listing.receipt.checks[row.key]"
-                  :href="listing.receipt[row.linkKey]"
-                  :aria-label="`Open ${row.label} for ${listing.name}`"
+                  :href="receiptArtifactUrl(listing.receipt, row)"
+                  :aria-label="`${row.action} for ${listing.name}`"
                   target="_blank"
                   rel="noopener noreferrer"
                   class="rounded-sm text-xs font-medium text-brand-accent transition-colors hover:text-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent"
                 >
-                  Open
+                  {{ row.action }}
                 </a>
                 <span v-else class="text-xs text-brand-muted">{{ receiptUnavailableLabel(listing.status) }}</span>
               </li>

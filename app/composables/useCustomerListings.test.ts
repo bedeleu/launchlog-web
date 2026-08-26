@@ -27,7 +27,8 @@ const LISTING = {
   subscription: null,
   receipt: {
     public_url: 'https://launchlog.ai/listing/acme',
-    markdown_url: 'https://launchlog.ai/listing/acme',
+    schema_url: 'https://launchlog.ai/listing/acme/schema',
+    markdown_url: 'https://launchlog.ai/listing/acme/markdown',
     sitemap_url: 'https://launchlog.ai/sitemap.xml',
     llms_url: 'https://launchlog.ai/llms-full.txt',
     checks: { published: true, schema: true, markdown: true, llms: true },

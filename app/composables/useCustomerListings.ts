@@ -27,6 +27,7 @@ export interface CustomerListing {
   subscription: CustomerListingSubscription | null
   receipt: {
     public_url: string
+    schema_url?: string
     markdown_url: string
     sitemap_url: string
     llms_url: string
