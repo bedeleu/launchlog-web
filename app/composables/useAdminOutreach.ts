@@ -121,7 +121,7 @@ export interface OutreachAudit {
 
 export interface OutreachSuppression {
   kind: OutreachSuppressionKind
-  value: string
+  normalized_value: string
   reason: string
   source: OutreachSuppressionSource
   created_by: OutreachActorSummary | null

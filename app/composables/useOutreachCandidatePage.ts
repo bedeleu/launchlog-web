@@ -45,6 +45,7 @@ import { outreachViewState } from '../utils/outreach-view-state'
 const POLL_DELAY_MS = 1_800
 const GENERATION_WINDOW_MS = 10 * 60 * 1000
 const MAX_INTEGER = 2_147_483_647
+const EXPORT_HASH = /^[0-9a-f]{64}$/
 const CAMPAIGN_STATUSES = ['draft', 'active', 'archived'] as const
 const PERSISTED_STATUSES = ['draft', 'ready_for_review', 'approved', 'exported'] as const
 const EFFECTIVE_STATUSES = ['draft', 'preview_generating', 'ready_for_review', 'approved', 'exported', 'failed', 'expired', 'suppressed', 'converted'] as const
@@ -240,6 +241,12 @@ function nullableString(value: unknown): string | null {
   return value
 }
 
+function nullableExportHash(value: unknown): string | null {
+  if (value === null) return null
+  if (typeof value !== 'string' || !EXPORT_HASH.test(value)) invalidServerPayload()
+  return value
+}
+
 function boundedInteger(value: unknown): number {
   if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > MAX_INTEGER) {
     invalidServerPayload()
@@ -340,6 +347,13 @@ function projectValidationErrors(value: unknown): OutreachDraftValidationErrors 
     return []
   }
   if (!isRecord(value)) invalidServerPayload()
+  for (const field of ['subject_line', 'opening_line', 'email_body'] as const) {
+    if (!Object.prototype.hasOwnProperty.call(value, field)) continue
+    const messages = value[field]
+    if (!Array.isArray(messages) || messages.some(message => typeof message !== 'string')) {
+      invalidServerPayload()
+    }
+  }
   const sanitized = sanitizeOutreachValidationErrors(value)
   const projected: Partial<Record<keyof OutreachDraft, string[]>> = {}
   for (const field of ['subject_line', 'opening_line', 'email_body'] as const) {
@@ -353,7 +367,7 @@ function projectCandidateSuppression(value: unknown): OutreachCandidateSuppressi
   if (!Array.isArray(source.matched_targets)) invalidServerPayload()
   return {
     kind: literalValue<OutreachSuppressionKind>(source.kind, SUPPRESSION_KINDS),
-    value: stringValue(source.value),
+    normalized_value: stringValue(source.normalized_value),
     reason: stringValue(source.reason),
     source: literalValue<OutreachSuppressionSource>(source.source, SUPPRESSION_SOURCES),
     created_by: projectNullableActor(source.created_by),
@@ -371,7 +385,7 @@ function projectAudit(value: unknown): OutreachAudit {
     exported_at: nullableString(source.exported_at),
     exported_by: projectNullableActor(source.exported_by),
     export_count: boundedInteger(source.export_count),
-    last_export_hash: nullableString(source.last_export_hash),
+    last_export_hash: nullableExportHash(source.last_export_hash),
   }
 }
 
@@ -417,7 +431,7 @@ function parseSuppression(value: unknown): OutreachSuppression {
   const source = recordValue(value)
   return {
     kind: literalValue<OutreachSuppressionKind>(source.kind, SUPPRESSION_KINDS),
-    value: stringValue(source.value),
+    normalized_value: stringValue(source.normalized_value),
     reason: stringValue(source.reason),
     source: literalValue<OutreachSuppressionSource>(source.source, SUPPRESSION_SOURCES),
     created_by: projectNullableActor(source.created_by),
