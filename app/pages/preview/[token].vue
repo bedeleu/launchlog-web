@@ -8,7 +8,12 @@ import type { PlanTier } from '~/composables/usePlans'
 import type { Preview } from '~/composables/usePreviews'
 import { toErrorLike } from '~/utils/error-like'
 import { resolveCheckoutEmail } from '~/utils/checkout-customer'
-import { reconcileCancelledCheckout } from '~/utils/checkout-cancellation'
+import {
+  clearCheckoutReturnMarker,
+  hasCheckoutReturnMarker,
+  markCheckoutRedirect,
+  reconcileCancelledCheckout,
+} from '~/utils/checkout-cancellation'
 import { buildPreviewTextEdit, resolvePreviewCheckout } from '~/utils/preview-checkout'
 
 const route = useRoute()
@@ -75,6 +80,7 @@ const checkoutReserved = computed(() => preview.value?.checkout_reserved === tru
 const checkoutCancellationState = ref<'idle' | 'pending' | 'done' | 'error'>(
   route.query.checkout === 'cancelled' ? 'pending' : 'idle',
 )
+let checkoutCancellationRunning = false
 
 const status = computed(() => preview.value?.status)
 const isGenerating = computed(() => status.value === 'generating')
@@ -151,26 +157,49 @@ const recapture = async () => {
   }
 }
 
-const reconcileStripeBack = async () => {
-  if (route.query.checkout !== 'cancelled') return
+const checkoutReturnStorage = () => {
+  try {
+    return window.sessionStorage
+  }
+  catch {
+    return null
+  }
+}
 
+const reconcileStripeBack = async () => {
+  const returnedFromCheckout = route.query.checkout === 'cancelled'
+    || hasCheckoutReturnMarker(checkoutReturnStorage(), token)
+
+  if (!returnedFromCheckout || checkoutCancellationRunning) return
+
+  checkoutCancellationRunning = true
   checkoutCancellationState.value = 'pending'
   const result = await reconcileCancelledCheckout({
     returnedFromCheckout: true,
-    checkoutReserved: checkoutReserved.value,
+    refresh: () => getPreview(token),
+    isCheckoutReserved: current => current.checkout_reserved === true,
     cancel: () => cancelPreviewCheckout(token),
-    clearCancelledQuery: async () => {
-      const query = { ...route.query }
-      delete query.checkout
-      await router.replace({ query })
+    clearReturnState: async () => {
+      if (route.query.checkout === 'cancelled') {
+        const query = { ...route.query }
+        delete query.checkout
+        await router.replace({ query })
+      }
+      clearCheckoutReturnMarker(checkoutReturnStorage(), token)
     },
   })
 
   if (result.state === 'done' && result.preview) applyPreview(result.preview)
   checkoutCancellationState.value = result.state === 'idle' ? 'idle' : result.state
+  checkoutCancellationRunning = false
+}
+
+const handlePageShow = () => {
+  void reconcileStripeBack()
 }
 
 onMounted(() => {
+  window.addEventListener('pageshow', handlePageShow)
   void reconcileStripeBack()
 
   if (isGenerating.value) {
@@ -197,6 +226,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('pageshow', handlePageShow)
   if (slowGenerationTimer) clearTimeout(slowGenerationTimer)
 })
 
@@ -261,6 +291,7 @@ const payAndPublish = async () => {
     }
 
     redirecting = true
+    markCheckoutRedirect(checkoutReturnStorage(), token)
     window.location.href = session.url
   }
   catch (e: unknown) {

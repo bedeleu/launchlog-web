@@ -5,27 +5,61 @@ export type CheckoutCancellationResult<T> =
 
 interface ReconcileCancelledCheckoutOptions<T> {
   returnedFromCheckout: boolean
-  checkoutReserved: boolean
+  refresh: () => Promise<T>
+  isCheckoutReserved: (preview: T) => boolean
   cancel: () => Promise<T>
-  clearCancelledQuery: () => Promise<void>
+  clearReturnState: () => Promise<void>
+}
+
+interface CheckoutReturnStorage {
+  getItem: (key: string) => string | null
+  setItem: (key: string, value: string) => void
+  removeItem: (key: string) => void
+}
+
+export const checkoutReturnMarkerKey = (token: string) => `launchlog:checkout-return:${token}`
+
+export const markCheckoutRedirect = (storage: CheckoutReturnStorage | null, token: string) => {
+  try {
+    storage?.setItem(checkoutReturnMarkerKey(token), '1')
+  }
+  catch {
+    // Stripe's explicit cancel URL remains the fallback when storage is blocked.
+  }
+}
+
+export const hasCheckoutReturnMarker = (storage: CheckoutReturnStorage | null, token: string) => {
+  try {
+    return storage?.getItem(checkoutReturnMarkerKey(token)) === '1'
+  }
+  catch {
+    return false
+  }
+}
+
+export const clearCheckoutReturnMarker = (storage: CheckoutReturnStorage | null, token: string) => {
+  try {
+    storage?.removeItem(checkoutReturnMarkerKey(token))
+  }
+  catch {
+    // A stale marker is harmless: the next reconciliation refreshes first.
+  }
 }
 
 export const reconcileCancelledCheckout = async <T>({
   returnedFromCheckout,
-  checkoutReserved,
+  refresh,
+  isCheckoutReserved,
   cancel,
-  clearCancelledQuery,
+  clearReturnState,
 }: ReconcileCancelledCheckoutOptions<T>): Promise<CheckoutCancellationResult<T>> => {
   if (!returnedFromCheckout) return { state: 'idle' }
 
   try {
-    if (!checkoutReserved) {
-      await clearCancelledQuery()
-      return { state: 'done' }
-    }
+    const current = await refresh()
+    const preview = isCheckoutReserved(current) ? await cancel() : current
 
-    const preview = await cancel()
-    await clearCancelledQuery()
+    await clearReturnState()
 
     return { state: 'done', preview }
   }
