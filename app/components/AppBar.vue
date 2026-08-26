@@ -15,6 +15,7 @@ const nav = [
   { label: 'Featured', to: '/featured' },
   { label: 'Pricing', to: '/pricing' },
   { label: 'Blog', to: '/blog' },
+  { label: 'Contact', to: '/contact' },
 ]
 
 const isActive = (to: string) =>

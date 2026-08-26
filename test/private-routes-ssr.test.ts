@@ -197,6 +197,16 @@ describe.skipIf(!isBuilt)('excluded routes are immune to path casing', () => {
     expect(canonicalOf(html)).toBe('https://launchlog.ai/about')
   })
 
+  test('the public header links directly to Contact', async () => {
+    const response = await fetch(`${BASE}/`)
+    const html = await response.text()
+    const header = html.match(/<header[\s\S]*?<\/header>/)?.[0] ?? ''
+
+    expect(response.status).toBe(200)
+    expect(header).toContain('href="/contact"')
+    expect(header).toContain('>Contact</a>')
+  })
+
   // Every public page had the same duplicate surface, not just the excluded ones.
   test('a mis-cased public route is not an indexable duplicate either', async () => {
     for (const path of ['/About', '/ABOUT']) {
