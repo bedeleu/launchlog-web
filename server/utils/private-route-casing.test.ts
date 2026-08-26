@@ -28,6 +28,26 @@ describe('canonicalPrivatePath', () => {
     expect(canonicalPrivatePath('/Checkout/Success')).toBe('/checkout/success')
   })
 
+  test('canonicalises only the static outreach prefix while preserving an opaque candidate id', () => {
+    const canonicalId = '01ARZ3NDEKTSV4RRFFQ69G5FAV'
+    const lowercaseId = '01arz3ndektsv4rrffq69g5fav'
+    const mixedId = '01ArZ3NDEKTSV4RRFFQ69G5FAV'
+
+    expect(canonicalPrivatePath(`/Admin/Outreach/${canonicalId}`)).toBe(`/admin/outreach/${canonicalId}`)
+    expect(canonicalPrivatePath(`/ADMIN/OUTREACH/${lowercaseId}`)).toBe(`/admin/outreach/${lowercaseId}`)
+    expect(canonicalPrivatePath(`/aDmIn/oUtReAcH/${mixedId}`)).toBe(`/admin/outreach/${mixedId}`)
+    expect(canonicalPrivatePath(`/admin/outreach/${canonicalId}`)).toBeNull()
+    expect(canonicalPrivatePath(`/admin/outreach/${lowercaseId}`)).toBeNull()
+    expect(canonicalPrivatePath('/Admin/Outreach/not-a-candidate')).toBe('/admin/outreach/not-a-candidate')
+  })
+
+  test('treats new as a static outreach route without rewriting a detail id alias', () => {
+    expect(canonicalPrivatePath('/Admin/Outreach/NEW')).toBe('/admin/outreach/new')
+    expect(canonicalPrivatePath('/admin/outreach/NEW')).toBe('/admin/outreach/new')
+    expect(canonicalPrivatePath('/admin/outreach/new')).toBeNull()
+    expect(canonicalPrivatePath('/admin/outreach/NewCandidate')).toBeNull()
+  })
+
   // The segment after /preview is a case-sensitive credential, not a route name. Lowercasing it
   // would hand the visitor a token that no longer resolves.
   test('never rewrites the preview token', () => {

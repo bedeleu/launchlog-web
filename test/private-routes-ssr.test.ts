@@ -49,6 +49,12 @@ function isDeindexed(response: Response, html: string): boolean {
   return /noindex/i.test(header) || /noindex/i.test(meta)
 }
 
+function expectPrivateHeaders(response: Response): void {
+  expect(response.headers.get('x-robots-tag')).toBe('noindex, nofollow')
+  expect(response.headers.get('cache-control')).toBe('private, no-store')
+  expect(response.headers.get('referrer-policy')).toBe('no-referrer')
+}
+
 /**
  * The contract for a mis-cased URL: it may never be a live, indexable duplicate of the canonical
  * lowercase route. Either outcome is accepted — a deindexed 404, or a permanent redirect to the
@@ -90,6 +96,7 @@ describe.skipIf(!isBuilt)('excluded routes are immune to path casing', () => {
         ...process.env,
         PORT: String(SERVER_PORT),
         NITRO_PORT: String(SERVER_PORT),
+        NUXT_PUBLIC_API_URL: 'http://127.0.0.1:1',
         // A closed port makes /blog fail upstream, which is the cheapest way to render a real
         // 503 through app/error.vue and assert it is NOT deindexed.
         NUXT_PUBLIC_WORDPRESS_BLOG_URL: 'http://127.0.0.1:1',
@@ -110,6 +117,7 @@ describe.skipIf(!isBuilt)('excluded routes are immune to path casing', () => {
     const html = await response.text()
 
     expect(response.status).toBe(200)
+    expectPrivateHeaders(response)
     expect(isDeindexed(response, html)).toBe(true)
   })
 
@@ -118,7 +126,57 @@ describe.skipIf(!isBuilt)('excluded routes are immune to path casing', () => {
     const html = await response.text()
 
     expect(response.status).toBe(200)
+    expectPrivateHeaders(response)
     expect(isDeindexed(response, html)).toBe(true)
+  })
+
+  test('every outreach workspace route is private, no-store, and no-referrer', async () => {
+    const candidateId = '01ARZ3NDEKTSV4RRFFQ69G5FAV'
+
+    for (const path of ['/admin/outreach', '/admin/outreach/new', `/admin/outreach/${candidateId}`]) {
+      const response = await fetch(`${BASE}${path}`)
+      const html = await response.text()
+
+      expect(response.status).toBe(200)
+      expectPrivateHeaders(response)
+      expect(isDeindexed(response, html)).toBe(true)
+      expect(canonicalOf(html)).toBeNull()
+    }
+  })
+
+  test('outreach casing redirects only static segments and preserves opaque ids and query bytes', async () => {
+    const candidateId = '01ARZ3NDEKTSV4RRFFQ69G5FAV'
+    const cases = [
+      ['/Admin/Outreach?status=failed', '/admin/outreach?status=failed'],
+      ['/Admin/Outreach/NEW?campaign_key=founders', '/admin/outreach/new?campaign_key=founders'],
+      [`/Admin/Outreach/${candidateId}?view=audit`, `/admin/outreach/${candidateId}?view=audit`],
+    ] as const
+
+    for (const [path, location] of cases) {
+      const response = await fetch(`${BASE}${path}`, { redirect: 'manual' })
+
+      expect([301, 308]).toContain(response.status)
+      expect(response.headers.get('location')).toBe(location)
+    }
+  })
+
+  test('canonical routing preserves noncanonical opaque candidate ids for local page rejection', async () => {
+    for (const id of ['01arz3ndektsv4rrffq69g5fav', '01ArZ3NDEKTSV4RRFFQ69G5FAV', 'not-a-candidate']) {
+      const response = await fetch(`${BASE}/Admin/Outreach/${id}`, { redirect: 'manual' })
+
+      expect([301, 308]).toContain(response.status)
+      expect(response.headers.get('location')).toBe(`/admin/outreach/${id}`)
+    }
+  })
+
+  test('admin outreach remains absent from generated discovery output', async () => {
+    const response = await fetch(`${BASE}/sitemap.xml`)
+    const xml = await response.text()
+
+    expect(response.status).toBe(200)
+    expect(xml).toContain('https://launchlog.ai/about')
+    expect(xml).not.toContain('/admin')
+    expect(xml).not.toContain('/admin/outreach')
   })
 
   // The advisory: route rules were silently dropped for mixed-case paths, so /Admin rendered a
