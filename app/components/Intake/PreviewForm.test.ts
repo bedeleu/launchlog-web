@@ -19,7 +19,10 @@ const passthrough = (tag: string) => defineComponent({
   setup: (_props, { attrs, slots }) => () => h(tag, attrs, slots.default?.() ?? []),
 })
 
-const renderForm = async (existingListing: Record<string, unknown> | null) => {
+const renderForm = async (
+  existingListing: Record<string, unknown> | null,
+  submitting = false,
+) => {
   const draft = { token: 'p'.repeat(64), domain: 'maker.example' }
   const app = createSSRApp({
     render,
@@ -30,7 +33,7 @@ const renderForm = async (existingListing: Record<string, unknown> | null) => {
       intake: { latestDraft: draft },
       errors: {},
       serverError: null,
-      submitting: false,
+      submitting,
       url: 'https://maker.example',
       urlAttrs: {},
       onSubmit: () => undefined,
@@ -57,7 +60,23 @@ describe('PreviewForm existing-listing state', () => {
     })
 
     expect(html).toContain('Already on LaunchLog')
+    expect(html).toContain('View it')
+    expect(html).toContain('to="/listing/maker-example"')
     expect(html).not.toContain('Already generated a preview?')
     expect(html).not.toContain(`preview/${'p'.repeat(64)}`)
+  })
+
+  test('keeps the primary CTA width stable while checking the website', async () => {
+    const [idle, loading] = await Promise.all([
+      renderForm(null),
+      renderForm(null, true),
+    ])
+
+    expect(idle).toContain('Preview my listing')
+    expect(loading).toContain('Checking website…')
+    expect(idle).toContain('w-full')
+    expect(idle).toContain('sm:w-48')
+    expect(loading).toContain('w-full')
+    expect(loading).toContain('sm:w-48')
   })
 })

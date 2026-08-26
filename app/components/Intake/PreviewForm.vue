@@ -87,7 +87,7 @@ const onSubmit = handleSubmit(async (values) => {
         :disabled="submitting"
         class="h-12 flex-1 text-base"
       />
-      <Button type="submit" size="lg" class="h-12 px-6" :disabled="submitting">
+      <Button type="submit" size="lg" class="h-12 w-full px-6 sm:w-48" :disabled="submitting">
         <AppSpinner v-if="submitting" color="text-current" />
         {{ submitting ? 'Checking website…' : 'Preview my listing' }}
       </Button>
@@ -139,7 +139,7 @@ const onSubmit = handleSubmit(async (values) => {
           :to="existingListing.listing_path"
           class="inline-flex h-10 items-center justify-center rounded-md border border-brand-border px-4 text-sm font-medium text-brand-fg transition-colors hover:border-brand-accent/50 hover:bg-white/[0.04]"
         >
-          View listing
+          View it
         </NuxtLink>
       </div>
     </section>
