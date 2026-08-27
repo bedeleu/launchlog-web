@@ -42,19 +42,40 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Brand palette per BRAND-GUIDELINES.md / D-006 (clone BacklinkLog aesthetic).
- *
- * Namespaced under --color-brand-* to avoid collision with shadcn-vue's @theme inline
- * block below, which redefines --color-accent, --color-muted, --color-primary etc. as
- * aliases of the shadcn :root/.dark CSS variables (oklch grayscale). The brand-* tokens
- * stay literal so utilities like text-brand-accent, bg-brand-bg, focus:border-brand-accent
- * render the actual PRD palette regardless of mode. */
+/* Release Catalog material palette. Public screenshots keep their own colour;
+ * LaunchLog's interface uses ink, paper, blaze and signal as editorial materials. */
+:root {
+  --release-ink: #080907;
+  --release-rail: #11130f;
+  --release-paper: #e8e0cf;
+  --release-paper-muted: #c9c0ae;
+  --release-blaze: #ff4b1f;
+  --release-signal: #24c58b;
+  --release-warning: #f4b33c;
+  --release-destructive: #e44c3f;
+  --release-seam: rgba(232, 224, 207, 0.18);
+  --release-focus: #ffbf29;
+}
+
 @theme {
-  --color-brand-bg: #0A0E1A;
-  --color-brand-fg: #FFFFFF;
-  --color-brand-accent: #6366F1;
-  --color-brand-success: #10B981;
-  --color-brand-warning: #F59E0B;
+  --color-release-ink: var(--release-ink);
+  --color-release-rail: var(--release-rail);
+  --color-release-paper: var(--release-paper);
+  --color-release-paper-muted: var(--release-paper-muted);
+  --color-release-blaze: var(--release-blaze);
+  --color-release-signal: var(--release-signal);
+  --color-release-warning: var(--release-warning);
+  --color-release-destructive: var(--release-destructive);
+  --color-release-seam: var(--release-seam);
+  --color-release-focus: var(--release-focus);
+
+  /* Compatibility aliases keep existing surfaces coherent while each phase
+     moves to the explicit material tokens above. */
+  --color-brand-bg: var(--release-ink);
+  --color-brand-fg: #f6f1e7;
+  --color-brand-accent: var(--release-blaze);
+  --color-brand-success: var(--release-signal);
+  --color-brand-warning: var(--release-warning);
   /* 5.12:1 on --color-brand-bg, clearing WCAG AA 4.5:1 for normal text.
      Was #6B7280 at 3.98:1, which failed AA everywhere it was used as body text.
      Opacity variants do NOT clear AA: /80 is 3.65:1 and /60 is 2.57:1. Every /80 use
@@ -62,8 +83,8 @@
      legal "On this page" label) and has been raised to full opacity. The three
      surviving /60 uses are two SVG icons and an input placeholder, which are not
      body text. Do not reintroduce an opacity variant for anything a user reads. */
-  --color-brand-muted: #7C8493;
-  --color-brand-border: rgba(255,255,255,0.08);
+  --color-brand-muted: var(--release-paper-muted);
+  --color-brand-border: var(--release-seam);
 
   --font-sans: "Geist Variable", "Inter", system-ui, sans-serif;
   --font-mono: "Geist Mono Variable", "JetBrains Mono", ui-monospace, monospace;
@@ -144,24 +165,24 @@
 }
 
 .dark {
-  --background: oklch(0.141 0.005 285.823);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.21 0.006 285.885);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.21 0.006 285.885);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.92 0.004 286.32);
-  --primary-foreground: oklch(0.21 0.006 285.885);
-  --secondary: oklch(0.274 0.006 286.033);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.705 0.015 286.067);
-  --accent: oklch(0.274 0.006 286.033);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.552 0.016 285.938);
+  --background: var(--release-ink);
+  --foreground: #f6f1e7;
+  --card: var(--release-rail);
+  --card-foreground: #f6f1e7;
+  --popover: #171914;
+  --popover-foreground: #f6f1e7;
+  --primary: var(--release-paper);
+  --primary-foreground: var(--release-ink);
+  --secondary: #171914;
+  --secondary-foreground: var(--release-paper);
+  --muted: #171914;
+  --muted-foreground: var(--release-paper-muted);
+  --accent: #1d1f19;
+  --accent-foreground: var(--release-paper);
+  --destructive: var(--release-destructive);
+  --border: var(--release-seam);
+  --input: rgba(232, 224, 207, 0.22);
+  --ring: var(--release-focus);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
