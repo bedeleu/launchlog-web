@@ -13,7 +13,7 @@ const sections = [
     title: 'Browser storage in the current app',
     blocks: [
       { type: 'p', text: 'Cookies and local storage are browser technologies used to retain data between page loads. The current LaunchLog web code relies on browser storage for authentication continuity, email-link completion and private-preview drafts.' },
-      { type: 'p', text: 'The current application does not include an advertising tracker or a dedicated first-party analytics script.' },
+      { type: 'p', text: 'The application includes no advertising tracker. It uses Plausible Analytics, a first-party, cookieless analytics script that sets no cookies.' },
     ],
   },
   {
@@ -40,7 +40,7 @@ const sections = [
     id: 'analytics',
     title: 'Analytics',
     blocks: [
-      { type: 'p', text: 'Although a runtime configuration field exists for a future analytics domain, the current web application does not load Plausible or another dedicated analytics script.' },
+      { type: 'p', text: 'The application loads Plausible Analytics from a first-party subdomain. It is cookieless and privacy-preserving: it sets no cookies and requires no consent banner.' },
     ],
   },
   {

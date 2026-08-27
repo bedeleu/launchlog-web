@@ -69,6 +69,9 @@ export default defineNuxtConfig({
         appId: process.env.NUXT_PUBLIC_FIREBASE_APP_ID,
       },
       plausibleDomain: process.env.NUXT_PUBLIC_PLAUSIBLE_DOMAIN,
+      // Full URL of the self-hosted Plausible per-site script (pa-<id>.js).
+      // Empty renders no analytics tag at all — non-prod builds stay clean.
+      plausibleSrc: process.env.NUXT_PUBLIC_PLAUSIBLE_SRC || '',
       wordpressBlogUrl: process.env.NUXT_PUBLIC_WORDPRESS_BLOG_URL || 'https://blog.launchlog.ai',
     },
   },

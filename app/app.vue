@@ -79,10 +79,29 @@ useSeoMeta({
   ),
 })
 
+// Self-hosted Plausible (cookieless, first-party). Injected only when the
+// script URL is configured, so non-prod builds render no analytics tag. The
+// init stub defines the queue + calls init before the async script loads; the
+// pa-<id>.js script encodes the site, so no data-domain is needed.
+const plausibleScript = computed(() => {
+  const src = config.public.plausibleSrc
+  if (!src) return []
+
+  return [
+    { src, async: true, 'data-plausible': 'launchlog' },
+    {
+      key: 'plausible-init',
+      innerHTML:
+        'window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init()',
+    },
+  ]
+})
+
 useHead({
   htmlAttrs: {
     lang: 'en',
   },
+  script: plausibleScript,
   link: [
     {
       rel: 'preload',
