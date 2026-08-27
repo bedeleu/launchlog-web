@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { Check, CircleDashed, CreditCard, ExternalLink, LogOut, Save } from '@lucide/vue'
+import { Check, CircleDashed, CreditCard, ExternalLink, FileDiff, LogOut, Save } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { CustomerListing, CustomerListingStatus, CustomerListingUpdate } from '~/composables/useCustomerListings'
+import type { AiEnrichmentField, AiEnrichmentProposal } from '~/composables/useAiEnrichment'
 import { receiptArtifactUrl, receiptRows, receiptUnavailableLabel } from '~/utils/customer-receipt'
 import { toErrorLike } from '~/utils/error-like'
 
@@ -12,6 +13,7 @@ useHead({ title: 'Your launches · LaunchLog', meta: [{ name: 'robots', content:
 
 const { user, logout, waitForAuthReady } = useAuth()
 const { list, update, billingPortal } = useCustomerListings()
+const { generateOwnerProposal, applyOwnerProposal, rejectOwnerProposal } = useAiEnrichment()
 const {
   listings,
   drafts,
@@ -34,6 +36,8 @@ const loading = ref(true)
 const error = ref<string | null>(null)
 const authReady = ref(false)
 const signingOut = ref(false)
+const aiProposals = reactive<Record<string, AiEnrichmentProposal | null>>({})
+const aiBusyIds = reactive(new Set<string>())
 let dashboardGeneration = 0
 
 const statusLabels: Record<CustomerListingStatus, string> = {
@@ -145,6 +149,55 @@ async function manageBilling(listing: CustomerListing) {
   }
   finally {
     finishBilling(listing.id)
+  }
+}
+
+async function generateAiDraft(listing: CustomerListing) {
+  if (aiBusyIds.has(listing.id)) return
+  aiBusyIds.add(listing.id)
+  actionErrors[listing.id] = null
+  try {
+    aiProposals[listing.id] = await generateOwnerProposal(listing.id)
+  }
+  catch (proposalError: unknown) {
+    actionErrors[listing.id] = messageFrom(proposalError, 'The grounded AI draft could not be prepared.')
+  }
+  finally {
+    aiBusyIds.delete(listing.id)
+  }
+}
+
+async function applyAiDraft(listing: CustomerListing, fields: AiEnrichmentField[]) {
+  const proposal = aiProposals[listing.id]
+  if (!proposal || aiBusyIds.has(listing.id)) return
+  aiBusyIds.add(listing.id)
+  actionErrors[listing.id] = null
+  try {
+    await applyOwnerProposal(proposal.id, fields)
+    aiProposals[listing.id] = null
+    await loadListings()
+  }
+  catch (proposalError: unknown) {
+    actionErrors[listing.id] = messageFrom(proposalError, 'The selected suggestions could not be applied.')
+  }
+  finally {
+    aiBusyIds.delete(listing.id)
+  }
+}
+
+async function rejectAiDraft(listing: CustomerListing) {
+  const proposal = aiProposals[listing.id]
+  if (!proposal || aiBusyIds.has(listing.id)) return
+  aiBusyIds.add(listing.id)
+  try {
+    await rejectOwnerProposal(proposal.id)
+    aiProposals[listing.id] = null
+  }
+  catch (proposalError: unknown) {
+    actionErrors[listing.id] = messageFrom(proposalError, 'The draft could not be dismissed.')
+  }
+  finally {
+    aiBusyIds.delete(listing.id)
   }
 }
 
@@ -305,13 +358,31 @@ const tierLabel = (tier: string | null | undefined): string => {
                   Listing details
                 </p>
                 <p class="mt-1 text-xs text-brand-muted">
-                  Only these three public fields can be changed here.
+                  Edit the three core text fields here. AI suggestions can also propose category, logo, and social links, each requiring your review.
                 </p>
               </div>
-              <span v-if="savedIds.has(listing.id)" class="text-xs font-medium text-brand-success" role="status">
-                Saved
-              </span>
+              <div class="flex flex-wrap items-center justify-end gap-3">
+                <span v-if="savedIds.has(listing.id)" class="text-xs font-medium text-brand-success" role="status">Saved</span>
+                <Button type="button" size="sm" variant="outline" :disabled="aiBusyIds.has(listing.id)" @click="generateAiDraft(listing)">
+                  <AppSpinner v-if="aiBusyIds.has(listing.id) && !aiProposals[listing.id]" color="text-current" label="Preparing grounded draft" />
+                  <FileDiff v-else aria-hidden="true" />
+                  {{ aiBusyIds.has(listing.id) && !aiProposals[listing.id] ? 'Preparing…' : 'Draft with AI' }}
+                </Button>
+              </div>
             </div>
+
+            <AiProposalReview
+              v-if="aiProposals[listing.id]"
+              class="mt-6"
+              :current="aiProposals[listing.id]!.current"
+              :proposed="aiProposals[listing.id]!.proposed"
+              :evidence="aiProposals[listing.id]!.evidence"
+              :category-requires-approval="aiProposals[listing.id]!.category.requires_approval"
+              :busy="aiBusyIds.has(listing.id)"
+              mode="owner"
+              @apply="fields => applyAiDraft(listing, fields)"
+              @reject="rejectAiDraft(listing)"
+            />
 
             <div v-if="drafts[listing.id]" class="mt-6 space-y-5">
               <div class="space-y-2">

@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { PlanTier } from '~/composables/usePlans'
 import type { Preview } from '~/composables/usePreviews'
+import type { AiEnrichmentField, PreviewAiSuggestion } from '~/composables/useAiEnrichment'
 import { toErrorLike } from '~/utils/error-like'
 import { resolveCheckoutEmail } from '~/utils/checkout-customer'
 import {
@@ -16,6 +17,7 @@ import {
 } from '~/utils/checkout-cancellation'
 import { buildPreviewTextEdit, resolvePreviewCheckout } from '~/utils/preview-checkout'
 import { resolvePreviewPublishingMode } from '~/utils/preview-publishing'
+import { previewEditFromSuggestion } from '~/utils/ai-enrichment-review'
 
 const route = useRoute()
 const router = useRouter()
@@ -25,6 +27,7 @@ const { createSession } = useBilling()
 const { user, waitForAuthReady, isAdmin: resolveIsAdmin } = useAuth()
 const { publishPreview: publishAdminPreview } = useAdminListings()
 const { findPlan } = usePlans()
+const { suggestPreview } = useAiEnrichment()
 const intake = useIntakeStore()
 
 // Private artifact — must never be indexed (D-057).
@@ -64,7 +67,11 @@ const form = reactive({
   tagline: draft.value?.tagline ?? preview.value?.tagline ?? '',
   description: draft.value?.description ?? preview.value?.description ?? '',
 })
+const primaryCategoryId = ref<string | null>(preview.value?.primary_category_id ?? null)
 const showEdit = ref(false)
+const aiSuggestion = ref<PreviewAiSuggestion | null>(null)
+const aiBusy = ref(false)
+const aiError = ref<string | null>(null)
 
 // Account: email only. The account itself is created server-side after the
 // payment webhook (D-057) — no password, no coupon, nothing to fill in twice.
@@ -114,6 +121,7 @@ const applyPreview = (next: Preview) => {
   if (!form.title && next.title) form.title = next.title
   if (!form.tagline && next.tagline) form.tagline = next.tagline
   if (!form.description && next.description) form.description = next.description
+  if (!primaryCategoryId.value && next.primary_category_id) primaryCategoryId.value = next.primary_category_id
   if (next.checkout_reserved) {
     const savedCheckout = resolvePreviewCheckout({
       checkoutReserved: true,
@@ -266,6 +274,52 @@ const checkoutError = ref<string | null>(null)
 const adminPublishPending = ref(false)
 const adminPublishError = ref<string | null>(null)
 
+const generateAiSuggestion = async () => {
+  if (aiBusy.value) return
+  aiBusy.value = true
+  aiError.value = null
+  try {
+    aiSuggestion.value = await suggestPreview(token)
+  }
+  catch (e: unknown) {
+    aiError.value = toErrorLike(e).data?.message ?? 'The AI draft could not be prepared. Your current preview is unchanged.'
+  }
+  finally {
+    aiBusy.value = false
+  }
+}
+
+const acceptAiSuggestion = async (fields: AiEnrichmentField[]) => {
+  if (!aiSuggestion.value || aiBusy.value) return
+  aiBusy.value = true
+  aiError.value = null
+  const next = previewEditFromSuggestion({
+    title: form.title,
+    tagline: form.tagline,
+    description: form.description,
+    primary_category_id: primaryCategoryId.value,
+  }, aiSuggestion.value.proposed, fields)
+  try {
+    applyPreview(await updatePreview(token, {
+      title: next.title || null,
+      tagline: next.tagline || null,
+      description: next.description || null,
+      primary_category_id: next.primary_category_id,
+    }))
+    form.title = next.title
+    form.tagline = next.tagline
+    form.description = next.description
+    primaryCategoryId.value = next.primary_category_id
+    aiSuggestion.value = null
+  }
+  catch (e: unknown) {
+    aiError.value = toErrorLike(e).data?.message ?? 'The selected suggestions could not be saved. Your current preview is unchanged.'
+  }
+  finally {
+    aiBusy.value = false
+  }
+}
+
 // Payment is blocked only by things that genuinely prevent checkout. A missing
 // or failed screenshot never blocks it — the API decides whether the remaining
 // data can be published, and the screenshot can be recaptured afterwards.
@@ -300,7 +354,7 @@ const publishAsAdmin = async () => {
       applyPreview(await cancelPreviewCheckout(token))
     }
 
-    await updatePreview(token, buildPreviewTextEdit(form))
+    await updatePreview(token, { ...buildPreviewTextEdit(form), primary_category_id: primaryCategoryId.value })
     const listing = await publishAdminPreview(token, selectedTier.value)
     await navigateTo(`/admin/listings/${listing.id}`)
   }
@@ -328,7 +382,7 @@ const payAndPublish = async () => {
 
   try {
     // Save first: if the edits cannot be persisted, no session is created.
-    await updatePreview(token, buildPreviewTextEdit(form))
+    await updatePreview(token, { ...buildPreviewTextEdit(form), primary_category_id: primaryCategoryId.value })
 
     // The resolved address always travels to useBilling; useBilling alone
     // decides what reaches the wire, so the page's view of "signed in" and the
@@ -539,6 +593,14 @@ watch(
               >
                 {{ recapturing ? 'Starting new capture…' : 'Screenshot not right? Capture again' }}
               </button>
+              <button
+                type="button"
+                class="text-xs font-medium text-brand-accent underline underline-offset-4 transition-colors hover:text-indigo-300 disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="aiBusy"
+                @click="generateAiSuggestion"
+              >
+                {{ aiBusy ? 'Preparing grounded draft…' : 'Improve draft with AI' }}
+              </button>
             </div>
             <p v-if="recaptureError && hasScreenshot" class="mt-2 text-xs text-brand-warning" role="alert">
               {{ recaptureError }}
@@ -564,6 +626,19 @@ watch(
                 />
               </div>
             </div>
+            <p v-if="aiError" class="mt-3 text-sm text-brand-warning" role="alert">{{ aiError }}</p>
+            <AiProposalReview
+              v-if="aiSuggestion"
+              class="mt-4"
+              :current="aiSuggestion.current"
+              :proposed="aiSuggestion.proposed"
+              :evidence="aiSuggestion.evidence"
+              :allowed-fields="['name', 'tagline', 'description', 'category']"
+              mode="preview"
+              :busy="aiBusy"
+              @apply="acceptAiSuggestion"
+              @reject="aiSuggestion = null"
+            />
           </div>
         </div>
 

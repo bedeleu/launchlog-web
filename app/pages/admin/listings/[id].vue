@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button'
 import type { AdminCategory, AdminListing } from '~/composables/useAdminListings'
+import type { AiEnrichmentField, AiEnrichmentProposal } from '~/composables/useAiEnrichment'
 import { toErrorLike } from '~/utils/error-like'
 
 definePageMeta({ middleware: 'admin' })
@@ -9,6 +10,7 @@ useHead({ title: 'Admin · Edit listing', meta: [{ name: 'robots', content: 'noi
 const route = useRoute()
 const id = route.params.id as string
 const { get, categories, update, publish, unpublish, reject } = useAdminListings()
+const { generateAdminProposal, applyAdminProposal, rejectAdminProposal, approveAdminCategory } = useAiEnrichment()
 
 const listing = ref<AdminListing | null>(null)
 const categoryOptions = ref<AdminCategory[]>([])
@@ -17,6 +19,8 @@ const submitting = ref(false)
 const actionBusy = ref<'publish' | 'unpublish' | 'reject' | null>(null)
 const error = ref<string | null>(null)
 const saved = ref(false)
+const aiProposal = ref<AiEnrichmentProposal | null>(null)
+const aiBusy = ref(false)
 
 function errorMessage(e: unknown, fallback: string): string {
   const err = toErrorLike(e)
@@ -70,6 +74,69 @@ async function act(verb: 'publish' | 'unpublish' | 'reject') {
   }
 }
 
+async function generateAiDraft() {
+  if (aiBusy.value) return
+  aiBusy.value = true
+  error.value = null
+  try {
+    aiProposal.value = await generateAdminProposal(id)
+  }
+  catch (e: unknown) {
+    error.value = errorMessage(e, 'The grounded AI draft could not be prepared.')
+  }
+  finally {
+    aiBusy.value = false
+  }
+}
+
+async function applyAiDraft(fields: AiEnrichmentField[]) {
+  if (!aiProposal.value || aiBusy.value) return
+  aiBusy.value = true
+  error.value = null
+  try {
+    await applyAdminProposal(aiProposal.value.id, fields)
+    aiProposal.value = null
+    await load()
+    saved.value = true
+  }
+  catch (e: unknown) {
+    error.value = errorMessage(e, 'The selected suggestions could not be applied.')
+  }
+  finally {
+    aiBusy.value = false
+  }
+}
+
+async function dismissAiDraft() {
+  if (!aiProposal.value || aiBusy.value) return
+  aiBusy.value = true
+  try {
+    await rejectAdminProposal(aiProposal.value.id)
+    aiProposal.value = null
+  }
+  catch (e: unknown) {
+    error.value = errorMessage(e, 'The draft could not be dismissed.')
+  }
+  finally {
+    aiBusy.value = false
+  }
+}
+
+async function approveAiCategory() {
+  if (!aiProposal.value || aiBusy.value) return
+  aiBusy.value = true
+  try {
+    aiProposal.value = await approveAdminCategory(aiProposal.value.id)
+    categoryOptions.value = await categories()
+  }
+  catch (e: unknown) {
+    error.value = errorMessage(e, 'The category could not be approved.')
+  }
+  finally {
+    aiBusy.value = false
+  }
+}
+
 onMounted(load)
 </script>
 
@@ -100,6 +167,10 @@ onMounted(load)
         >
           View public page ↗
         </a>
+        <Button type="button" variant="outline" :disabled="aiBusy" @click="generateAiDraft">
+          <AppSpinner v-if="aiBusy && !aiProposal" color="text-current" label="Preparing grounded draft" />
+          {{ aiBusy && !aiProposal ? 'Preparing…' : 'Review AI draft' }}
+        </Button>
       </div>
 
       <p v-if="error" class="mt-4 text-sm text-red-400">
@@ -108,6 +179,20 @@ onMounted(load)
       <p v-if="saved" class="mt-4 text-sm text-brand-accent">
         Saved.
       </p>
+
+      <AiProposalReview
+        v-if="aiProposal"
+        class="mt-6"
+        :current="aiProposal.current"
+        :proposed="aiProposal.proposed"
+        :evidence="aiProposal.evidence"
+        :category-requires-approval="aiProposal.category.requires_approval"
+        mode="admin"
+        :busy="aiBusy"
+        @apply="applyAiDraft"
+        @reject="dismissAiDraft"
+        @approve-category="approveAiCategory"
+      />
 
       <div class="mt-6">
         <AdminListingForm
