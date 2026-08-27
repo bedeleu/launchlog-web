@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button'
-import type { AdminListing } from '~/composables/useAdminListings'
+import type { AdminCategory, AdminListing } from '~/composables/useAdminListings'
 import { toErrorLike } from '~/utils/error-like'
 
 definePageMeta({ middleware: 'admin' })
@@ -8,9 +8,10 @@ useHead({ title: 'Admin · Edit listing', meta: [{ name: 'robots', content: 'noi
 
 const route = useRoute()
 const id = route.params.id as string
-const { get, update, publish, unpublish, reject } = useAdminListings()
+const { get, categories, update, publish, unpublish, reject } = useAdminListings()
 
 const listing = ref<AdminListing | null>(null)
+const categoryOptions = ref<AdminCategory[]>([])
 const loading = ref(true)
 const submitting = ref(false)
 const actionBusy = ref<'publish' | 'unpublish' | 'reject' | null>(null)
@@ -25,7 +26,9 @@ function errorMessage(e: unknown, fallback: string): string {
 async function load() {
   loading.value = true
   try {
-    listing.value = await get(id)
+    const [loadedListing, loadedCategories] = await Promise.all([get(id), categories()])
+    listing.value = loadedListing
+    categoryOptions.value = loadedCategories
   }
   catch (e: unknown) {
     error.value = errorMessage(e, 'Listing not found')
@@ -71,7 +74,7 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="mx-auto max-w-3xl px-4 py-8">
+  <div class="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:py-12">
     <NuxtLink to="/admin/listings" class="text-sm text-brand-muted hover:text-brand-accent">
       ← Back to listings
     </NuxtLink>
@@ -110,6 +113,7 @@ onMounted(load)
         <AdminListingForm
           :key="`${listing.id}:${listing.status}:${listing.updated_at ?? ''}`"
           :initial="listing"
+          :categories="categoryOptions"
           :submitting="submitting || !!actionBusy"
           submit-label="Save changes"
           @submit="onSubmit"

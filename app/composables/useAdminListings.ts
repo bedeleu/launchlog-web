@@ -25,6 +25,12 @@ export interface AdminListing {
   updated_at: string | null
 }
 
+export interface AdminCategory {
+  id: string
+  slug: string
+  name: string
+}
+
 export interface AdminListingFilters {
   status?: string
   tier?: string
@@ -127,6 +133,13 @@ export const useAdminListings = () => {
     return data
   }
 
+  const categories = async (): Promise<AdminCategory[]> => {
+    const { data } = await $fetch<{ data: AdminCategory[] }>(`${base}/categories`, {
+      headers: await authHeaders(),
+    })
+    return data
+  }
+
   const create = async (payload: Partial<AdminListing>): Promise<AdminListing> => {
     const { data } = await $fetch<{ data: AdminListing }>(`${base}/listings`, {
       method: 'POST',
@@ -182,6 +195,7 @@ export const useAdminListings = () => {
     dashboard,
     list,
     get,
+    categories,
     create,
     publishPreview,
     update,
