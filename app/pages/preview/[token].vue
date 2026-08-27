@@ -205,7 +205,10 @@ const reconcileStripeBack = async () => {
     },
   })
 
-  if (result.state === 'done' && result.preview) applyPreview(result.preview)
+  if (result.state === 'done' && result.preview) {
+    applyPreview(result.preview)
+    track('Payment Canceled')
+  }
   checkoutCancellationState.value = result.state === 'idle' ? 'idle' : result.state
   checkoutCancellationRunning = false
 }
@@ -399,6 +402,7 @@ const payAndPublish = async () => {
     }
 
     redirecting = true
+    track('Checkout Started')
     markCheckoutRedirect(checkoutReturnStorage(), token)
     window.location.href = session.url
   }
