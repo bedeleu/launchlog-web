@@ -20,18 +20,22 @@ const selectedPlan = computed(() => findPlan(requestedTier))
 </script>
 
 <template>
-  <main class="mx-auto max-w-3xl px-6 py-24">
-    <h1 class="text-4xl font-bold text-brand-fg">
-      Submit your product
-    </h1>
-    <p class="text-brand-muted mt-3">
-      Drop your URL — we'll generate a free preview before you pay a cent.
-    </p>
-    <p class="mt-2 text-sm text-brand-muted">
-      Starting with <span class="font-semibold text-brand-fg">{{ selectedPlan.name }}</span> — you can change the package on the preview.
-    </p>
-    <div class="mt-8">
-      <IntakePreviewForm />
-    </div>
+  <main class="min-h-screen py-8 lg:py-12">
+    <ReleaseShell
+      compact
+      eyebrow="Private capture · step 01"
+      title="Prepare your release"
+      description="One URL starts the same private preview used on the homepage. Nothing is published or charged yet."
+    >
+      <div class="max-w-3xl border border-release-seam bg-release-rail p-5 sm:p-7">
+        <p class="mb-6 font-mono text-[0.68rem] font-semibold tracking-[0.14em] text-release-warning uppercase">
+          Starting placement · {{ selectedPlan.name }}
+        </p>
+        <IntakePreviewForm />
+        <p class="mt-5 border-t border-release-seam pt-4 text-sm leading-6 text-release-paper-muted">
+          You can change the placement after the website capture is ready.
+        </p>
+      </div>
+    </ReleaseShell>
   </main>
 </template>

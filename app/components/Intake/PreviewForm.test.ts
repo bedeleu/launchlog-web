@@ -60,7 +60,8 @@ describe('PreviewForm existing-listing state', () => {
     })
 
     expect(html).toContain('Already on LaunchLog')
-    expect(html).toContain('View it')
+    expect(html).toContain('View listing')
+    expect(html).toContain('Request ownership')
     expect(html).toContain('to="/listing/maker-example"')
     expect(html).not.toContain('Already generated a preview?')
     expect(html).not.toContain(`preview/${'p'.repeat(64)}`)
@@ -78,5 +79,17 @@ describe('PreviewForm existing-listing state', () => {
     expect(idle).toContain('sm:w-48')
     expect(loading).toContain('w-full')
     expect(loading).toContain('sm:w-48')
+  })
+
+  test('keeps duplicate feedback flat and payment-terminal', async () => {
+    const html = await renderForm({
+      action: 'claim',
+      domain: 'maker.example',
+      listing_path: '/listing/maker-example',
+      dashboard_path: null,
+    })
+
+    expect(html).toContain('data-release-duplicate')
+    expect(source).not.toContain('linear-gradient')
   })
 })

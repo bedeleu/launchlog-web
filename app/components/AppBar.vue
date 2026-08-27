@@ -40,16 +40,18 @@ watch(user, async () => {
 </script>
 
 <template>
-  <header class="sticky top-0 z-50 border-b border-brand-border bg-brand-bg/80 backdrop-blur-md">
-    <!-- thin accent rule along the very top, like the reference -->
-    <div class="h-0.5 w-full bg-gradient-to-r from-brand-accent/0 via-brand-accent/70 to-brand-accent/0" />
+  <header class="sticky top-0 z-50 border-b border-release-seam bg-release-ink">
+    <div class="grid h-1 grid-cols-[clamp(7rem,18vw,18rem)_1fr]" aria-hidden="true">
+      <span class="bg-release-blaze" />
+      <span class="bg-release-rail" />
+    </div>
 
-    <div class="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4">
+    <div class="mx-auto flex h-16 max-w-[96rem] items-center justify-between gap-4 border-x border-release-seam px-4 sm:px-6">
       <!-- Brand -->
       <NuxtLink to="/" class="flex shrink-0 items-center gap-2.5">
         <img src="/images/logo.webp" alt="LaunchLog" width="32" height="32" class="size-8">
-        <span class="text-lg font-bold tracking-tight text-brand-fg">
-          LaunchLog<span class="text-brand-muted">.ai</span>
+        <span class="text-lg font-bold tracking-tight text-[#f6f1e7]">
+          LaunchLog<span class="text-release-paper-muted">.ai</span>
         </span>
       </NuxtLink>
 
@@ -59,10 +61,10 @@ watch(user, async () => {
           v-for="item in nav"
           :key="item.to"
           :to="item.to"
-          class="rounded-md px-3 py-2 text-sm font-medium transition-colors"
+          class="border-b px-3 py-2 font-mono text-[0.72rem] font-semibold tracking-[0.05em] transition-colors"
           :class="isActive(item.to)
-            ? 'bg-white/[0.06] text-brand-fg'
-            : 'text-brand-muted hover:text-brand-fg'"
+            ? 'border-release-blaze text-release-paper'
+            : 'border-transparent text-release-paper-muted hover:border-release-seam hover:text-release-paper'"
         >
           {{ item.label }}
         </NuxtLink>
@@ -70,7 +72,7 @@ watch(user, async () => {
 
       <!-- Desktop actions -->
       <div class="hidden items-center gap-2 lg:flex">
-        <NuxtLink to="/browse-all" aria-label="Search products" class="rounded-md p-2 text-brand-muted transition-colors hover:text-brand-fg">
+        <NuxtLink to="/browse-all" aria-label="Search products" class="border border-transparent p-2 text-release-paper-muted transition-colors hover:border-release-seam hover:text-release-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus">
           <Search class="size-5" />
         </NuxtLink>
         <template v-if="authReady">
@@ -79,7 +81,7 @@ watch(user, async () => {
             as-child
             variant="outline"
             size="sm"
-            class="border-brand-border bg-white/[0.03] text-brand-fg hover:bg-white/[0.07]"
+            class="text-release-paper"
           >
             <NuxtLink
               to="/dashboard"
@@ -93,15 +95,15 @@ watch(user, async () => {
             v-if="admin"
             to="/admin"
             :aria-current="isActive('/admin') ? 'page' : undefined"
-            class="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-emerald-300 transition-colors hover:text-brand-fg"
+            class="inline-flex items-center gap-1.5 border-b border-transparent px-3 py-2 font-mono text-xs font-semibold tracking-[0.06em] text-release-signal transition-colors hover:border-release-signal hover:text-release-paper"
           >
             <ShieldCheck aria-hidden="true" class="size-4" />
             Admin
           </NuxtLink>
-          <button v-if="user" type="button" class="px-3 py-2 text-sm font-medium text-brand-muted transition-colors hover:text-brand-fg" @click="signOut">
+          <button v-if="user" type="button" class="border border-transparent px-3 py-2 text-sm font-medium text-release-paper-muted transition-colors hover:border-release-seam hover:text-release-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus" @click="signOut">
             Sign out
           </button>
-          <NuxtLink v-else to="/login" class="px-3 py-2 text-sm font-medium text-brand-muted transition-colors hover:text-brand-fg">
+          <NuxtLink v-else to="/login" class="border border-transparent px-3 py-2 text-sm font-medium text-release-paper-muted transition-colors hover:border-release-seam hover:text-release-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus">
             Login
           </NuxtLink>
         </template>
@@ -112,7 +114,7 @@ watch(user, async () => {
 
       <!-- Mobile toggle -->
       <button
-        class="rounded-md p-2 text-brand-fg lg:hidden"
+        class="border border-release-seam p-2 text-release-paper transition-colors hover:border-release-paper-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus lg:hidden"
         :aria-expanded="open"
         aria-label="Toggle menu"
         @click="open = !open"
@@ -128,25 +130,25 @@ watch(user, async () => {
       leave-active-class="transition duration-100 ease-in"
       leave-to-class="opacity-0 -translate-y-1"
     >
-      <div v-if="open" class="border-t border-brand-border bg-brand-bg lg:hidden">
+      <div v-if="open" class="border-t border-release-seam bg-release-ink lg:hidden">
         <nav class="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-3">
           <NuxtLink
             v-for="item in nav"
             :key="item.to"
             :to="item.to"
-            class="rounded-md px-3 py-2.5 text-sm font-medium transition-colors"
-            :class="isActive(item.to) ? 'bg-white/[0.06] text-brand-fg' : 'text-brand-muted hover:text-brand-fg'"
+            class="border-l-2 px-3 py-2.5 text-sm font-medium transition-colors"
+            :class="isActive(item.to) ? 'border-release-blaze bg-release-rail text-release-paper' : 'border-transparent text-release-paper-muted hover:border-release-seam hover:text-release-paper'"
           >
             {{ item.label }}
           </NuxtLink>
-          <div class="mt-2 grid gap-2 border-t border-brand-border pt-3">
+          <div class="mt-2 grid gap-2 border-t border-release-seam pt-3">
             <template v-if="authReady">
               <template v-if="user">
                 <Button
                   as-child
                   variant="outline"
                   size="lg"
-                  class="w-full border-brand-border bg-white/[0.03] text-brand-fg hover:bg-white/[0.07]"
+                  class="w-full text-release-paper"
                 >
                   <NuxtLink
                     to="/dashboard"
@@ -161,17 +163,17 @@ watch(user, async () => {
                     v-if="admin"
                     to="/admin"
                     :aria-current="isActive('/admin') ? 'page' : undefined"
-                    class="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md px-3 text-sm font-medium text-emerald-300 transition-colors hover:bg-white/[0.05] hover:text-brand-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent"
+                    class="inline-flex min-h-11 items-center justify-center gap-1.5 border border-release-signal/60 px-3 text-sm font-medium text-release-signal transition-colors hover:bg-release-rail hover:text-release-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus"
                   >
                     <ShieldCheck aria-hidden="true" class="size-4" />
                     Admin
                   </NuxtLink>
-                  <button type="button" class="min-h-11 rounded-md px-3 text-center text-sm font-medium text-brand-muted transition-colors hover:bg-white/[0.05] hover:text-brand-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent" @click="signOut">
+                  <button type="button" class="min-h-11 border border-release-seam px-3 text-center text-sm font-medium text-release-paper-muted transition-colors hover:bg-release-rail hover:text-release-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus" @click="signOut">
                     Sign out
                   </button>
                 </div>
               </template>
-              <NuxtLink v-else to="/login" class="min-h-11 rounded-md px-3 py-2.5 text-center text-sm font-medium text-brand-muted hover:bg-white/[0.05] hover:text-brand-fg">
+              <NuxtLink v-else to="/login" class="min-h-11 border border-release-seam px-3 py-2.5 text-center text-sm font-medium text-release-paper-muted hover:bg-release-rail hover:text-release-paper">
                 Login
               </NuxtLink>
             </template>

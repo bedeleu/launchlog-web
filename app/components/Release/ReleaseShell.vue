@@ -36,7 +36,7 @@ withDefaults(defineProps<{
       </p>
     </header>
 
-    <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-8">
+    <div :class="$slots.rail ? 'grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-8' : 'block'">
       <div data-release-main class="min-w-0">
         <slot />
       </div>

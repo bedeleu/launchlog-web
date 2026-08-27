@@ -38,6 +38,17 @@ const recentListings = computed(() => takeListingsWithoutSlugs(
   HOMEPAGE_RECENT_SLOTS,
 ))
 
+const heroListing = computed(() => featuredListings.value[0] ?? recentListings.value[0] ?? null)
+const heroHost = computed(() => {
+  if (!heroListing.value) return 'Private preview · no payment required'
+  try {
+    return new URL(heroListing.value.url).hostname.replace(/^www\./, '')
+  }
+  catch {
+    return heroListing.value.url
+  }
+})
+
 // A failed fetch used to fall through to the empty default, which removed the
 // paid Homepage Featured section with no signal at all.
 if (import.meta.server && homeListingsError.value) {
@@ -170,46 +181,66 @@ useHead({
 
 <template>
   <main class="min-h-screen">
-    <section class="mx-auto flex max-w-6xl flex-col justify-center px-6 py-16">
-      <p class="text-sm font-semibold uppercase tracking-[0.2em] text-brand-muted">
-        Curated directory for indie tech
-      </p>
-      <h1 class="mt-6 max-w-3xl text-5xl font-bold tracking-normal text-brand-fg md:text-7xl">
-        Get Listed.
-        <span class="block text-brand-muted">Get Found.</span>
-      </h1>
-      <p class="mt-6 max-w-2xl text-lg text-brand-muted">
-        LaunchLog is the log of what just shipped, with structured and machine-readable
-        product pages built for search and AI discovery.
-      </p>
-
-      <div class="mt-10">
-        <IntakePreviewForm />
+    <ReleaseShell
+      eyebrow="Release catalog · 2027"
+      title="The log of what just shipped."
+      description="A permanent public record for products worth finding — built for people, search engines, and machine-readable discovery."
+    >
+      <div class="border border-release-seam bg-release-rail p-3 sm:p-4">
+        <ReleaseCover
+          :src="heroListing?.screenshot_url"
+          :alt="heroListing ? `${heroListing.name} website screenshot` : 'LaunchLog release cover'"
+          :title="heroListing?.name ?? 'Your product becomes the next release'"
+        >
+          <template #caption>
+            <div class="flex flex-wrap items-baseline justify-between gap-2">
+              <p class="text-base font-semibold tracking-[-0.02em]">
+                {{ heroListing?.name ?? 'Your product becomes the next release' }}
+              </p>
+              <p class="font-mono text-[0.68rem] tracking-[0.12em] text-release-ink/65 uppercase">
+                Catalog specimen
+              </p>
+            </div>
+          </template>
+        </ReleaseCover>
+        <ReleaseEvidenceBand class="mt-3" label="Captured release" :value="heroHost" />
       </div>
 
-      <p class="mt-8 text-sm text-brand-muted">
-        <template v-if="user">
-          Signed in as <strong class="text-brand-fg">{{ user.email }}</strong> —
-          <NuxtLink to="/dashboard" class="text-brand-accent underline">
-            Dashboard
-          </NuxtLink>
-        </template>
-        <template v-else>
-          Already listed?
-          <NuxtLink to="/login" class="text-brand-accent underline">
-            Sign in
-          </NuxtLink>
-        </template>
-      </p>
-    </section>
+      <template #rail>
+        <ReleaseActionRail
+          step="Private preview"
+          title="Prepare your release"
+          description="Paste one public URL. We capture the site and prepare the listing before you choose a placement."
+        >
+          <IntakePreviewForm />
+          <ReleaseStateMarker
+            state="success"
+            label="Human approval"
+            detail="Nothing publishes until you review it."
+          />
+          <template #footer>
+            <p class="text-sm leading-6 text-release-paper-muted">
+              <template v-if="user">
+                Signed in as <strong class="text-release-paper">{{ user.email }}</strong> ·
+                <NuxtLink to="/dashboard" class="text-release-blaze underline underline-offset-4">Dashboard</NuxtLink>
+              </template>
+              <template v-else>
+                Already listed?
+                <NuxtLink to="/login" class="text-release-blaze underline underline-offset-4">Sign in</NuxtLink>
+              </template>
+            </p>
+          </template>
+        </ReleaseActionRail>
+      </template>
+    </ReleaseShell>
 
-    <section v-if="homeListingsFailed" class="border-t border-brand-border">
-      <div class="mx-auto max-w-6xl px-6 py-14">
-        <div class="rounded-2xl border border-red-400/20 bg-red-400/[0.05] py-16 text-center">
-          <p class="text-lg font-medium text-brand-fg">
+    <section v-if="homeListingsFailed" class="border-t border-release-seam">
+      <div class="mx-auto max-w-[96rem] px-4 py-14 sm:px-8 lg:px-12">
+        <div class="border border-release-destructive/50 border-l-4 bg-release-rail py-14 text-center">
+          <p class="text-lg font-medium text-[#f6f1e7]">
             Listings are temporarily unavailable
           </p>
-          <p class="mx-auto mt-2 max-w-sm text-brand-muted">
+          <p class="mx-auto mt-2 max-w-sm text-release-paper-muted">
             The directory could not be loaded. Please try again.
           </p>
           <Button class="mt-6" variant="outline" @click="() => refreshHomeListings()">
@@ -219,13 +250,13 @@ useHead({
       </div>
     </section>
 
-    <section v-if="featuredListings.length" class="border-t border-brand-border">
-      <div class="mx-auto max-w-6xl px-6 py-14">
+    <section v-if="featuredListings.length" class="border-t border-release-seam">
+      <div class="mx-auto max-w-[96rem] px-4 py-14 sm:px-8 lg:px-12">
         <div class="flex flex-wrap items-end justify-between gap-4">
-          <h2 class="text-3xl font-bold text-brand-fg">
+          <h2 class="text-3xl font-semibold tracking-[-0.03em] text-[#f6f1e7]">
             Featured launches
           </h2>
-          <NuxtLink to="/featured" class="text-sm font-medium text-brand-accent transition-colors hover:text-brand-fg">
+          <NuxtLink to="/featured" class="font-mono text-xs font-semibold tracking-[0.08em] text-release-blaze uppercase transition-colors hover:text-release-paper">
             View all featured
           </NuxtLink>
         </div>
@@ -233,18 +264,18 @@ useHead({
       </div>
     </section>
 
-    <section v-if="recentListings.length" class="border-t border-brand-border">
-      <div class="mx-auto max-w-6xl px-6 py-14">
+    <section v-if="recentListings.length" class="border-t border-release-seam">
+      <div class="mx-auto max-w-[96rem] px-4 py-14 sm:px-8 lg:px-12">
         <div class="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-brand-muted">
+            <p class="font-mono text-[0.68rem] font-semibold tracking-[0.2em] text-release-warning uppercase">
               Recently added
             </p>
-            <h2 class="mt-2 text-3xl font-bold text-brand-fg">
+            <h2 class="mt-2 text-3xl font-semibold tracking-[-0.03em] text-[#f6f1e7]">
               What just shipped
             </h2>
           </div>
-          <NuxtLink to="/browse-all" class="text-sm font-medium text-brand-accent transition-colors hover:text-brand-fg">
+          <NuxtLink to="/browse-all" class="font-mono text-xs font-semibold tracking-[0.08em] text-release-blaze uppercase transition-colors hover:text-release-paper">
             Browse all launches
           </NuxtLink>
         </div>

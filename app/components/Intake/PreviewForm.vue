@@ -71,8 +71,8 @@ const onSubmit = handleSubmit(async (values) => {
 </script>
 
 <template>
-  <form class="w-full max-w-xl" novalidate @submit="onSubmit">
-    <label for="preview-url" class="block text-sm font-medium text-brand-fg">
+  <form class="w-full" novalidate @submit="onSubmit">
+    <label for="preview-url" class="block font-mono text-[0.68rem] font-semibold tracking-[0.12em] text-release-paper-muted uppercase">
       Website URL
     </label>
     <div class="mt-2 flex flex-col gap-3 sm:flex-row">
@@ -87,9 +87,9 @@ const onSubmit = handleSubmit(async (values) => {
         :disabled="submitting"
         class="h-12 flex-1 text-base"
       />
-      <Button type="submit" size="lg" class="h-12 w-full px-6 sm:w-48" :disabled="submitting">
+      <Button type="submit" size="lg" class="h-12 w-full shrink-0 px-5 sm:w-48" :disabled="submitting">
         <AppSpinner v-if="submitting" color="text-current" />
-        {{ submitting ? 'Checking website…' : 'Preview my listing' }}
+        <span class="inline-block truncate">{{ submitting ? 'Checking website…' : 'Preview my listing' }}</span>
       </Button>
     </div>
 
@@ -102,16 +102,17 @@ const onSubmit = handleSubmit(async (values) => {
 
     <section
       v-else
-      class="mt-4 overflow-hidden rounded-xl border border-brand-accent/35 bg-[linear-gradient(135deg,rgba(99,102,241,0.12),rgba(255,255,255,0.025))] p-5 shadow-[0_18px_50px_rgba(0,0,0,0.24)]"
+      data-release-duplicate
+      class="mt-4 border border-release-seam border-l-2 border-l-release-warning bg-release-rail p-5"
       aria-live="polite"
     >
-      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-brand-accent">
+      <p class="font-mono text-[0.68rem] font-semibold tracking-[0.16em] text-release-warning uppercase">
         {{ existingListing.action === 'manage' ? 'Already in your account' : 'Already on LaunchLog' }}
       </p>
-      <h2 class="mt-2 break-words text-lg font-semibold text-brand-fg">
+      <h2 class="mt-2 break-words text-lg font-semibold text-[#f6f1e7]">
         {{ existingListing.domain }} is already represented.
       </h2>
-      <p class="mt-2 text-sm leading-6 text-brand-muted">
+      <p class="mt-2 text-sm leading-6 text-release-paper-muted">
         <template v-if="existingListing.action === 'manage'">
           Open your dashboard to manage the existing listing. We won't create or charge for a duplicate.
         </template>
@@ -123,30 +124,30 @@ const onSubmit = handleSubmit(async (values) => {
         <NuxtLink
           v-if="existingListing.action === 'manage'"
           :to="existingListing.dashboard_path || '/dashboard'"
-          class="inline-flex h-10 items-center justify-center rounded-md bg-brand-accent px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/60"
+          class="inline-flex h-10 items-center justify-center border border-release-paper bg-release-paper px-4 text-sm font-semibold text-release-ink transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus"
         >
           Manage listing
         </NuxtLink>
         <NuxtLink
           v-else
           :to="claimPath"
-          class="inline-flex h-10 items-center justify-center rounded-md bg-brand-accent px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/60"
+          class="inline-flex h-10 items-center justify-center border border-release-paper bg-release-paper px-4 text-sm font-semibold text-release-ink transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus"
         >
           Request ownership
         </NuxtLink>
         <NuxtLink
           v-if="existingListing.listing_path"
           :to="existingListing.listing_path"
-          class="inline-flex h-10 items-center justify-center rounded-md border border-brand-border px-4 text-sm font-medium text-brand-fg transition-colors hover:border-brand-accent/50 hover:bg-white/[0.04]"
+          class="inline-flex h-10 items-center justify-center border border-release-seam px-4 text-sm font-medium text-release-paper transition-colors hover:border-release-paper-muted hover:bg-[#1a1c16] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus"
         >
-          View it
+          View listing
         </NuxtLink>
       </div>
     </section>
 
-    <p v-if="!existingListing && (known || intake.latestDraft)" class="mt-5 text-sm text-brand-muted">
+    <p v-if="!existingListing && (known || intake.latestDraft)" class="mt-5 text-sm text-release-paper-muted">
       Already generated a preview?
-      <NuxtLink :to="`/preview/${(known ?? intake.latestDraft)!.token}`" class="text-brand-accent underline underline-offset-4">
+      <NuxtLink :to="`/preview/${(known ?? intake.latestDraft)!.token}`" class="text-release-blaze underline underline-offset-4">
         Resume {{ (known ?? intake.latestDraft)!.domain }}
       </NuxtLink>
     </p>

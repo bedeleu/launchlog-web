@@ -20,4 +20,17 @@ describe('authenticated header navigation', () => {
     expect(desktopDashboard).toBeGreaterThan(-1)
     expect(desktopAdmin).toBeGreaterThan(desktopDashboard)
   })
+
+  test('keeps private destinations behind their independent auth gates', () => {
+    expect(source).toContain('v-if="user"')
+    expect(source).toContain('v-if="admin"')
+    expect(source).toContain('v-else to="/login"')
+  })
+
+  test('uses the Release Catalog rail without decorative gradients', () => {
+    expect(source).toContain('bg-release-ink')
+    expect(source).toContain('border-release-seam')
+    expect(source).toContain('bg-release-blaze')
+    expect(source).not.toContain('bg-gradient')
+  })
 })
