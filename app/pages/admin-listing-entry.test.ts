@@ -100,4 +100,11 @@ describe('admin listing entry points', () => {
     expect(html).not.toContain('Advanced manual entry')
     expect(html).not.toContain('submit-label="Create listing"')
   })
+
+  test('loads the category taxonomy for the simplified edit form', () => {
+    const source = readFileSync(fileURLToPath(new URL('./admin/listings/[id].vue', import.meta.url)), 'utf8')
+
+    expect(source).toContain('categories()')
+    expect(source).toContain(':categories="categoryOptions"')
+  })
 })
