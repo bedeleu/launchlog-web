@@ -240,9 +240,9 @@ describe.skipIf(!isBuilt)('excluded routes are immune to path casing', () => {
     expect(response.status).toBe(404)
     expect(htmlTag).toContain('lang="en"')
     expect(htmlTag).toContain('class="dark"')
-    // Text is only visible because the dark shell is applied; assert both halves together.
-    expect(html).toContain('text-white')
-    expect(html).toContain('Page not found')
+    // Text is only visible because the dark Release Catalog shell is applied; assert both halves together.
+    expect(html).toContain('bg-release-ink')
+    expect(html).toContain('Record unavailable')
     expect(isDeindexed(response, html)).toBe(true)
   })
 

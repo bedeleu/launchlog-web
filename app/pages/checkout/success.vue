@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { CheckCircle2, Clock, LifeBuoy, TriangleAlert } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
+import { checkoutReleaseCopy, type CheckoutReleaseState } from '~/utils/checkout-release-state'
 
 const route = useRoute()
 const { getConversion } = useBilling()
@@ -19,12 +19,11 @@ const token = TOKEN_PATTERN.test(rawToken) ? rawToken : ''
 // Display/support only — the conversion endpoint is keyed by the preview token.
 const sessionId = typeof route.query.session_id === 'string' ? route.query.session_id.trim() : ''
 
-type PollState = 'waiting' | 'converted' | 'expired' | 'timeout' | 'unverifiable'
-
 // A missing or malformed token is a controlled state, never a Nuxt 404: the
 // customer has already paid and must not land on an error page.
-const state = ref<PollState>(token ? 'waiting' : 'unverifiable')
+const state = ref<CheckoutReleaseState>(token ? 'waiting' : 'unverifiable')
 const listingSlug = ref<string | null>(null)
+const releaseCopy = computed(() => checkoutReleaseCopy(state.value))
 
 const POLL_INTERVAL_MS = 2000
 const POLL_DEADLINE_MS = 60000
@@ -132,107 +131,58 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="mx-auto flex min-h-[70vh] max-w-2xl items-center px-6 py-16">
-    <div class="w-full rounded-2xl border border-brand-border bg-white/[0.02] p-8 sm:p-10">
-      <div aria-live="polite">
-        <!-- WAITING -->
-        <template v-if="state === 'waiting'">
-          <div class="flex items-center gap-3">
-            <AppSpinner class="shrink-0" size="size-5" label="Finishing your listing" />
-            <h1 class="text-2xl font-bold text-brand-fg">
-              Payment received. Finishing your listing…
-            </h1>
-          </div>
-          <p class="mt-3 text-brand-muted">
-            We're publishing your listing now. This usually takes a few seconds — keep this page open.
-          </p>
-        </template>
+  <main class="min-h-[72vh] px-4 py-10 sm:px-6 sm:py-16">
+    <ReleaseShell
+      compact
+      :eyebrow="releaseCopy.eyebrow"
+      :title="releaseCopy.title"
+      :description="releaseCopy.description"
+      class="max-w-5xl"
+    >
+      <div class="grid gap-5 border border-release-seam bg-release-rail p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
+        <div class="min-w-0">
+          <ReleaseStateMarker
+            :label="releaseCopy.marker"
+            :detail="releaseCopy.markerDetail"
+            :state="releaseCopy.tone"
+            :live="true"
+          />
 
-        <!-- CONVERTED -->
-        <template v-else-if="state === 'converted'">
-          <div class="flex items-center gap-3">
-            <CheckCircle2 class="size-6 shrink-0 text-brand-success" />
-            <h1 class="text-2xl font-bold text-brand-fg">
-              Your listing is live.
-            </h1>
+          <div v-if="state === 'waiting'" class="mt-6 flex items-center gap-3 border-t border-release-seam pt-5">
+            <AppSpinner class="shrink-0" size="size-4" label="Checking signed publication status" />
+            <p class="font-mono text-[0.68rem] font-semibold tracking-[0.12em] text-release-paper-muted uppercase">
+              Checking signed publication status…
+            </p>
           </div>
-          <p class="mt-3 text-brand-muted">
-            It's published in the directory with schema.org data, markdown output, and llms.txt inclusion.
-          </p>
-          <div class="mt-7 flex flex-col gap-3 sm:flex-row">
+
+          <div v-else-if="state === 'converted'" class="mt-6 flex flex-col gap-3 border-t border-release-seam pt-5 sm:flex-row">
             <Button as-child size="lg" class="sm:flex-1">
-              <NuxtLink :to="`/listing/${listingSlug}`">
-                View your listing
-              </NuxtLink>
+              <NuxtLink :to="`/listing/${listingSlug}`">View public release</NuxtLink>
             </Button>
             <Button as-child size="lg" variant="outline" class="sm:flex-1">
-              <NuxtLink to="/dashboard">
-                Open dashboard
-              </NuxtLink>
+              <NuxtLink to="/dashboard">Open dashboard</NuxtLink>
             </Button>
           </div>
-        </template>
 
-        <!-- EXPIRED -->
-        <template v-else-if="state === 'expired'">
-          <div class="flex items-center gap-3">
-            <TriangleAlert class="size-6 shrink-0 text-brand-warning" />
-            <h1 class="text-2xl font-bold text-brand-fg">
-              This preview expired.
-            </h1>
-          </div>
-          <p class="mt-3 text-brand-muted">
-            Previews last 7 days, and this one expired before the listing was published.
-            If you were charged, contact us and we'll publish it or refund you.
-          </p>
-        </template>
-
-        <!-- TIMEOUT -->
-        <template v-else-if="state === 'timeout'">
-          <div class="flex items-center gap-3">
-            <Clock class="size-6 shrink-0 text-brand-accent" />
-            <h1 class="text-2xl font-bold text-brand-fg">
-              Payment is safe. We are still processing it.
-            </h1>
-          </div>
-          <p class="mt-3 text-brand-muted">
-            Your listing is taking longer than usual to publish. Nothing is lost — check again,
-            or contact us and we'll finish it for you.
-          </p>
-          <Button size="lg" class="mt-7 w-full sm:w-auto" @click="startPolling">
+          <Button v-else-if="state === 'timeout'" size="lg" class="mt-6 w-full sm:w-auto" @click="startPolling">
             Retry status check
           </Button>
-        </template>
+        </div>
 
-        <!-- UNVERIFIABLE -->
-        <template v-else>
-          <div class="flex items-center gap-3">
-            <LifeBuoy class="size-6 shrink-0 text-brand-muted" />
-            <h1 class="text-2xl font-bold text-brand-fg">
-              We can't check this listing's status.
-            </h1>
-          </div>
-          <p class="mt-3 text-brand-muted">
-            This link is missing the preview reference, so we can't look up your listing.
-            If you completed a payment, contact us with your receipt and we'll sort it out.
+        <aside class="border-t border-release-seam pt-5 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-5">
+          <p class="font-mono text-[0.62rem] font-semibold tracking-[0.16em] text-release-warning uppercase">
+            Release reference
           </p>
-        </template>
+          <p class="mt-3 text-sm leading-6 text-release-paper-muted">
+            Need help? Email
+            <a href="mailto:support@launchlog.ai" class="font-medium text-release-paper underline decoration-release-warning underline-offset-4">support@launchlog.ai</a>.
+          </p>
+          <p v-if="sessionId" class="mt-4 border-t border-release-seam pt-4">
+            <span class="block font-mono text-[0.6rem] font-semibold tracking-[0.14em] text-release-paper-muted uppercase">Stripe session</span>
+            <span class="mt-1 block break-all font-mono text-[0.66rem] leading-5 text-[#f6f1e7]">{{ sessionId }}</span>
+          </p>
+        </aside>
       </div>
-
-      <!-- Support + Stripe reference, always available after a payment. -->
-      <div
-        v-if="state !== 'converted'"
-        class="mt-8 border-t border-brand-border pt-6 text-sm text-brand-muted"
-      >
-        <p>
-          Need help? Email
-          <a href="mailto:support@launchlog.ai" class="font-medium text-brand-accent hover:underline">support@launchlog.ai</a>.
-        </p>
-        <p v-if="sessionId" class="mt-2">
-          Stripe session ID:
-          <span class="break-all font-mono text-xs text-brand-fg">{{ sessionId }}</span>
-        </p>
-      </div>
-    </div>
+    </ReleaseShell>
   </main>
 </template>

@@ -270,7 +270,7 @@ const emailHelpText = computed(() => {
   if (!emailLooksValid.value) return attemptedPublish.value ? 'Enter a valid email address.' : 'We will validate this before checkout.'
   return 'We will create your account with this email after checkout.'
 })
-const invalidFieldClass = 'border-brand-warning/70 shadow-[0_0_0_1px_rgba(245,158,11,0.32),0_0_18px_rgba(245,158,11,0.14)] focus-visible:ring-brand-warning/25'
+const invalidFieldClass = 'border-release-warning focus-visible:ring-release-focus/60'
 
 const checkoutPending = ref(false)
 const checkoutError = ref<string | null>(null)
