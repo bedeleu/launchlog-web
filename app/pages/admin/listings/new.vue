@@ -1,43 +1,21 @@
 <script setup lang="ts">
-import { toErrorLike } from '~/utils/error-like'
-
 definePageMeta({ middleware: 'admin' })
-useHead({ title: 'Admin · New listing', meta: [{ name: 'robots', content: 'noindex,nofollow' }] })
-
-const { create } = useAdminListings()
-const submitting = ref(false)
-const error = ref<string | null>(null)
-
-async function onSubmit(payload: Record<string, unknown>) {
-  submitting.value = true
-  error.value = null
-  try {
-    const created = await create(payload)
-    await navigateTo(`/admin/listings/${created.id}`)
-  }
-  catch (e: unknown) {
-    const err = toErrorLike(e)
-    error.value = err.data?.message ?? err.data?.error ?? 'Failed to create listing'
-    submitting.value = false
-  }
-}
+useHead({ title: 'Admin · Add a listing', meta: [{ name: 'robots', content: 'noindex,nofollow' }] })
 </script>
 
 <template>
-  <div class="mx-auto max-w-3xl px-4 py-8">
+  <main class="mx-auto max-w-3xl px-6 py-16 sm:py-20">
     <NuxtLink to="/admin/listings" class="text-sm text-brand-muted hover:text-brand-accent">
       ← Back to listings
     </NuxtLink>
-    <h1 class="mt-3 text-2xl font-bold text-brand-fg">
-      New listing
+    <h1 class="mt-5 text-4xl font-bold tracking-tight text-brand-fg">
+      Add a listing
     </h1>
-
-    <p v-if="error" class="mt-4 text-sm text-red-400">
-      {{ error }}
+    <p class="mt-3 max-w-2xl text-base leading-7 text-brand-muted">
+      Drop the website URL and review the generated preview. As admin, you can publish Standard or Featured without Stripe.
     </p>
-
-    <div class="mt-6">
-      <AdminListingForm :submitting="submitting" submit-label="Create listing" @submit="onSubmit" />
+    <div class="mt-8">
+      <IntakePreviewForm />
     </div>
-  </div>
+  </main>
 </template>

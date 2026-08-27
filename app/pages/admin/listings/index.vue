@@ -138,13 +138,13 @@ onMounted(async () => {
 
 <template>
   <div class="mx-auto max-w-7xl px-4 py-8">
-    <div class="flex items-center justify-between gap-4">
+    <div class="flex flex-wrap items-center justify-between gap-4">
       <h1 class="text-2xl font-bold text-brand-fg">
         Listings
       </h1>
       <Button as-child>
-        <NuxtLink to="/admin/listings/new">
-          New listing
+        <NuxtLink to="/submit">
+          Add by URL
         </NuxtLink>
       </Button>
     </div>

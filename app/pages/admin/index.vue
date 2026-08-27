@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowRight, Camera, CheckCircle2, Clock3, FilePlus2, Gauge, ListChecks, ShieldCheck, Sparkles } from '@lucide/vue'
+import { ArrowRight, Camera, CheckCircle2, Clock3, Gauge, ListChecks, ScanLine, ShieldCheck, Sparkles } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import type { AdminDashboard, AdminListing, FounderScreenshotStatus } from '~/composables/useAdminListings'
 import { toErrorLike } from '~/utils/error-like'
@@ -194,9 +194,9 @@ onMounted(async () => {
           </NuxtLink>
         </Button>
         <Button as-child>
-          <NuxtLink to="/admin/listings/new">
-            <FilePlus2 class="mr-2 size-4" />
-            New listing
+          <NuxtLink to="/submit">
+            <ScanLine class="mr-2 size-4" />
+            Scan website
           </NuxtLink>
         </Button>
       </div>
@@ -384,8 +384,8 @@ onMounted(async () => {
             <NuxtLink to="/admin/listings?source=founding" class="rounded-md border border-white/10 px-3 py-2 text-sm text-brand-fg transition-colors hover:border-emerald-300/40 hover:text-emerald-300">
               Manage founding imports
             </NuxtLink>
-            <NuxtLink to="/admin/listings/new" class="rounded-md border border-white/10 px-3 py-2 text-sm text-brand-fg transition-colors hover:border-emerald-300/40 hover:text-emerald-300">
-              Create manual listing
+            <NuxtLink to="/submit" class="rounded-md border border-white/10 px-3 py-2 text-sm text-brand-fg transition-colors hover:border-emerald-300/40 hover:text-emerald-300">
+              Add listing from URL
             </NuxtLink>
           </div>
         </article>
