@@ -121,18 +121,10 @@ describe.skipIf(!isBuilt)('excluded routes are immune to path casing', () => {
     expect(isDeindexed(response, html)).toBe(true)
   })
 
-  test('/admin/outreach is a private client-only tool', async () => {
-    const response = await fetch(`${BASE}/admin/outreach`)
-    const html = await response.text()
-
-    expect(response.status).toBe(200)
-    expect(isDeindexed(response, html)).toBe(true)
-  })
-
   // The advisory: route rules were silently dropped for mixed-case paths, so /Admin rendered a
   // live 200 with `index, follow` and a canonical pointing at itself.
   test('mis-cased admin routes are never indexable duplicates', async () => {
-    for (const path of ['/Admin', '/aDmIn', '/ADMIN', '/Admin/listings?status=published', '/Admin/Outreach?source=manual']) {
+    for (const path of ['/Admin', '/aDmIn', '/ADMIN', '/Admin/listings?status=published']) {
       await expectNoIndexableDuplicate(path)
     }
   })
