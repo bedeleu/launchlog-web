@@ -20,3 +20,21 @@ export const buildAdminListingUpdate = (values: AdminListingEditValues): Record<
   country: optional(values.country)?.toUpperCase() ?? null,
   tier: optional(values.tier),
 })
+
+type AdminListingInitialValues = Partial<Record<keyof AdminListingEditValues, string | null | undefined>>
+
+export const isAdminListingDirty = (
+  initial: AdminListingInitialValues,
+  values: AdminListingEditValues,
+): boolean => {
+  const initialValues: AdminListingEditValues = {
+    name: initial.name ?? '',
+    tagline: initial.tagline ?? '',
+    description: initial.description ?? '',
+    primary_category_id: initial.primary_category_id ?? '',
+    country: initial.country ?? '',
+    tier: initial.tier ?? '',
+  }
+
+  return JSON.stringify(buildAdminListingUpdate(values)) !== JSON.stringify(buildAdminListingUpdate(initialValues))
+}

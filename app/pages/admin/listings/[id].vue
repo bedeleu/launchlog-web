@@ -18,7 +18,7 @@ const loading = ref(true)
 const submitting = ref(false)
 const actionBusy = ref<'publish' | 'unpublish' | 'reject' | null>(null)
 const error = ref<string | null>(null)
-const savedMessage = ref<string | null>(null)
+const announcement = ref('')
 const aiProposal = ref<AiEnrichmentProposal | null>(null)
 const aiBusy = ref(false)
 
@@ -50,10 +50,9 @@ async function load() {
 async function onSubmit(payload: Record<string, unknown>) {
   submitting.value = true
   error.value = null
-  savedMessage.value = null
   try {
     listing.value = await update(id, payload)
-    savedMessage.value = 'Manual edits saved.'
+    announcement.value = 'Manual edits saved.'
   }
   catch (e: unknown) {
     error.value = errorMessage(e, 'Failed to save')
@@ -66,7 +65,6 @@ async function onSubmit(payload: Record<string, unknown>) {
 async function act(verb: 'publish' | 'unpublish' | 'reject') {
   actionBusy.value = verb
   error.value = null
-  savedMessage.value = null
   const fn = verb === 'publish' ? publish : verb === 'unpublish' ? unpublish : reject
   try {
     listing.value = await fn(id)
@@ -102,7 +100,7 @@ async function applyAiDraft(fields: AiEnrichmentField[]) {
     await applyAdminProposal(aiProposal.value.id, fields)
     aiProposal.value = null
     await load()
-    savedMessage.value = 'AI changes applied. The public listing is updated.'
+    announcement.value = 'AI changes applied. The public listing is updated.'
   }
   catch (e: unknown) {
     error.value = errorMessage(e, 'The selected suggestions could not be applied.')
@@ -160,29 +158,30 @@ onMounted(load)
     </p>
 
     <template v-else>
-      <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
-        <h1 class="text-2xl font-bold text-brand-fg">
+      <div class="mt-3 flex flex-wrap items-center gap-3">
+        <h1 class="min-w-0 flex-1 text-2xl font-bold text-brand-fg">
           {{ listing.name }}
         </h1>
-        <a
-          v-if="listing.status === 'published'"
-          :href="`/listing/${listing.slug}`"
-          target="_blank"
-          class="text-sm text-brand-accent hover:underline"
-        >
-          View public page ↗
-        </a>
-        <Button v-if="!aiProposal" type="button" variant="outline" :disabled="aiBusy" @click="generateAiDraft">
-          <AppSpinner v-if="aiBusy && !aiProposal" color="text-current" label="Preparing grounded draft" />
-          {{ aiBusy && !aiProposal ? 'Preparing…' : 'Generate AI draft' }}
-        </Button>
+        <div class="flex shrink-0 items-center gap-2">
+          <a
+            v-if="listing.status === 'published'"
+            :href="`/listing/${listing.slug}`"
+            target="_blank"
+            class="inline-flex h-9 items-center rounded-md px-3 text-sm text-brand-accent transition-colors hover:bg-white/[0.04] hover:text-brand-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/40"
+          >
+            View public page ↗
+          </a>
+          <Button v-if="!aiProposal" type="button" variant="outline" size="sm" :disabled="aiBusy" @click="generateAiDraft">
+            <AppSpinner v-if="aiBusy && !aiProposal" color="text-current" label="Preparing grounded draft" />
+            {{ aiBusy && !aiProposal ? 'Preparing…' : 'Generate AI draft' }}
+          </Button>
+        </div>
       </div>
+
+      <p class="sr-only" role="status" aria-live="polite">{{ announcement }}</p>
 
       <p v-if="error" class="mt-4 text-sm text-red-400">
         {{ error }}
-      </p>
-      <p v-if="savedMessage" class="mt-4 text-sm text-brand-success" role="status">
-        {{ savedMessage }}
       </p>
 
       <AiProposalReview

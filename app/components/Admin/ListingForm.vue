@@ -2,7 +2,7 @@
 import { ExternalLink, ImageOff, Sparkles } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import type { AdminCategory, AdminListing } from '~/composables/useAdminListings'
-import { buildAdminListingUpdate } from '~/utils/admin-listing-editor'
+import { buildAdminListingUpdate, isAdminListingDirty } from '~/utils/admin-listing-editor'
 
 const props = withDefaults(defineProps<{
   initial?: Partial<AdminListing>
@@ -30,9 +30,10 @@ const form = reactive({
 const inputClass = 'w-full rounded-lg border border-brand-border bg-[#0D1220] px-3.5 py-2.5 text-sm text-brand-fg shadow-inner shadow-black/10 outline-none transition placeholder:text-brand-muted/60 hover:border-white/15 focus-visible:border-brand-accent focus-visible:ring-2 focus-visible:ring-brand-accent/20 disabled:cursor-not-allowed disabled:opacity-50'
 const statusLabel = computed(() => (props.initial?.status ?? 'draft').replaceAll('_', ' '))
 const sourceLabel = computed(() => (props.initial?.source ?? 'admin').replaceAll('_', ' '))
+const isDirty = computed(() => isAdminListingDirty(props.initial, form))
 
 function onSubmit() {
-  if (props.submitting) return
+  if (props.submitting || !isDirty.value) return
   emit('submit', buildAdminListingUpdate(form))
 }
 </script>
@@ -127,7 +128,7 @@ function onSubmit() {
       </div>
 
       <div class="mt-7 flex flex-wrap items-center gap-3 border-t border-brand-border pt-6">
-        <Button type="submit" :disabled="submitting">
+        <Button type="submit" :disabled="submitting || !isDirty">
           <AppSpinner v-if="submitting" color="text-current" class="mr-1.5" />
           {{ submitLabel }}
         </Button>

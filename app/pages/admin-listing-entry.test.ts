@@ -115,8 +115,11 @@ describe('admin listing entry points', () => {
     const review = readFileSync(fileURLToPath(new URL('../components/Ai/ProposalReview.vue', import.meta.url)), 'utf8')
 
     expect(page).toContain('listAdminProposals')
-    expect(page).toContain("'AI changes applied. The public listing is updated.'")
+    expect(page).not.toContain('savedMessage')
     expect(page).toContain('submit-label="Save manual edits"')
     expect(review).toContain("return 'Apply & save selected changes'")
+    expect(review).toContain('Selected fields publish immediately')
+    expect(review).not.toContain('linear-gradient')
+    expect(review).not.toContain('Human approval required')
   })
 })

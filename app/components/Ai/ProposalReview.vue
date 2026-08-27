@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, ChevronDown, FileDiff, RotateCcw, ShieldCheck } from '@lucide/vue'
+import { Check, ChevronDown, FileDiff, RotateCcw } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import type { AiEnrichmentField, AiEnrichmentPayload } from '~/composables/useAiEnrichment'
 import { aiFieldDisplayValue, aiFieldLinks, changedAiFields } from '~/utils/ai-enrichment-review'
@@ -84,42 +84,33 @@ const actionLabel = computed(() => {
 </script>
 
 <template>
-  <section class="overflow-hidden rounded-2xl border border-brand-accent/30 bg-[linear-gradient(135deg,rgba(99,102,241,0.10),rgba(255,255,255,0.025)_58%,rgba(16,185,129,0.045))] shadow-[0_20px_70px_rgba(0,0,0,0.24)]">
-    <header class="flex flex-col gap-4 border-b border-brand-border px-5 py-5 sm:flex-row sm:items-start sm:justify-between">
+  <section class="overflow-hidden rounded-xl border border-brand-border bg-[#0D1220] shadow-[0_16px_50px_rgba(0,0,0,0.16)]">
+    <header class="flex flex-col gap-4 border-b border-brand-border px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
       <div class="flex min-w-0 items-start gap-3">
-        <span class="inline-flex size-10 shrink-0 items-center justify-center rounded-xl border border-brand-accent/25 bg-brand-accent/10 text-brand-accent">
-          <FileDiff class="size-5" aria-hidden="true" />
+        <span class="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-brand-border bg-white/[0.035] text-brand-fg">
+          <FileDiff class="size-4" aria-hidden="true" />
         </span>
-        <div>
-          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-brand-accent">AI-assisted draft</p>
-          <h3 class="mt-1 text-lg font-semibold text-brand-fg">Review every change before it is applied</h3>
-          <p class="mt-1 max-w-2xl text-sm leading-6 text-brand-muted">
-            Based on {{ evidenceSummary }}. Nothing changes until you confirm the selected fields.
+        <div class="min-w-0">
+          <p class="text-[11px] font-semibold uppercase tracking-[0.17em] text-brand-muted">Suggested edits</p>
+          <h3 class="mt-0.5 text-base font-semibold text-brand-fg">Review changes before publishing</h3>
+          <p class="mt-1 max-w-2xl text-sm leading-5 text-brand-muted">
+            Grounded in {{ evidenceSummary }}. Selected fields publish immediately.
           </p>
         </div>
       </div>
-      <span class="inline-flex w-fit items-center gap-2 rounded-full border border-brand-success/25 bg-brand-success/[0.07] px-3 py-1.5 text-xs font-medium text-brand-success">
-        <ShieldCheck class="size-3.5" aria-hidden="true" /> Human approval required
-      </span>
-    </header>
-
-    <footer class="flex flex-col-reverse gap-3 border-b border-brand-border bg-black/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-      <p class="text-xs leading-5 text-brand-muted">
-        Selected fields are saved directly. No second save is needed.
-      </p>
-      <div class="flex flex-col-reverse gap-3 sm:flex-row">
-        <Button type="button" variant="ghost" :disabled="busy" @click="emit('reject')">
-          <RotateCcw class="mr-2 size-4" aria-hidden="true" /> Keep current version
+      <div class="flex shrink-0 flex-col-reverse gap-2 sm:flex-row sm:items-center">
+        <Button type="button" variant="ghost" size="sm" :disabled="busy" @click="emit('reject')">
+          <RotateCcw class="mr-1.5 size-3.5" aria-hidden="true" /> Keep current
         </Button>
-        <Button type="button" :disabled="busy || selected.length === 0" @click="emit('apply', selected)">
+        <Button type="button" size="sm" :disabled="busy || selected.length === 0" @click="emit('apply', selected)">
           <AppSpinner v-if="busy" class="mr-2" color="text-current" label="Applying selected suggestions" />
           {{ busy ? 'Applying…' : actionLabel }}
         </Button>
       </div>
-    </footer>
+    </header>
 
     <div v-if="changedFields.length" class="divide-y divide-brand-border">
-      <article v-for="field in changedFields" :key="field" class="grid gap-3 px-5 py-4 lg:grid-cols-[9rem_minmax(0,1fr)_minmax(0,1fr)] lg:gap-5">
+      <article v-for="field in changedFields" :key="field" class="grid gap-3 px-4 py-4 sm:px-5 lg:grid-cols-[8rem_minmax(0,1fr)_minmax(0,1fr)] lg:gap-4">
         <button
           type="button"
           role="checkbox"
@@ -137,7 +128,7 @@ const actionLabel = computed(() => {
           {{ labels[field] }}
         </button>
 
-        <div class="rounded-xl border border-brand-border bg-black/10 p-3.5">
+        <div class="rounded-lg border border-brand-border bg-black/10 p-3.5">
           <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-muted">Current</p>
           <img v-if="field === 'logo_url' && aiFieldLinks(current, field)[0]" :src="aiFieldLinks(current, field)[0]" alt="Current listing logo" class="mt-3 size-14 rounded-xl border border-brand-border bg-white/5 object-contain p-1.5">
           <div v-if="field === 'social_links' && aiFieldLinks(current, field).length" class="mt-2 space-y-1.5">
@@ -146,8 +137,8 @@ const actionLabel = computed(() => {
           <a v-else-if="field === 'logo_url' && aiFieldLinks(current, field)[0]" :href="aiFieldLinks(current, field)[0]" target="_blank" rel="noopener noreferrer" class="mt-2 block break-all text-xs leading-5 text-brand-muted underline decoration-white/20 underline-offset-4 hover:text-brand-fg">{{ aiFieldLinks(current, field)[0] }}</a>
           <p v-else class="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-brand-muted">{{ aiFieldDisplayValue(current, field) }}</p>
         </div>
-        <div class="rounded-xl border border-brand-accent/25 bg-brand-accent/[0.055] p-3.5">
-          <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-accent">Proposed</p>
+        <div class="rounded-lg border border-white/15 bg-white/[0.035] p-3.5">
+          <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-fg/70">Proposed</p>
           <img v-if="field === 'logo_url' && aiFieldLinks(proposed, field)[0]" :src="aiFieldLinks(proposed, field)[0]" alt="Proposed listing logo" class="mt-3 size-14 rounded-xl border border-brand-accent/25 bg-white/5 object-contain p-1.5">
           <div v-if="field === 'social_links' && aiFieldLinks(proposed, field).length" class="mt-2 space-y-1.5">
             <a v-for="url in aiFieldLinks(proposed, field)" :key="url" :href="url" target="_blank" rel="noopener noreferrer" class="block break-all text-sm leading-5 text-brand-fg underline decoration-brand-accent/35 underline-offset-4 hover:text-brand-accent">{{ url }}</a>
@@ -172,7 +163,7 @@ const actionLabel = computed(() => {
       <p class="mt-1 text-sm text-brand-muted">No field changes were proposed.</p>
     </div>
 
-    <div class="border-t border-brand-border px-5 py-4">
+    <div class="border-t border-brand-border bg-black/10 px-4 py-3 sm:px-5">
       <button
         type="button"
         class="flex w-full items-center justify-between rounded-lg py-1 text-left text-xs font-medium text-brand-muted outline-none transition-colors hover:text-brand-fg focus-visible:ring-2 focus-visible:ring-brand-accent/60"
