@@ -78,6 +78,19 @@ const formatDate = (iso?: string | null): string => {
 }
 
 const isSecure = computed(() => (listing.value?.url ?? '').startsWith('https'))
+const logoFailed = ref(false)
+
+const socialLabel = (url: string): string => {
+  const host = hostname(url)
+  if (host === 'x.com' || host === 'twitter.com') return 'X'
+  if (host === 'facebook.com') return 'Facebook'
+  if (host === 'instagram.com') return 'Instagram'
+  if (host === 'linkedin.com') return 'LinkedIn'
+  if (host === 'tiktok.com') return 'TikTok'
+  if (host === 'youtube.com' || host === 'youtu.be') return 'YouTube'
+  if (host === 'github.com') return 'GitHub'
+  return host
+}
 
 // Gracefully fall back to the placeholder when a screenshot_url 404s (file not
 // on the CDN yet / stale snapshot) instead of rendering a broken-image glyph.
@@ -228,9 +241,20 @@ useHead({
           </span>
         </div>
 
-        <h1 class="mt-4 text-4xl font-bold tracking-tight text-brand-fg lg:text-5xl">
-          {{ listing.name }}
-        </h1>
+        <div class="mt-4 flex items-center gap-4">
+          <img
+            v-if="listing.logo_url && !logoFailed"
+            :src="listing.logo_url"
+            :alt="`${listing.name} logo`"
+            class="size-14 shrink-0 rounded-xl border border-brand-border bg-white/[0.04] object-contain p-1.5 sm:size-16"
+            width="64"
+            height="64"
+            @error="logoFailed = true"
+          >
+          <h1 class="min-w-0 text-4xl font-bold tracking-tight text-brand-fg lg:text-5xl">
+            {{ listing.name }}
+          </h1>
+        </div>
         <p class="mt-3 text-lg text-brand-muted">
           {{ listing.tagline }}
         </p>
@@ -250,6 +274,19 @@ useHead({
             {{ hostname(listing.url) }}
           </span>
         </div>
+        <nav v-if="listing.social_links?.length" aria-label="Social profiles" class="mt-4 flex flex-wrap gap-2">
+          <a
+            v-for="socialUrl in listing.social_links"
+            :key="socialUrl"
+            :href="socialUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-flex items-center gap-1.5 rounded-full border border-brand-border bg-white/[0.025] px-3 py-1.5 text-xs font-medium text-brand-muted transition-colors hover:border-brand-accent/40 hover:text-brand-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/60"
+          >
+            {{ socialLabel(socialUrl) }}
+            <ExternalLink class="size-3" aria-hidden="true" />
+          </a>
+        </nav>
       </header>
 
       <!-- Screenshot — framed as a real browser viewport (reads as authentic product,

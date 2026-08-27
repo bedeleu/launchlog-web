@@ -63,4 +63,16 @@ describe('AI enrichment review requests', () => {
       },
     ])
   })
+
+  test('loads existing admin drafts before generating another one', async () => {
+    response = { data: [{ id: 'proposal-1', status: 'pending' }] }
+
+    const proposals = await useAiEnrichment().listAdminProposals('listing-1')
+
+    expect(proposals.map(({ id, status }) => ({ id, status }))).toEqual([{ id: 'proposal-1', status: 'pending' }])
+    expect(calls).toEqual([{
+      url: `${API}/api/v1/admin/listings/listing-1/ai-proposals`,
+      options: { headers: { Authorization: `Bearer ${TOKEN}` } },
+    }])
+  })
 })

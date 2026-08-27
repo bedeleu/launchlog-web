@@ -90,6 +90,13 @@ export const useAiEnrichment = () => {
     return data
   }
 
+  const listAdminProposals = async (listingId: string): Promise<AiEnrichmentProposal[]> => {
+    const { data } = await $fetch<{ data: AiEnrichmentProposal[] }>(`${root}/admin/listings/${listingId}/ai-proposals`, {
+      headers: await authHeaders(),
+    })
+    return data
+  }
+
   const applyAdminProposal = async (proposalId: string, fields: AiEnrichmentField[]): Promise<AiEnrichmentProposal> => {
     const { data } = await $fetch<{ data: AiEnrichmentProposal }>(`${root}/admin/ai-proposals/${proposalId}/apply`, {
       method: 'POST',
@@ -120,6 +127,7 @@ export const useAiEnrichment = () => {
     generateOwnerProposal,
     applyOwnerProposal,
     rejectOwnerProposal,
+    listAdminProposals,
     generateAdminProposal,
     applyAdminProposal,
     rejectAdminProposal,

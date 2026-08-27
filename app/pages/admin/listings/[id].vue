@@ -10,7 +10,7 @@ useHead({ title: 'Admin · Edit listing', meta: [{ name: 'robots', content: 'noi
 const route = useRoute()
 const id = route.params.id as string
 const { get, categories, update, publish, unpublish, reject } = useAdminListings()
-const { generateAdminProposal, applyAdminProposal, rejectAdminProposal, approveAdminCategory } = useAiEnrichment()
+const { listAdminProposals, generateAdminProposal, applyAdminProposal, rejectAdminProposal, approveAdminCategory } = useAiEnrichment()
 
 const listing = ref<AdminListing | null>(null)
 const categoryOptions = ref<AdminCategory[]>([])
@@ -18,7 +18,7 @@ const loading = ref(true)
 const submitting = ref(false)
 const actionBusy = ref<'publish' | 'unpublish' | 'reject' | null>(null)
 const error = ref<string | null>(null)
-const saved = ref(false)
+const savedMessage = ref<string | null>(null)
 const aiProposal = ref<AiEnrichmentProposal | null>(null)
 const aiBusy = ref(false)
 
@@ -30,9 +30,14 @@ function errorMessage(e: unknown, fallback: string): string {
 async function load() {
   loading.value = true
   try {
-    const [loadedListing, loadedCategories] = await Promise.all([get(id), categories()])
+    const [loadedListing, loadedCategories, proposals] = await Promise.all([
+      get(id),
+      categories(),
+      listAdminProposals(id),
+    ])
     listing.value = loadedListing
     categoryOptions.value = loadedCategories
+    aiProposal.value = proposals.find(proposal => proposal.status === 'pending') ?? null
   }
   catch (e: unknown) {
     error.value = errorMessage(e, 'Listing not found')
@@ -45,10 +50,10 @@ async function load() {
 async function onSubmit(payload: Record<string, unknown>) {
   submitting.value = true
   error.value = null
-  saved.value = false
+  savedMessage.value = null
   try {
     listing.value = await update(id, payload)
-    saved.value = true
+    savedMessage.value = 'Manual edits saved.'
   }
   catch (e: unknown) {
     error.value = errorMessage(e, 'Failed to save')
@@ -61,7 +66,7 @@ async function onSubmit(payload: Record<string, unknown>) {
 async function act(verb: 'publish' | 'unpublish' | 'reject') {
   actionBusy.value = verb
   error.value = null
-  saved.value = false
+  savedMessage.value = null
   const fn = verb === 'publish' ? publish : verb === 'unpublish' ? unpublish : reject
   try {
     listing.value = await fn(id)
@@ -97,7 +102,7 @@ async function applyAiDraft(fields: AiEnrichmentField[]) {
     await applyAdminProposal(aiProposal.value.id, fields)
     aiProposal.value = null
     await load()
-    saved.value = true
+    savedMessage.value = 'AI changes applied. The public listing is updated.'
   }
   catch (e: unknown) {
     error.value = errorMessage(e, 'The selected suggestions could not be applied.')
@@ -167,17 +172,17 @@ onMounted(load)
         >
           View public page ↗
         </a>
-        <Button type="button" variant="outline" :disabled="aiBusy" @click="generateAiDraft">
+        <Button v-if="!aiProposal" type="button" variant="outline" :disabled="aiBusy" @click="generateAiDraft">
           <AppSpinner v-if="aiBusy && !aiProposal" color="text-current" label="Preparing grounded draft" />
-          {{ aiBusy && !aiProposal ? 'Preparing…' : 'Review AI draft' }}
+          {{ aiBusy && !aiProposal ? 'Preparing…' : 'Generate AI draft' }}
         </Button>
       </div>
 
       <p v-if="error" class="mt-4 text-sm text-red-400">
         {{ error }}
       </p>
-      <p v-if="saved" class="mt-4 text-sm text-brand-accent">
-        Saved.
+      <p v-if="savedMessage" class="mt-4 text-sm text-brand-success" role="status">
+        {{ savedMessage }}
       </p>
 
       <AiProposalReview
@@ -200,7 +205,7 @@ onMounted(load)
           :initial="listing"
           :categories="categoryOptions"
           :submitting="submitting || !!actionBusy"
-          submit-label="Save changes"
+          submit-label="Save manual edits"
           @submit="onSubmit"
         >
           <template #actions>

@@ -109,4 +109,14 @@ describe('admin listing entry points', () => {
     expect(source).toContain('categories()')
     expect(source).toContain(':categories="categoryOptions"')
   })
+
+  test('keeps AI approval to one explicit save and separates manual edits', () => {
+    const page = readFileSync(fileURLToPath(new URL('./admin/listings/[id].vue', import.meta.url)), 'utf8')
+    const review = readFileSync(fileURLToPath(new URL('../components/Ai/ProposalReview.vue', import.meta.url)), 'utf8')
+
+    expect(page).toContain('listAdminProposals')
+    expect(page).toContain("'AI changes applied. The public listing is updated.'")
+    expect(page).toContain('submit-label="Save manual edits"')
+    expect(review).toContain("return 'Apply & save selected changes'")
+  })
 })

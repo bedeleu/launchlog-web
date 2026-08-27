@@ -45,6 +45,8 @@ export interface ListingCard {
 export interface Listing extends ListingCard {
   description: string | null
   link_text: string | null
+  logo_url?: string | null
+  social_links?: string[]
   enriched_at: string | null
 }
 

@@ -78,7 +78,7 @@ const evidenceExcerpt = (key: string) => {
 
 const actionLabel = computed(() => {
   if (props.mode === 'preview') return 'Use selected suggestions'
-  if (props.mode === 'admin') return 'Apply selected changes'
+  if (props.mode === 'admin') return 'Apply & save selected changes'
   return 'Update my listing'
 })
 </script>
@@ -102,6 +102,21 @@ const actionLabel = computed(() => {
         <ShieldCheck class="size-3.5" aria-hidden="true" /> Human approval required
       </span>
     </header>
+
+    <footer class="flex flex-col-reverse gap-3 border-b border-brand-border bg-black/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <p class="text-xs leading-5 text-brand-muted">
+        Selected fields are saved directly. No second save is needed.
+      </p>
+      <div class="flex flex-col-reverse gap-3 sm:flex-row">
+        <Button type="button" variant="ghost" :disabled="busy" @click="emit('reject')">
+          <RotateCcw class="mr-2 size-4" aria-hidden="true" /> Keep current version
+        </Button>
+        <Button type="button" :disabled="busy || selected.length === 0" @click="emit('apply', selected)">
+          <AppSpinner v-if="busy" class="mr-2" color="text-current" label="Applying selected suggestions" />
+          {{ busy ? 'Applying…' : actionLabel }}
+        </Button>
+      </div>
+    </footer>
 
     <div v-if="changedFields.length" class="divide-y divide-brand-border">
       <article v-for="field in changedFields" :key="field" class="grid gap-3 px-5 py-4 lg:grid-cols-[9rem_minmax(0,1fr)_minmax(0,1fr)] lg:gap-5">
@@ -174,14 +189,5 @@ const actionLabel = computed(() => {
       </div>
     </div>
 
-    <footer class="flex flex-col-reverse gap-3 border-t border-brand-border bg-black/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-end">
-      <Button type="button" variant="ghost" :disabled="busy" @click="emit('reject')">
-        <RotateCcw class="mr-2 size-4" aria-hidden="true" /> Keep current version
-      </Button>
-      <Button type="button" :disabled="busy || selected.length === 0" @click="emit('apply', selected)">
-        <AppSpinner v-if="busy" class="mr-2" color="text-current" label="Applying selected suggestions" />
-        {{ busy ? 'Applying…' : actionLabel }}
-      </Button>
-    </footer>
   </section>
 </template>
