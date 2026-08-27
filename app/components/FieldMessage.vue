@@ -24,10 +24,10 @@ const minHeight = computed(() => (props.lines === 2 ? 'min-h-10' : 'min-h-5'))
 
 <template>
   <div :class="['text-sm leading-5', minHeight]" aria-live="polite">
-    <p v-if="error" class="text-brand-warning" role="alert">
+    <p v-if="error" class="text-release-destructive" role="alert">
       {{ error }}
     </p>
-    <p v-else-if="hint" class="text-brand-muted">
+    <p v-else-if="hint" class="text-release-paper-muted">
       {{ hint }}
     </p>
   </div>

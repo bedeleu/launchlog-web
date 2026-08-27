@@ -15,7 +15,7 @@ withDefaults(defineProps<{
   class?: string
 }>(), {
   size: 'size-4',
-  color: 'text-brand-accent',
+  color: 'text-release-blaze',
   label: 'Loading',
   class: '',
 })
@@ -25,6 +25,6 @@ withDefaults(defineProps<{
   <RefreshCw
     role="status"
     :aria-label="label"
-    :class="['animate-spin', size, color, $props.class]"
+    :class="['animate-spin motion-reduce:animate-none', size, color, $props.class]"
   />
 </template>
