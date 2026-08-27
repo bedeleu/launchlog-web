@@ -16,7 +16,6 @@ export interface AiEnrichmentPayload {
 export interface AiEnrichmentProposal {
   id: string
   listing_id: string
-  batch_id: string | null
   status: 'pending' | 'applied' | 'rejected'
   current: AiEnrichmentPayload
   proposed: AiEnrichmentPayload
@@ -36,27 +35,6 @@ export interface PreviewAiSuggestion {
   proposed: AiEnrichmentPayload
   evidence: Record<string, unknown>
   model: string
-}
-
-export interface AiEnrichmentBatch {
-  id: string
-  status: 'queued' | 'running' | 'ready' | 'reviewed'
-  filters: Record<string, string>
-  total: number
-  completed: number
-  failed: number
-  applied: number
-  proposals?: AiEnrichmentProposal[]
-  created_at: string
-}
-
-export interface AiBatchRequest {
-  limit: number
-  filters: {
-    status?: string
-    tier?: string
-    source?: string
-  }
 }
 
 export const useAiEnrichment = () => {
@@ -137,31 +115,6 @@ export const useAiEnrichment = () => {
     return data
   }
 
-  const createBatch = async (request: AiBatchRequest): Promise<AiEnrichmentBatch> => {
-    const { data } = await $fetch<{ data: AiEnrichmentBatch }>(`${root}/admin/ai-enrichment/batches`, {
-      method: 'POST',
-      headers: await authHeaders(),
-      body: request,
-    })
-    return data
-  }
-
-  const getBatch = async (batchId: string): Promise<AiEnrichmentBatch> => {
-    const { data } = await $fetch<{ data: AiEnrichmentBatch }>(`${root}/admin/ai-enrichment/batches/${batchId}`, {
-      headers: await authHeaders(),
-    })
-    return data
-  }
-
-  const applyBatch = async (batchId: string, proposalIds: string[], fields: AiEnrichmentField[]): Promise<AiEnrichmentBatch> => {
-    const { data } = await $fetch<{ data: AiEnrichmentBatch }>(`${root}/admin/ai-enrichment/batches/${batchId}/apply`, {
-      method: 'POST',
-      headers: await authHeaders(),
-      body: { proposal_ids: proposalIds, fields },
-    })
-    return data
-  }
-
   return {
     suggestPreview,
     generateOwnerProposal,
@@ -171,8 +124,5 @@ export const useAiEnrichment = () => {
     applyAdminProposal,
     rejectAdminProposal,
     approveAdminCategory,
-    createBatch,
-    getBatch,
-    applyBatch,
   }
 }

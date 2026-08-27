@@ -63,29 +63,4 @@ describe('AI enrichment review requests', () => {
       },
     ])
   })
-
-  test('keeps batch cleanup dry-run until selected proposals are explicitly applied', async () => {
-    const ai = useAiEnrichment()
-    await ai.createBatch({ limit: 25, filters: { status: 'published' } })
-    await ai.applyBatch('batch-1', ['proposal-1'], ['tagline'])
-
-    expect(calls).toEqual([
-      {
-        url: `${API}/api/v1/admin/ai-enrichment/batches`,
-        options: {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${TOKEN}` },
-          body: { limit: 25, filters: { status: 'published' } },
-        },
-      },
-      {
-        url: `${API}/api/v1/admin/ai-enrichment/batches/batch-1/apply`,
-        options: {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${TOKEN}` },
-          body: { proposal_ids: ['proposal-1'], fields: ['tagline'] },
-        },
-      },
-    ])
-  })
 })

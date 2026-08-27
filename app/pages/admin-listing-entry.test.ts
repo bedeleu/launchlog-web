@@ -71,17 +71,6 @@ describe('admin listing entry points', () => {
       listings: [],
       loading: false,
       pagination: null,
-      aiBatch: null,
-      aiBatchBusy: false,
-      aiBatchError: null,
-      aiBatchLimit: 25,
-      selectedProposalIds: [],
-      selectedBatchFields: [],
-      batchConfirmationOpen: false,
-      batchFieldLabels: {},
-      selectableProposals: [],
-      categorySelectionBlocked: false,
-      canApplyBatch: false,
       screenshotBusy: false,
       screenshotMessage: null,
       screenshotStatus: null,
@@ -90,27 +79,14 @@ describe('admin listing entry points', () => {
       act: () => undefined,
       refreshScreenshotStatus: () => undefined,
       startScreenshotBatch: () => undefined,
-      startAiDryRun: () => undefined,
-      toggleProposal: () => undefined,
-      toggleBatchField: () => undefined,
-      applySelectedBatch: () => undefined,
     })
 
     expect(html).toContain('to="/submit"')
     expect(html).toContain('Add by URL')
     expect(html).not.toContain('to="/admin/listings/new"')
     expect(html).not.toContain('Manual entry')
-  })
-
-  test('keeps batch writes opt-in and exposes exact field diffs before apply', () => {
-    const source = readFileSync(fileURLToPath(new URL('./admin/listings/index.vue', import.meta.url)), 'utf8')
-
-    expect(source).toContain('const selectedProposalIds = ref<string[]>([])')
-    expect(source).toContain('const selectedBatchFields = ref<AiEnrichmentField[]>([])')
-    expect(source).not.toContain("selectedProposalIds.value = (aiBatch.value.proposals ?? [])")
-    expect(source).toContain('Review every current → proposed value below.')
-    expect(source).toContain("proposalPayload(proposal, 'current')")
-    expect(source).toContain("proposalPayload(proposal, 'proposed')")
+    expect(html).not.toContain('AI enrichment review queue')
+    expect(html).not.toContain('Create AI dry run')
   })
 
   test('renders the standard URL onboarding on the legacy admin create route', async () => {
