@@ -91,17 +91,17 @@ const previewListings = computed<ListingCard[]>(() => [buyerCard.value, ...conte
       <h2 class="text-sm font-semibold uppercase tracking-[0.2em] text-brand-muted">
         Your LaunchLog placement
       </h2>
-      <span class="shrink-0 rounded-full bg-white/5 px-2.5 py-1 text-[11px] text-brand-muted ring-1 ring-white/10">
-        Example placement preview
+      <span class="shrink-0 border border-release-seam px-2.5 py-1 font-mono text-[0.62rem] font-semibold tracking-[0.1em] text-release-paper-muted uppercase">
+        Catalog proof
       </span>
     </div>
 
-    <div class="mt-3 overflow-hidden rounded-2xl border border-brand-border bg-[#0c1120] shadow-2xl shadow-black/40">
-      <div class="flex items-center gap-2 border-b border-brand-border bg-white/[0.03] px-4 py-2.5">
-        <span class="size-2.5 rounded-full bg-white/15" />
-        <span class="size-2.5 rounded-full bg-white/15" />
-        <span class="size-2.5 rounded-full bg-white/15" />
-        <div class="mx-auto flex items-center gap-1.5 rounded-md bg-black/30 px-3 py-1 text-xs text-brand-muted">
+    <div class="mt-3 overflow-hidden border border-release-seam bg-release-rail">
+      <div class="flex items-center gap-2 border-b border-release-seam bg-black/20 px-4 py-2.5">
+        <span class="size-2 bg-release-blaze" />
+        <span class="size-2 bg-release-warning" />
+        <span class="size-2 bg-release-signal" />
+        <div class="mx-auto flex items-center gap-1.5 border border-release-seam bg-release-ink px-3 py-1 font-mono text-[0.65rem] text-release-paper-muted">
           <Search class="size-3" /> launchlog.ai/browse-all
         </div>
       </div>
@@ -120,7 +120,7 @@ const previewListings = computed<ListingCard[]>(() => [buyerCard.value, ...conte
       </div>
     </div>
 
-    <dl class="mt-4 grid gap-x-8 gap-y-4 border-y border-white/10 py-4 sm:grid-cols-2">
+    <dl class="mt-4 grid gap-x-8 gap-y-4 border-y border-release-seam py-4 sm:grid-cols-2">
       <div class="min-w-0">
         <dt class="text-xs font-medium text-brand-muted">
           Listing title

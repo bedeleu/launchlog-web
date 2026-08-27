@@ -433,7 +433,7 @@ watch(
 </script>
 
 <template>
-  <main class="mx-auto max-w-[90rem] px-6 py-12 lg:py-16">
+  <main class="mx-auto max-w-[90rem] px-5 py-10 sm:px-6 lg:py-14">
     <!-- Not found / expired -->
     <div v-if="error || !preview" class="py-16 text-center">
       <h1 class="text-3xl font-bold text-brand-fg">
@@ -442,59 +442,44 @@ watch(
       <p class="mx-auto mt-3 max-w-md text-brand-muted">
         This preview may have expired (previews last 7 days) or the link is invalid.
       </p>
-      <NuxtLink to="/" class="mt-6 inline-block text-brand-accent underline">
+      <NuxtLink to="/" class="mt-6 inline-block text-release-warning underline">
         Start a new preview
       </NuxtLink>
     </div>
 
     <template v-else>
-      <header class="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+      <header class="flex flex-col gap-5 border-b border-release-seam pb-6 sm:flex-row sm:items-start sm:justify-between">
         <div class="max-w-2xl">
-          <h1 class="text-3xl font-bold text-brand-fg lg:text-4xl">
-            Review &amp; publish your listing
+          <p class="font-mono text-[0.65rem] font-semibold tracking-[0.2em] text-release-warning uppercase">
+            Private release · {{ preview.domain }}
+          </p>
+          <h1 class="mt-3 text-3xl font-semibold tracking-[-0.035em] text-[#f6f1e7] lg:text-4xl">
+            Review the release record
           </h1>
-          <p class="mt-2 text-brand-muted">
+          <p class="mt-2 text-release-paper-muted">
             {{ !authReady
-              ? 'Review the generated listing while we check your publishing access.'
+              ? 'Review the captured evidence while we check your publishing access.'
               : isAdminAccount
-                ? 'Review the generated listing, choose its placement, and publish it directly as an admin.'
-                : 'See how your product will appear, pick a package, and publish. Pay only when you publish.' }}
+                ? 'Verify the evidence, choose its catalog placement, and publish directly.'
+                : 'Verify the evidence, choose a catalog placement, and publish only when it is ready.' }}
           </p>
         </div>
         <NuxtLink
           to="/"
-          class="inline-flex h-10 items-center justify-center rounded-md border border-brand-border px-4 text-sm text-brand-muted transition-colors hover:border-brand-accent/50 hover:text-brand-fg"
+          class="inline-flex h-10 items-center justify-center border border-release-seam px-4 font-mono text-xs font-semibold tracking-[0.08em] text-release-paper-muted uppercase transition-colors hover:border-release-paper-muted hover:text-release-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-warning"
         >
           Start over
         </NuxtLink>
       </header>
 
-      <section
+      <IntakePreviewStatus
         v-if="isGenerating"
-        class="mt-8 overflow-hidden rounded-2xl border border-brand-accent/30 bg-[linear-gradient(110deg,rgba(99,102,241,0.14),rgba(255,255,255,0.025)_48%,rgba(16,185,129,0.06))] px-5 py-4 shadow-[0_18px_60px_rgba(0,0,0,0.28)] sm:px-6"
-        aria-live="polite"
-        aria-busy="true"
-      >
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div class="flex min-w-0 items-start gap-3">
-            <span class="mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-accent/15 ring-1 ring-brand-accent/30">
-              <AppSpinner size="size-4" label="Building your preview" />
-            </span>
-            <div class="min-w-0">
-              <p class="font-semibold text-brand-fg">Building your preview</p>
-              <p class="mt-1 break-all font-mono text-xs text-brand-muted">{{ preview.domain }}</p>
-              <p v-if="slowGeneration" class="mt-2 max-w-2xl text-sm leading-6 text-brand-muted">
-                This site is taking a little longer. We’re still working — keep this tab open and checkout will unlock automatically.
-              </p>
-            </div>
-          </div>
-          <ol class="grid shrink-0 grid-cols-3 gap-2 text-[11px] sm:w-[25rem]" aria-label="Preview progress">
-            <li class="rounded-lg border border-brand-success/25 bg-brand-success/[0.08] px-3 py-2 text-brand-success"><span class="block font-mono">01</span><span class="mt-0.5 block text-white/80">URL accepted</span></li>
-            <li class="rounded-lg border border-brand-accent/25 bg-brand-accent/[0.08] px-3 py-2 text-brand-accent"><span class="block font-mono">02</span><span class="mt-0.5 block text-white/80">Reading details</span></li>
-            <li class="rounded-lg border border-brand-accent/25 bg-brand-accent/[0.08] px-3 py-2 text-brand-accent"><span class="block font-mono">03</span><span class="mt-0.5 block text-white/80">Capturing site</span></li>
-          </ol>
-        </div>
-      </section>
+        class="mt-6"
+        :status="preview.status"
+        :has-screenshot="hasScreenshot"
+        :slow="slowGeneration"
+        :domain="preview.domain"
+      />
 
       <!-- Keep the real product visible while enrichment runs. The buyer can
            understand the placement and plans instead of staring at a fake page. -->
@@ -509,42 +494,6 @@ watch(
             :tagline="form.tagline"
             :generating="isGenerating"
           />
-
-          <div
-            v-if="domainConflict"
-            class="mt-4 rounded-xl border border-brand-accent/40 bg-[linear-gradient(135deg,rgba(99,102,241,0.13),rgba(255,255,255,0.025))] p-5"
-            role="status"
-          >
-            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-brand-accent">
-              {{ existingListing?.action === 'manage' ? 'Already in your account' : 'Already on LaunchLog' }}
-            </p>
-            <h2 class="mt-2 text-lg font-semibold text-brand-fg">This website already has a listing.</h2>
-            <p class="mt-2 text-sm leading-6 text-brand-muted">
-              <template v-if="existingListing?.action === 'manage'">
-                Manage the existing listing from your dashboard. We will not create or charge for a duplicate.
-              </template>
-              <template v-else>
-                We never transfer ownership from a URL alone. Send a request and our team will verify control of the domain.
-              </template>
-            </p>
-            <div class="mt-4 flex flex-wrap gap-3">
-              <NuxtLink
-                v-if="existingListing?.action === 'manage'"
-                :to="existingListing.dashboard_path || '/dashboard'"
-                class="inline-flex h-10 items-center justify-center rounded-md bg-brand-accent px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/60"
-              >Manage listing</NuxtLink>
-              <NuxtLink
-                v-else
-                :to="claimPath"
-                class="inline-flex h-10 items-center justify-center rounded-md bg-brand-accent px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/60"
-              >Request ownership</NuxtLink>
-              <NuxtLink
-                v-if="existingListing?.listing_path"
-                :to="existingListing.listing_path"
-                class="inline-flex h-10 items-center justify-center rounded-md border border-brand-border px-4 text-sm font-medium text-brand-fg transition-colors hover:border-brand-accent/50 hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/60"
-              >View it</NuxtLink>
-            </div>
-          </div>
 
           <!-- Compact warning: the capture failed, publishing still works. -->
           <div
@@ -569,7 +518,7 @@ watch(
                 <AppSpinner v-if="recapturing" class="mr-2" color="text-current" label="Starting a new capture" />
                 {{ recapturing ? 'Starting…' : 'Capture again' }}
               </Button>
-              <NuxtLink to="/" class="text-sm text-brand-accent underline underline-offset-4">
+              <NuxtLink to="/" class="text-sm text-release-warning underline underline-offset-4">
                 Try another URL
               </NuxtLink>
             </div>
@@ -579,75 +528,37 @@ watch(
           </div>
 
           <!-- Discreet listing-text editor — not a step; defaults come from the crawl -->
-          <div v-if="!domainConflict && !isGenerating" class="mt-4">
-            <div class="flex flex-wrap items-center gap-x-5 gap-y-2">
-              <button
-                type="button"
-                class="text-xs font-medium text-brand-accent underline underline-offset-4"
-                @click="showEdit = !showEdit"
-              >
-                {{ showEdit ? 'Done editing text' : 'Edit listing text' }}
-              </button>
-              <button
-                v-if="hasScreenshot"
-                type="button"
-                class="text-xs font-medium text-brand-muted underline decoration-white/20 underline-offset-4 transition-colors hover:text-brand-fg disabled:cursor-not-allowed disabled:opacity-60"
-                :disabled="recapturing"
-                @click="recapture"
-              >
-                {{ recapturing ? 'Starting new capture…' : 'Screenshot not right? Capture again' }}
-              </button>
-              <button
-                type="button"
-                class="text-xs font-medium text-brand-accent underline underline-offset-4 transition-colors hover:text-indigo-300 disabled:cursor-not-allowed disabled:opacity-60"
-                :disabled="aiBusy"
-                @click="generateAiSuggestion"
-              >
-                {{ aiBusy ? 'Preparing grounded draft…' : 'Improve draft with AI' }}
-              </button>
-            </div>
-            <p v-if="recaptureError && hasScreenshot" class="mt-2 text-xs text-brand-warning" role="alert">
-              {{ recaptureError }}
-            </p>
-            <div v-show="showEdit" class="mt-3 space-y-3 rounded-xl border border-brand-border bg-white/[0.02] p-4">
-              <div class="space-y-1.5">
-                <Label for="f-title">Title</Label>
-                <Input id="f-title" v-model="form.title" placeholder="Your product name" />
-              </div>
-              <div class="space-y-1.5">
-                <Label for="f-tagline">Tagline</Label>
-                <Input id="f-tagline" v-model="form.tagline" placeholder="One line about what you do" />
-              </div>
-              <div class="space-y-1.5">
-                <Label for="f-description">Description</Label>
-                <textarea
-                  id="f-description"
-                  v-model="form.description"
-                  rows="4"
-                  placeholder="A short description of your product"
-                  style="field-sizing: content"
-                  class="max-h-60 min-h-20 w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-                />
-              </div>
-            </div>
-            <p v-if="aiError" class="mt-3 text-sm text-brand-warning" role="alert">{{ aiError }}</p>
-            <AiProposalReview
-              v-if="aiSuggestion"
-              class="mt-4"
-              :current="aiSuggestion.current"
-              :proposed="aiSuggestion.proposed"
-              :evidence="aiSuggestion.evidence"
-              :allowed-fields="['name', 'tagline', 'description', 'category']"
-              mode="preview"
-              :busy="aiBusy"
-              @apply="acceptAiSuggestion"
-              @reject="aiSuggestion = null"
-            />
-          </div>
+          <IntakePreviewEditor
+            v-if="!domainConflict && !isGenerating"
+            v-model:title="form.title"
+            v-model:tagline="form.tagline"
+            v-model:description="form.description"
+            v-model:open="showEdit"
+            :has-screenshot="hasScreenshot"
+            :recapturing="recapturing"
+            :recapture-error="recaptureError"
+            :ai-busy="aiBusy"
+            :ai-error="aiError"
+            :ai-suggestion="aiSuggestion"
+            @recapture="recapture"
+            @improve="generateAiSuggestion"
+            @apply="acceptAiSuggestion"
+            @reject="aiSuggestion = null"
+          />
         </div>
 
         <!-- RIGHT: order form (package + email) -->
         <div class="min-w-0 space-y-8">
+          <IntakeDuplicateReleaseNotice
+            v-if="domainConflict && existingListing"
+            :action="existingListing.action"
+            :domain="existingListing.domain"
+            :listing-path="existingListing.listing_path"
+            :dashboard-path="existingListing.dashboard_path"
+            :claim-path="claimPath"
+          />
+
+          <template v-else>
           <!-- 01 — Select package -->
           <section>
             <h2 class="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-brand-muted">
@@ -699,7 +610,7 @@ watch(
             </div>
             <div
               v-if="checkoutReserved && !isAdminAccount"
-              class="rounded-xl border border-brand-accent/35 bg-brand-accent/[0.07] px-4 py-4"
+              class="border border-release-warning/45 bg-release-warning/[0.05] px-4 py-4"
               role="status"
             >
               <p class="text-sm font-semibold text-brand-fg">
@@ -790,23 +701,8 @@ watch(
 
           <!-- CTA -->
           <section>
-            <div v-if="domainConflict" class="rounded-xl border border-brand-border bg-white/[0.025] p-4 text-center">
-              <p class="text-sm font-medium text-brand-fg">This website is already represented on LaunchLog.</p>
-              <p class="mt-1 text-xs leading-5 text-brand-muted">No duplicate payment is needed.</p>
-              <div class="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
-                <NuxtLink
-                  :to="existingListing?.action === 'manage' ? (existingListing.dashboard_path || '/dashboard') : claimPath"
-                  class="text-sm font-medium text-brand-accent underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/60"
-                >{{ existingListing?.action === 'manage' ? 'Open your dashboard' : 'Request ownership' }}</NuxtLink>
-                <NuxtLink
-                  v-if="existingListing?.listing_path"
-                  :to="existingListing.listing_path"
-                  class="text-sm font-medium text-brand-fg underline decoration-white/30 underline-offset-4 transition-colors hover:text-brand-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/60"
-                >View it</NuxtLink>
-              </div>
-            </div>
             <Button
-              v-else-if="isAdminAccount"
+              v-if="isAdminAccount"
               size="lg"
               class="w-full"
               :disabled="!canAdminPublish"
@@ -852,6 +748,7 @@ watch(
               </p>
             </div>
           </section>
+          </template>
         </div>
       </div>
     </template>

@@ -77,23 +77,23 @@ const evidenceExcerpt = (key: string) => {
 }
 
 const actionLabel = computed(() => {
-  if (props.mode === 'preview') return 'Use selected suggestions'
+  if (props.mode === 'preview') return 'Apply selected changes'
   if (props.mode === 'admin') return 'Apply & save selected changes'
   return 'Update my listing'
 })
 </script>
 
 <template>
-  <section class="overflow-hidden rounded-xl border border-brand-border bg-[#0D1220] shadow-[0_16px_50px_rgba(0,0,0,0.16)]">
-    <header class="flex flex-col gap-4 border-b border-brand-border px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+  <section class="overflow-hidden border border-release-seam bg-release-rail">
+    <header class="flex flex-col gap-4 border-b border-release-seam px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
       <div class="flex min-w-0 items-start gap-3">
-        <span class="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-brand-border bg-white/[0.035] text-brand-fg">
+        <span class="inline-flex size-9 shrink-0 items-center justify-center border border-release-warning bg-release-warning text-release-ink">
           <FileDiff class="size-4" aria-hidden="true" />
         </span>
         <div class="min-w-0">
-          <p class="text-[11px] font-semibold uppercase tracking-[0.17em] text-brand-muted">Suggested edits</p>
-          <h3 class="mt-0.5 text-base font-semibold text-brand-fg">Review changes before publishing</h3>
-          <p class="mt-1 max-w-2xl text-sm leading-5 text-brand-muted">
+          <p class="font-mono text-[0.65rem] font-semibold tracking-[0.17em] text-release-warning uppercase">Grounded edit proof</p>
+          <h3 class="mt-0.5 text-base font-semibold text-[#f6f1e7]">Review changes before publishing</h3>
+          <p class="mt-1 max-w-2xl text-sm leading-5 text-release-paper-muted">
             Grounded in {{ evidenceSummary }}. Selected fields publish immediately.
           </p>
         </div>
@@ -109,26 +109,26 @@ const actionLabel = computed(() => {
       </div>
     </header>
 
-    <div v-if="changedFields.length" class="divide-y divide-brand-border">
+    <div v-if="changedFields.length" class="divide-y divide-release-seam">
       <article v-for="field in changedFields" :key="field" class="grid gap-3 px-4 py-4 sm:px-5 lg:grid-cols-[8rem_minmax(0,1fr)_minmax(0,1fr)] lg:gap-4">
         <button
           type="button"
           role="checkbox"
           :aria-checked="selected.includes(field)"
           :disabled="busy || (field === 'category' && categoryNeedsApproval)"
-          class="flex min-h-10 items-center gap-3 self-start rounded-lg text-left text-sm font-medium text-brand-fg outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-brand-accent/60 disabled:cursor-not-allowed disabled:opacity-55"
+          class="flex min-h-10 items-center gap-3 self-start text-left text-sm font-medium text-[#f6f1e7] outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-release-warning disabled:cursor-not-allowed disabled:opacity-55"
           @click="toggle(field)"
         >
           <span
-            class="inline-flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors"
-            :class="selected.includes(field) ? 'border-brand-accent bg-brand-accent text-white' : 'border-white/20 bg-white/[0.02] text-transparent'"
+            class="inline-flex size-5 shrink-0 items-center justify-center border transition-colors"
+            :class="selected.includes(field) ? 'border-release-blaze bg-release-blaze text-release-ink' : 'border-release-seam bg-black/10 text-transparent'"
           >
             <Check class="size-3.5" aria-hidden="true" />
           </span>
           {{ labels[field] }}
         </button>
 
-        <div class="rounded-lg border border-brand-border bg-black/10 p-3.5">
+        <div class="border border-release-seam bg-black/10 p-3.5">
           <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-muted">Current</p>
           <img v-if="field === 'logo_url' && aiFieldLinks(current, field)[0]" :src="aiFieldLinks(current, field)[0]" alt="Current listing logo" class="mt-3 size-14 rounded-xl border border-brand-border bg-white/5 object-contain p-1.5">
           <div v-if="field === 'social_links' && aiFieldLinks(current, field).length" class="mt-2 space-y-1.5">
@@ -137,13 +137,13 @@ const actionLabel = computed(() => {
           <a v-else-if="field === 'logo_url' && aiFieldLinks(current, field)[0]" :href="aiFieldLinks(current, field)[0]" target="_blank" rel="noopener noreferrer" class="mt-2 block break-all text-xs leading-5 text-brand-muted underline decoration-white/20 underline-offset-4 hover:text-brand-fg">{{ aiFieldLinks(current, field)[0] }}</a>
           <p v-else class="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-brand-muted">{{ aiFieldDisplayValue(current, field) }}</p>
         </div>
-        <div class="rounded-lg border border-white/15 bg-white/[0.035] p-3.5">
-          <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-fg/70">Proposed</p>
-          <img v-if="field === 'logo_url' && aiFieldLinks(proposed, field)[0]" :src="aiFieldLinks(proposed, field)[0]" alt="Proposed listing logo" class="mt-3 size-14 rounded-xl border border-brand-accent/25 bg-white/5 object-contain p-1.5">
+        <div class="border border-release-warning/50 bg-release-warning/[0.04] p-3.5">
+          <p class="font-mono text-[0.62rem] font-semibold tracking-[0.16em] text-release-warning uppercase">Proposed</p>
+          <img v-if="field === 'logo_url' && aiFieldLinks(proposed, field)[0]" :src="aiFieldLinks(proposed, field)[0]" alt="Proposed listing logo" class="mt-3 size-14 border border-release-warning/40 bg-white/5 object-contain p-1.5">
           <div v-if="field === 'social_links' && aiFieldLinks(proposed, field).length" class="mt-2 space-y-1.5">
-            <a v-for="url in aiFieldLinks(proposed, field)" :key="url" :href="url" target="_blank" rel="noopener noreferrer" class="block break-all text-sm leading-5 text-brand-fg underline decoration-brand-accent/35 underline-offset-4 hover:text-brand-accent">{{ url }}</a>
+            <a v-for="url in aiFieldLinks(proposed, field)" :key="url" :href="url" target="_blank" rel="noopener noreferrer" class="block break-all text-sm leading-5 text-[#f6f1e7] underline decoration-release-warning/50 underline-offset-4 hover:text-release-warning">{{ url }}</a>
           </div>
-          <a v-else-if="field === 'logo_url' && aiFieldLinks(proposed, field)[0]" :href="aiFieldLinks(proposed, field)[0]" target="_blank" rel="noopener noreferrer" class="mt-2 block break-all text-xs leading-5 text-brand-fg underline decoration-brand-accent/35 underline-offset-4 hover:text-brand-accent">{{ aiFieldLinks(proposed, field)[0] }}</a>
+          <a v-else-if="field === 'logo_url' && aiFieldLinks(proposed, field)[0]" :href="aiFieldLinks(proposed, field)[0]" target="_blank" rel="noopener noreferrer" class="mt-2 block break-all text-xs leading-5 text-[#f6f1e7] underline decoration-release-warning/50 underline-offset-4 hover:text-release-warning">{{ aiFieldLinks(proposed, field)[0] }}</a>
           <p v-else class="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-brand-fg">{{ aiFieldDisplayValue(proposed, field) }}</p>
           <div v-if="field === 'category' && categoryNeedsApproval" class="mt-3 rounded-lg border border-brand-warning/30 bg-brand-warning/[0.07] px-3 py-2 text-xs leading-5 text-brand-warning">
             This is a new category proposal. An admin must approve it before it can be applied.
@@ -163,10 +163,10 @@ const actionLabel = computed(() => {
       <p class="mt-1 text-sm text-brand-muted">No field changes were proposed.</p>
     </div>
 
-    <div class="border-t border-brand-border bg-black/10 px-4 py-3 sm:px-5">
+    <div class="border-t border-release-seam bg-black/10 px-4 py-3 sm:px-5">
       <button
         type="button"
-        class="flex w-full items-center justify-between rounded-lg py-1 text-left text-xs font-medium text-brand-muted outline-none transition-colors hover:text-brand-fg focus-visible:ring-2 focus-visible:ring-brand-accent/60"
+        class="flex w-full items-center justify-between py-1 text-left text-xs font-medium text-release-paper-muted outline-none transition-colors hover:text-release-paper focus-visible:ring-2 focus-visible:ring-release-warning"
         :aria-expanded="evidenceOpen"
         @click="evidenceOpen = !evidenceOpen"
       >

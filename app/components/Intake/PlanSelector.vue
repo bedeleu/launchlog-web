@@ -19,25 +19,24 @@ const { plans } = usePlans()
       type="button"
       :aria-pressed="modelValue === plan.tier"
       :disabled="disabled"
-      class="block w-full rounded-xl border p-4 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/70 disabled:cursor-not-allowed disabled:opacity-60"
+      class="block w-full border p-4 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-warning disabled:cursor-not-allowed disabled:opacity-60"
       :class="modelValue === plan.tier
-        ? (plan.highlight ? 'border-brand-accent bg-brand-accent/10' : 'border-brand-accent bg-brand-accent/5')
-        : 'border-brand-border hover:border-brand-accent/40'"
+        ? 'border-release-blaze bg-release-blaze/[0.06]'
+        : 'border-release-seam hover:border-release-paper-muted'"
       @click="emit('update:modelValue', plan.tier)"
     >
       <div class="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
         <div class="flex flex-wrap items-center gap-2">
           <span
-            class="flex size-4 shrink-0 items-center justify-center rounded-full border"
-            :class="modelValue === plan.tier ? 'border-brand-accent bg-brand-accent text-white' : 'border-brand-muted'"
+            class="flex size-4 shrink-0 items-center justify-center border"
+            :class="modelValue === plan.tier ? 'border-release-blaze bg-release-blaze text-release-ink' : 'border-release-paper-muted'"
           >
             <Check v-if="modelValue === plan.tier" class="size-2.5" :stroke-width="3" />
           </span>
           <span class="whitespace-nowrap font-semibold text-brand-fg">{{ plan.name }}</span>
           <span
             v-if="plan.badge"
-            class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-            :class="plan.highlight ? 'bg-brand-accent/20 text-brand-accent' : 'bg-white/10 text-brand-muted'"
+            class="shrink-0 border border-release-seam px-2 py-0.5 font-mono text-[0.6rem] font-semibold tracking-[0.1em] text-release-paper-muted uppercase"
           >
             {{ plan.badge }}
           </span>
@@ -64,7 +63,7 @@ const { plans } = usePlans()
 
       <ul v-if="modelValue === plan.tier" class="mt-3 grid gap-1.5 text-sm text-brand-muted sm:grid-cols-2">
         <li v-for="f in plan.features" :key="f" class="flex items-start gap-1.5">
-          <Check class="mt-0.5 size-3.5 shrink-0 text-brand-accent" :stroke-width="2.5" />
+          <Check class="mt-0.5 size-3.5 shrink-0 text-release-signal" :stroke-width="2.5" />
           <span>{{ f }}</span>
         </li>
       </ul>
