@@ -10,8 +10,8 @@ describe('admin page routing', () => {
     expect(existsSync(`${pagesDirectory}/admin.vue`)).toBe(false)
   })
 
-  test('contains no outreach page after the obsolete generator reset', () => {
+  test('uses the canonical nested outreach page and forbids the obsolete flat route', () => {
+    expect(existsSync(`${pagesDirectory}/admin/outreach.vue`)).toBe(true)
     expect(existsSync(`${pagesDirectory}/admin-outreach.vue`)).toBe(false)
-    expect(existsSync(`${pagesDirectory}/admin/outreach.vue`)).toBe(false)
   })
 })
