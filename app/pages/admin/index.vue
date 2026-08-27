@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowRight, Camera, CheckCircle2, Clock3, FileText, Gauge, ListChecks, ScanLine, ShieldCheck, Sparkles } from '@lucide/vue'
+import { ArrowRight, Camera, CheckCircle2, Clock3, Gauge, ListChecks, ScanLine, Send, ShieldCheck, Sparkles } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import type { AdminDashboard, AdminListing, FounderScreenshotStatus } from '~/composables/useAdminListings'
 import { toErrorLike } from '~/utils/error-like'
@@ -189,8 +189,8 @@ onMounted(async () => {
       <div class="flex flex-wrap gap-2">
         <Button as-child variant="outline">
           <NuxtLink to="/admin/outreach">
-            <FileText class="mr-2 size-4" />
-            Email template
+            <Send class="mr-2 size-4" />
+            Outreach send
           </NuxtLink>
         </Button>
         <Button as-child variant="outline">
