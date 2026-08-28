@@ -180,7 +180,7 @@ useHead({
 </script>
 
 <template>
-  <main class="min-h-screen">
+  <div class="min-h-screen">
     <ReleaseShell
       wide-rail
       eyebrow="Release catalog · 2027"
@@ -283,5 +283,5 @@ useHead({
         <ListingGrid class="mt-7" :listings="recentListings" mode="uniform" />
       </div>
     </section>
-  </main>
+  </div>
 </template>

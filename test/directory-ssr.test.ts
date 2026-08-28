@@ -242,6 +242,12 @@ describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
     expect(html).not.toContain('Featured · priority placement')
   })
 
+  test('homepage exposes exactly one main landmark', async () => {
+    const html = await fetch(BASE).then(response => response.text())
+
+    expect(html.match(/<main(?:\s|>)/g) ?? []).toHaveLength(1)
+  })
+
   test('no directory card carries a fixed desktop height', async () => {
     const html = await fetch(`${BASE}/browse-all`).then(response => response.text())
 
