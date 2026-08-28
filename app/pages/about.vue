@@ -236,7 +236,7 @@ useHead({
       </div>
       <ul class="space-y-4">
         <li v-for="standard in editorialStandards" :key="standard" class="flex gap-4 leading-7 text-release-paper-muted">
-          <span class="mt-2.5 size-2 shrink-0 bg-release-signal" aria-hidden="true" />
+          <span class="mt-2.5 size-2 shrink-0 bg-release-blaze" aria-hidden="true" />
           <span>{{ standard }}</span>
         </li>
       </ul>

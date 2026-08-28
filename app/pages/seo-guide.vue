@@ -195,7 +195,7 @@ useHead({
         <div v-for="group in [{ title: 'Technical SEO', items: technicalChecklist }, { title: 'Content optimisation', items: contentChecklist }]" :key="group.title" class="border-r border-b border-release-seam p-6">
           <h3 class="text-lg font-semibold text-[#f6f1e7]">{{ group.title }}</h3>
           <ul class="mt-5 space-y-3">
-            <li v-for="item in group.items" :key="item" class="flex gap-3 leading-7 text-release-paper-muted"><span class="mt-2.5 size-2 shrink-0 bg-release-signal" aria-hidden="true" /><span>{{ item }}</span></li>
+            <li v-for="item in group.items" :key="item" class="flex gap-3 leading-7 text-release-paper-muted"><span class="mt-2.5 size-2 shrink-0 bg-release-blaze" aria-hidden="true" /><span>{{ item }}</span></li>
           </ul>
         </div>
       </div>

@@ -11,6 +11,15 @@ describe('Release Catalog tokens', () => {
     '../app/pages/admin/listings/index.vue',
     '../app/pages/admin/outreach.vue',
   ].map(path => readFileSync(new URL(path, import.meta.url), 'utf8')).join('\n')
+  const neutralSurfaces = [
+    '../app/components/AppBar.vue',
+    '../app/components/Intake/PlacementPreview.vue',
+    '../app/components/Intake/PlanSelector.vue',
+    '../app/pages/about.vue',
+    '../app/pages/api-docs.vue',
+    '../app/pages/pricing.vue',
+    '../app/pages/seo-guide.vue',
+  ].map(path => readFileSync(new URL(path, import.meta.url), 'utf8')).join('\n')
 
   it('defines the approved material palette', () => {
     expect(css).toContain('--release-ink: #080907')
@@ -36,5 +45,9 @@ describe('Release Catalog tokens', () => {
 
   it('keeps operational surfaces free of gradient and glow decoration', () => {
     expect(transitionSurfaces).not.toMatch(/bg-gradient|blur-3xl|backdrop-blur|shadow-2xl/)
+  })
+
+  it('reserves signal green for verified success rather than neutral navigation or decoration', () => {
+    expect(neutralSurfaces).not.toContain('release-signal')
   })
 })

@@ -89,7 +89,7 @@ const updateExample = `curl -X PATCH \\
   "${apiBase}/dashboard/listings/{id}"`
 
 const methodClass: Record<Endpoint['method'], string> = {
-  GET: 'border-release-signal text-release-signal',
+  GET: 'border-release-paper-muted text-release-paper',
   PATCH: 'border-release-warning text-release-warning',
   POST: 'border-release-blaze text-release-blaze',
 }

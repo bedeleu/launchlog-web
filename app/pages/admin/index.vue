@@ -251,7 +251,7 @@ onMounted(async () => {
                 Screenshot and moderation pipeline
               </h2>
             </div>
-            <ShieldCheck class="size-5 text-release-signal" />
+            <ShieldCheck class="size-5 text-release-paper-muted" />
           </div>
 
           <div class="mt-6 grid gap-3 sm:grid-cols-3">
@@ -317,13 +317,13 @@ onMounted(async () => {
           </p>
 
           <div v-if="screenshotMessage || screenshotStatus?.log_file" class="mt-5 border border-release-seam bg-release-ink p-3">
-            <p v-if="screenshotMessage" class="text-sm text-release-signal">
+            <p v-if="screenshotMessage" class="text-sm text-release-paper">
               {{ screenshotMessage }}
             </p>
             <div v-if="screenshotStatus?.log_file" class="mt-3">
               <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-release-paper-muted">
                 <span>{{ screenshotStatus.log_file }}</span>
-                <button type="button" class="text-release-signal hover:text-release-signal" @click="refreshScreenshotStatus">
+                <button type="button" class="text-release-blaze hover:text-release-paper" @click="refreshScreenshotStatus">
                   Refresh log
                 </button>
               </div>
@@ -384,13 +384,13 @@ onMounted(async () => {
             Fast actions
           </h2>
           <div class="mt-4 grid gap-2">
-            <NuxtLink to="/admin/listings?status=pending_review" class="border border-release-seam px-3 py-2 text-sm text-release-paper transition-colors hover:border-release-signal/40 hover:text-release-signal">
+            <NuxtLink to="/admin/listings?status=pending_review" class="border border-release-seam px-3 py-2 text-sm text-release-paper transition-colors hover:border-release-blaze hover:text-release-blaze">
               Review pending listings
             </NuxtLink>
-            <NuxtLink to="/admin/listings?source=founding" class="border border-release-seam px-3 py-2 text-sm text-release-paper transition-colors hover:border-release-signal/40 hover:text-release-signal">
+            <NuxtLink to="/admin/listings?source=founding" class="border border-release-seam px-3 py-2 text-sm text-release-paper transition-colors hover:border-release-blaze hover:text-release-blaze">
               Manage founding imports
             </NuxtLink>
-            <NuxtLink to="/submit" class="border border-release-seam px-3 py-2 text-sm text-release-paper transition-colors hover:border-release-signal/40 hover:text-release-signal">
+            <NuxtLink to="/submit" class="border border-release-seam px-3 py-2 text-sm text-release-paper transition-colors hover:border-release-blaze hover:text-release-blaze">
               Add listing from URL
             </NuxtLink>
           </div>
@@ -421,7 +421,7 @@ onMounted(async () => {
             class="grid gap-3 px-5 py-4 md:grid-cols-[1fr_auto_auto]"
           >
             <div class="min-w-0">
-              <NuxtLink :to="`/admin/listings/${listing.id}`" class="truncate font-medium text-release-paper hover:text-release-signal">
+              <NuxtLink :to="`/admin/listings/${listing.id}`" class="truncate font-medium text-release-paper hover:text-release-blaze">
                 {{ listing.name }}
               </NuxtLink>
               <p class="mt-1 truncate text-xs text-release-paper-muted">
@@ -437,7 +437,7 @@ onMounted(async () => {
               </span>
             </div>
             <div class="flex items-center justify-start md:justify-end">
-              <NuxtLink :to="`/listing/${listing.slug}`" target="_blank" class="text-sm text-release-paper-muted hover:text-release-signal">
+              <NuxtLink :to="`/listing/${listing.slug}`" target="_blank" class="text-sm text-release-paper-muted hover:text-release-blaze">
                 Public page
               </NuxtLink>
             </div>

@@ -100,7 +100,7 @@ const previewListings = computed<ListingCard[]>(() => [buyerCard.value, ...conte
       <div class="flex items-center gap-2 border-b border-release-seam bg-black/20 px-4 py-2.5">
         <span class="size-2 bg-release-blaze" />
         <span class="size-2 bg-release-warning" />
-        <span class="size-2 bg-release-signal" />
+        <span class="size-2 bg-release-paper-muted" />
         <div class="mx-auto flex items-center gap-1.5 border border-release-seam bg-release-ink px-3 py-1 font-mono text-[0.65rem] text-release-paper-muted">
           <Search class="size-3" /> launchlog.ai/browse-all
         </div>

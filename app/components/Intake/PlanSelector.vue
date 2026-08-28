@@ -43,7 +43,7 @@ const { plans } = usePlans()
         </div>
         <div class="shrink-0 text-right">
           <template v-if="adminMode">
-            <div class="font-mono text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-release-signal">
+            <div class="font-mono text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-release-paper">
               Manual placement
             </div>
             <div class="mt-0.5 text-[11px] text-release-paper-muted">
@@ -63,7 +63,7 @@ const { plans } = usePlans()
 
       <ul v-if="modelValue === plan.tier" class="mt-4 grid gap-x-4 border-t border-release-seam pt-3 text-sm text-release-paper-muted sm:grid-cols-2">
         <li v-for="f in plan.features" :key="f" class="flex items-start gap-2 py-1.5">
-          <Check class="mt-0.5 size-3.5 shrink-0 text-release-signal" :stroke-width="2.5" />
+          <Check class="mt-0.5 size-3.5 shrink-0 text-release-paper-muted" :stroke-width="2.5" />
           <span>{{ f }}</span>
         </li>
       </ul>

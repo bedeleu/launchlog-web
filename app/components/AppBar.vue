@@ -95,7 +95,7 @@ watch(user, async () => {
             v-if="admin"
             to="/admin"
             :aria-current="isActive('/admin') ? 'page' : undefined"
-            class="inline-flex items-center gap-1.5 border-b border-transparent px-3 py-2 font-mono text-xs font-semibold tracking-[0.06em] text-release-signal transition-colors hover:border-release-signal hover:text-release-paper"
+            class="inline-flex items-center gap-1.5 border-b border-transparent px-3 py-2 font-mono text-xs font-semibold tracking-[0.06em] text-release-paper-muted transition-colors hover:border-release-blaze hover:text-release-paper"
           >
             <ShieldCheck aria-hidden="true" class="size-4" />
             Admin
@@ -163,7 +163,7 @@ watch(user, async () => {
                     v-if="admin"
                     to="/admin"
                     :aria-current="isActive('/admin') ? 'page' : undefined"
-                    class="inline-flex min-h-11 items-center justify-center gap-1.5 border border-release-signal/60 px-3 text-sm font-medium text-release-signal transition-colors hover:bg-release-rail hover:text-release-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus"
+                    class="inline-flex min-h-11 items-center justify-center gap-1.5 border border-release-seam px-3 text-sm font-medium text-release-paper-muted transition-colors hover:border-release-blaze hover:bg-release-rail hover:text-release-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus"
                   >
                     <ShieldCheck aria-hidden="true" class="size-4" />
                     Admin

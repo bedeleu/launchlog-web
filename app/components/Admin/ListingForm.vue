@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ExternalLink, FileText, ImageOff } from '@lucide/vue'
+import { Check, ChevronDown, ExternalLink, FileText, ImageOff } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import type { AdminCategory, AdminListing } from '~/composables/useAdminListings'
 import { buildAdminListingUpdate, isAdminListingDirty } from '~/utils/admin-listing-editor'
@@ -88,7 +88,7 @@ function onSubmit() {
                   {{ category.name }}
                 </option>
               </select>
-              <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-release-paper-muted" aria-hidden="true">⌄</span>
+              <ChevronDown class="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-release-paper-muted" aria-hidden="true" />
             </span>
             <span class="text-xs leading-5 text-release-paper-muted">The grounded draft selects from the existing taxonomy; override only when needed.</span>
           </label>
@@ -105,7 +105,14 @@ function onSubmit() {
           <div class="grid gap-3 sm:grid-cols-2">
             <label class="cursor-pointer border p-4 transition-colors focus-within:ring-2 focus-within:ring-release-focus" :class="form.tier === 'basic' ? 'border-release-warning bg-release-warning/[0.06]' : 'border-release-seam bg-release-rail hover:border-release-paper-muted'">
               <span class="flex items-center gap-3">
-                <input v-model="form.tier" value="basic" type="radio" class="size-4 accent-release-blaze">
+                <input v-model="form.tier" value="basic" type="radio" class="peer sr-only">
+                <span
+                  aria-hidden="true"
+                  class="grid size-4 shrink-0 place-items-center border transition-colors"
+                  :class="form.tier === 'basic' ? 'border-release-blaze bg-release-blaze text-release-ink' : 'border-release-paper-muted bg-release-ink'"
+                >
+                  <Check v-if="form.tier === 'basic'" class="size-3" :stroke-width="3" />
+                </span>
                 <span>
                   <span class="block text-sm font-semibold text-release-paper">Standard</span>
                   <span class="mt-0.5 block text-xs text-release-paper-muted">Full directory listing</span>
@@ -114,7 +121,14 @@ function onSubmit() {
             </label>
             <label class="cursor-pointer border p-4 transition-colors focus-within:ring-2 focus-within:ring-release-focus" :class="form.tier === 'featured' ? 'border-release-warning bg-release-warning/[0.06]' : 'border-release-seam bg-release-rail hover:border-release-paper-muted'">
               <span class="flex items-center gap-3">
-                <input v-model="form.tier" value="featured" type="radio" class="size-4 accent-release-blaze">
+                <input v-model="form.tier" value="featured" type="radio" class="peer sr-only">
+                <span
+                  aria-hidden="true"
+                  class="grid size-4 shrink-0 place-items-center border transition-colors"
+                  :class="form.tier === 'featured' ? 'border-release-blaze bg-release-blaze text-release-ink' : 'border-release-paper-muted bg-release-ink'"
+                >
+                  <Check v-if="form.tier === 'featured'" class="size-3" :stroke-width="3" />
+                </span>
                 <span>
                   <span class="block text-sm font-semibold text-release-paper">Featured</span>
                   <span class="mt-0.5 block text-xs text-release-paper-muted">Priority placement</span>

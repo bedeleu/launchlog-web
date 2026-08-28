@@ -29,4 +29,12 @@ describe('Release Catalog admin listing flow', () => {
     expect(form).not.toContain('rounded-xl')
     expect(form).not.toContain('rounded-lg')
   })
+
+  test('authors selection controls instead of leaking browser or Unicode defaults', () => {
+    expect(form).toContain('<ChevronDown')
+    expect(form).toContain('class="peer sr-only"')
+    expect(form).toContain('<Check v-if=')
+    expect(form).not.toContain('>⌄</span>')
+    expect(form).not.toContain('accent-release')
+  })
 })

@@ -123,7 +123,7 @@ useFaqSchema(faqs.map(f => ({ q: f.question, a: f.answer })))
               </div>
               <ul class="divide-y divide-release-seam text-sm text-release-paper-muted">
                 <li v-for="feature in plan.features" :key="feature" class="flex gap-3 py-3">
-                  <Check class="mt-0.5 size-4 shrink-0 text-release-signal" :stroke-width="2.5" />
+                  <Check class="mt-0.5 size-4 shrink-0 text-release-paper-muted" :stroke-width="2.5" />
                   <span>{{ feature }}</span>
                 </li>
               </ul>
@@ -186,7 +186,7 @@ useFaqSchema(faqs.map(f => ({ q: f.question, a: f.answer })))
               <tr v-for="row in featureRows" :key="row.label" class="border-t border-release-seam bg-release-rail">
                 <td class="px-5 py-4 font-medium text-release-paper">{{ row.label }}</td>
                 <td v-for="plan in plans" :key="`${row.label}-${plan.tier}`" class="border-l border-release-seam px-5 py-4 text-center text-release-paper-muted">
-                  <Check v-if="row[plan.tier] === true" class="mx-auto size-4 text-release-signal" />
+                  <Check v-if="row[plan.tier] === true" class="mx-auto size-4 text-release-paper" />
                   <Minus v-else-if="row[plan.tier] === false" class="mx-auto size-4 text-release-paper-muted" />
                   <span v-else>{{ row[plan.tier] }}</span>
                 </td>

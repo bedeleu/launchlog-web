@@ -33,4 +33,8 @@ describe('authenticated header navigation', () => {
     expect(source).toContain('bg-release-blaze')
     expect(source).not.toContain('bg-gradient')
   })
+
+  test('does not use the verified-success signal for neutral navigation', () => {
+    expect(source).not.toContain('release-signal')
+  })
 })

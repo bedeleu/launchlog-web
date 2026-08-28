@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ChevronDown } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import type { AdminListing, AdminListingFilters, AdminListingPaginationMeta, FounderScreenshotStatus, ListingStatus } from '~/composables/useAdminListings'
 import { toErrorLike } from '~/utils/error-like'
@@ -189,32 +190,41 @@ onMounted(async () => {
     <div class="mt-6 flex flex-wrap items-end gap-3">
       <label class="flex flex-col gap-1 text-xs text-release-paper-muted">
         Status
-        <select v-model="filters.status" class="release-field h-10 min-w-36 px-3 text-sm" @change="load(1)">
-          <option value="">All</option>
-          <option value="published">Published</option>
-          <option value="pending_review">Pending review</option>
-          <option value="draft">Draft</option>
-          <option value="rejected">Rejected</option>
-          <option value="archived">Archived</option>
-        </select>
+        <span class="relative">
+          <select v-model="filters.status" class="release-field h-10 min-w-36 appearance-none px-3 pr-9 text-sm" @change="load(1)">
+            <option value="">All</option>
+            <option value="published">Published</option>
+            <option value="pending_review">Pending review</option>
+            <option value="draft">Draft</option>
+            <option value="rejected">Rejected</option>
+            <option value="archived">Archived</option>
+          </select>
+          <ChevronDown class="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2" aria-hidden="true" />
+        </span>
       </label>
       <label class="flex flex-col gap-1 text-xs text-release-paper-muted">
         Tier
-        <select v-model="filters.tier" class="release-field h-10 min-w-32 px-3 text-sm" @change="load(1)">
-          <option value="">All</option>
-          <option value="basic">Standard</option>
-          <option value="featured">Featured</option>
-        </select>
+        <span class="relative">
+          <select v-model="filters.tier" class="release-field h-10 min-w-32 appearance-none px-3 pr-9 text-sm" @change="load(1)">
+            <option value="">All</option>
+            <option value="basic">Standard</option>
+            <option value="featured">Featured</option>
+          </select>
+          <ChevronDown class="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2" aria-hidden="true" />
+        </span>
       </label>
       <label class="flex flex-col gap-1 text-xs text-release-paper-muted">
         Source
-        <select v-model="filters.source" class="release-field h-10 min-w-32 px-3 text-sm" @change="load(1)">
-          <option value="">All</option>
-          <option value="founding">Founding</option>
-          <option value="customer">Customer</option>
-          <option value="admin">Admin</option>
-          <option value="seed">Seed</option>
-        </select>
+        <span class="relative">
+          <select v-model="filters.source" class="release-field h-10 min-w-32 appearance-none px-3 pr-9 text-sm" @change="load(1)">
+            <option value="">All</option>
+            <option value="founding">Founding</option>
+            <option value="customer">Customer</option>
+            <option value="admin">Admin</option>
+            <option value="seed">Seed</option>
+          </select>
+          <ChevronDown class="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2" aria-hidden="true" />
+        </span>
       </label>
       <label class="flex flex-1 flex-col gap-1 text-xs text-release-paper-muted">
         Search
