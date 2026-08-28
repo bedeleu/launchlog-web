@@ -78,8 +78,9 @@ const evidenceExcerpt = (key: string) => {
 
 const actionLabel = computed(() => {
   if (props.mode === 'preview') return 'Apply selected changes'
+  if (props.mode === 'owner') return 'Apply & save selected changes'
   if (props.mode === 'admin') return 'Apply & save selected changes'
-  return 'Update my listing'
+  return 'Apply selected changes'
 })
 </script>
 
@@ -99,10 +100,10 @@ const actionLabel = computed(() => {
         </div>
       </div>
       <div class="flex shrink-0 flex-col-reverse gap-2 sm:flex-row sm:items-center">
-        <Button type="button" variant="ghost" size="sm" :disabled="busy" @click="emit('reject')">
+        <Button type="button" variant="ghost" size="sm" class="rounded-none border border-transparent font-mono text-xs text-release-paper-muted hover:border-release-seam hover:bg-release-ink hover:text-release-paper" :disabled="busy" @click="emit('reject')">
           <RotateCcw class="mr-1.5 size-3.5" aria-hidden="true" /> Keep current
         </Button>
-        <Button type="button" size="sm" :disabled="busy || selected.length === 0" @click="emit('apply', selected)">
+        <Button type="button" size="sm" class="rounded-none border border-release-paper bg-release-paper font-mono text-xs text-release-ink hover:border-release-warning hover:bg-release-warning" :disabled="busy || selected.length === 0" @click="emit('apply', selected)">
           <AppSpinner v-if="busy" class="mr-2" color="text-current" label="Applying selected suggestions" />
           {{ busy ? 'Applying…' : actionLabel }}
         </Button>
@@ -121,36 +122,36 @@ const actionLabel = computed(() => {
         >
           <span
             class="inline-flex size-5 shrink-0 items-center justify-center border transition-colors"
-            :class="selected.includes(field) ? 'border-release-blaze bg-release-blaze text-release-ink' : 'border-release-seam bg-black/10 text-transparent'"
+            :class="selected.includes(field) ? 'border-release-blaze bg-release-blaze text-release-ink' : 'border-release-seam bg-release-ink text-transparent'"
           >
             <Check class="size-3.5" aria-hidden="true" />
           </span>
           {{ labels[field] }}
         </button>
 
-        <div class="border border-release-seam bg-black/10 p-3.5">
-          <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-muted">Current</p>
-          <img v-if="field === 'logo_url' && aiFieldLinks(current, field)[0]" :src="aiFieldLinks(current, field)[0]" alt="Current listing logo" class="mt-3 size-14 rounded-xl border border-brand-border bg-white/5 object-contain p-1.5">
+        <div class="border border-release-seam bg-release-ink p-3.5">
+          <p class="font-mono text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-release-paper-muted">Current</p>
+          <img v-if="field === 'logo_url' && aiFieldLinks(current, field)[0]" :src="aiFieldLinks(current, field)[0]" alt="Current listing logo" class="mt-3 size-14 border border-release-seam bg-release-rail object-contain p-1.5">
           <div v-if="field === 'social_links' && aiFieldLinks(current, field).length" class="mt-2 space-y-1.5">
-            <a v-for="url in aiFieldLinks(current, field)" :key="url" :href="url" target="_blank" rel="noopener noreferrer" class="block break-all text-sm leading-5 text-brand-muted underline decoration-white/20 underline-offset-4 hover:text-brand-fg">{{ url }}</a>
+            <a v-for="url in aiFieldLinks(current, field)" :key="url" :href="url" target="_blank" rel="noopener noreferrer" class="block break-all text-sm leading-5 text-release-paper-muted underline decoration-release-seam underline-offset-4 hover:text-release-paper">{{ url }}</a>
           </div>
-          <a v-else-if="field === 'logo_url' && aiFieldLinks(current, field)[0]" :href="aiFieldLinks(current, field)[0]" target="_blank" rel="noopener noreferrer" class="mt-2 block break-all text-xs leading-5 text-brand-muted underline decoration-white/20 underline-offset-4 hover:text-brand-fg">{{ aiFieldLinks(current, field)[0] }}</a>
-          <p v-else class="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-brand-muted">{{ aiFieldDisplayValue(current, field) }}</p>
+          <a v-else-if="field === 'logo_url' && aiFieldLinks(current, field)[0]" :href="aiFieldLinks(current, field)[0]" target="_blank" rel="noopener noreferrer" class="mt-2 block break-all text-xs leading-5 text-release-paper-muted underline decoration-release-seam underline-offset-4 hover:text-release-paper">{{ aiFieldLinks(current, field)[0] }}</a>
+          <p v-else class="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-release-paper-muted">{{ aiFieldDisplayValue(current, field) }}</p>
         </div>
         <div class="border border-release-warning/50 bg-release-warning/[0.04] p-3.5">
           <p class="font-mono text-[0.62rem] font-semibold tracking-[0.16em] text-release-warning uppercase">Proposed</p>
-          <img v-if="field === 'logo_url' && aiFieldLinks(proposed, field)[0]" :src="aiFieldLinks(proposed, field)[0]" alt="Proposed listing logo" class="mt-3 size-14 border border-release-warning/40 bg-white/5 object-contain p-1.5">
+          <img v-if="field === 'logo_url' && aiFieldLinks(proposed, field)[0]" :src="aiFieldLinks(proposed, field)[0]" alt="Proposed listing logo" class="mt-3 size-14 border border-release-warning/40 bg-release-rail object-contain p-1.5">
           <div v-if="field === 'social_links' && aiFieldLinks(proposed, field).length" class="mt-2 space-y-1.5">
             <a v-for="url in aiFieldLinks(proposed, field)" :key="url" :href="url" target="_blank" rel="noopener noreferrer" class="block break-all text-sm leading-5 text-[#f6f1e7] underline decoration-release-warning/50 underline-offset-4 hover:text-release-warning">{{ url }}</a>
           </div>
           <a v-else-if="field === 'logo_url' && aiFieldLinks(proposed, field)[0]" :href="aiFieldLinks(proposed, field)[0]" target="_blank" rel="noopener noreferrer" class="mt-2 block break-all text-xs leading-5 text-[#f6f1e7] underline decoration-release-warning/50 underline-offset-4 hover:text-release-warning">{{ aiFieldLinks(proposed, field)[0] }}</a>
-          <p v-else class="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-brand-fg">{{ aiFieldDisplayValue(proposed, field) }}</p>
-          <div v-if="field === 'category' && categoryNeedsApproval" class="mt-3 rounded-lg border border-brand-warning/30 bg-brand-warning/[0.07] px-3 py-2 text-xs leading-5 text-brand-warning">
+          <p v-else class="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-release-paper">{{ aiFieldDisplayValue(proposed, field) }}</p>
+          <div v-if="field === 'category' && categoryNeedsApproval" class="mt-3 border border-release-warning/40 bg-release-warning/[0.07] px-3 py-2 text-xs leading-5 text-release-warning">
             This is a new category proposal. An admin must approve it before it can be applied.
             <button
               v-if="mode === 'admin'"
               type="button"
-              class="ml-1 font-semibold underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-warning/60"
+              class="ml-1 font-semibold underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-warning/60"
               :disabled="busy"
               @click="emit('approveCategory')"
             >Approve category</button>
@@ -159,8 +160,8 @@ const actionLabel = computed(() => {
       </article>
     </div>
     <div v-else class="px-5 py-8 text-center">
-      <p class="font-medium text-brand-fg">The current listing already matches the grounded draft.</p>
-      <p class="mt-1 text-sm text-brand-muted">No field changes were proposed.</p>
+      <p class="font-medium text-release-paper">The current listing already matches the grounded draft.</p>
+      <p class="mt-1 text-sm text-release-paper-muted">No field changes were proposed.</p>
     </div>
 
     <div class="border-t border-release-seam bg-black/10 px-4 py-3 sm:px-5">
@@ -173,10 +174,10 @@ const actionLabel = computed(() => {
         <span>Evidence used: {{ evidenceSummary }}</span>
         <ChevronDown class="size-4 transition-transform" :class="evidenceOpen ? 'rotate-180' : ''" aria-hidden="true" />
       </button>
-      <div v-if="evidenceOpen" class="mt-3 grid gap-3 text-xs leading-5 text-brand-muted sm:grid-cols-2">
-        <div v-if="evidenceExcerpt('visible_text')" class="rounded-lg border border-brand-border bg-black/10 p-3"><span class="font-semibold text-brand-fg">Homepage</span><p class="mt-1">{{ evidenceExcerpt('visible_text') }}</p></div>
-        <div v-if="evidenceExcerpt('about_text')" class="rounded-lg border border-brand-border bg-black/10 p-3"><span class="font-semibold text-brand-fg">About</span><p class="mt-1">{{ evidenceExcerpt('about_text') }}</p></div>
-        <div v-if="evidenceExcerpt('json_ld_facts')" class="rounded-lg border border-brand-border bg-black/10 p-3"><span class="font-semibold text-brand-fg">Structured data</span><p class="mt-1">{{ evidenceExcerpt('json_ld_facts') }}</p></div>
+      <div v-if="evidenceOpen" class="mt-3 grid gap-3 text-xs leading-5 text-release-paper-muted sm:grid-cols-2">
+        <div v-if="evidenceExcerpt('visible_text')" class="border border-release-seam bg-release-ink p-3"><span class="font-semibold text-release-paper">Homepage</span><p class="mt-1">{{ evidenceExcerpt('visible_text') }}</p></div>
+        <div v-if="evidenceExcerpt('about_text')" class="border border-release-seam bg-release-ink p-3"><span class="font-semibold text-release-paper">About</span><p class="mt-1">{{ evidenceExcerpt('about_text') }}</p></div>
+        <div v-if="evidenceExcerpt('json_ld_facts')" class="border border-release-seam bg-release-ink p-3"><span class="font-semibold text-release-paper">Structured data</span><p class="mt-1">{{ evidenceExcerpt('json_ld_facts') }}</p></div>
       </div>
     </div>
 

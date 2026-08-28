@@ -411,7 +411,7 @@ const tierLabel = (tier: string | null | undefined): string => {
                 @reject="rejectAiDraft(listing)"
               />
 
-              <div v-if="drafts[listing.id]" class="mt-6 space-y-5">
+              <div v-if="drafts[listing.id] && !aiProposals[listing.id]" class="mt-6 space-y-5">
                 <div class="space-y-2">
                   <Label :for="`listing-${listing.id}-name`" class="font-mono text-xs text-release-paper">Name</Label>
                   <Input :id="`listing-${listing.id}-name`" v-model="drafts[listing.id]!.name" minlength="2" maxlength="120" required :disabled="savingIds.has(listing.id)" class="h-11 rounded-none border-release-seam bg-release-rail text-release-paper focus-visible:border-release-warning focus-visible:ring-release-focus" @input="clearSaved(listing.id)" />
@@ -429,7 +429,7 @@ const tierLabel = (tier: string | null | undefined): string => {
                 </div>
               </div>
 
-              <div class="mt-6 grid min-h-12 items-start gap-3 border-t border-release-seam pt-5 sm:grid-cols-[auto_minmax(0,1fr)]">
+              <div v-if="!aiProposals[listing.id]" class="mt-6 grid min-h-12 items-start gap-3 border-t border-release-seam pt-5 sm:grid-cols-[auto_minmax(0,1fr)]">
                 <Button type="submit" size="lg" class="rounded-none border border-release-paper bg-release-paper text-release-ink hover:border-release-warning hover:bg-release-warning" :disabled="savingIds.has(listing.id) || !isDirty(listing.id)">
                   <AppSpinner v-if="savingIds.has(listing.id)" color="text-current" label="Saving listing" />
                   <Save v-else aria-hidden="true" />
