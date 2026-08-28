@@ -1,0 +1,45 @@
+Release Catalog Phase E — authoritative baseline
+Captured: 2026-08-28T11:15:00Z
+
+Integration candidate
+- Branch: codex/release-catalog-e-cutover
+- Web base/HEAD: af3f861e3694d2ff1efe895b4d2192650c4e2ca9
+- API origin/main: efba01c8affd1fda432b2ee3c18c2f89015c06ad
+- Worktree: /private/tmp/launchlog-release-e.0MStgl/launchlog-web
+- Worktree clean before this evidence file was created.
+
+Phase integration proof
+- Phase A f4b1acc9efc17c8d1548f53d89f5d60ec205f62e is an ancestor of HEAD.
+- Phase B 4df6973fa5436abd73b435adc97eaa66b32d3a93 is an ancestor of HEAD.
+- Phase C e8c019943ef9d5fc99caab3bd562cb82d32cf38a is an ancestor of HEAD.
+- Phase D af3f861e3694d2ff1efe895b4d2192650c4e2ca9 is HEAD.
+- Release Catalog token, primitive, directory, listing-proof, customer-shelf,
+  admin-registry and reading-shell tests/components are present in the integrated tree.
+
+Authoritative CI
+- Web CI 33165686816: completed/success on af3f861e3694d2ff1efe895b4d2192650c4e2ca9.
+- API CI 33073718496: completed/success on efba01c8affd1fda432b2ee3c18c2f89015c06ad.
+
+Railway production
+- Project: launchlog.ai (f9ef5413-0681-412d-9056-0846d3e4be8b), production.
+- Web deployment b931fbca-2e95-4abb-9836-da2e1d7f760e: SUCCESS on af3f861e3694d2ff1efe895b4d2192650c4e2ca9.
+- API deployment 44275195-7e2f-497a-8c18-2908542f90e2: SUCCESS on efba01c8affd1fda432b2ee3c18c2f89015c06ad.
+- Checkout enabled: true.
+- Stripe live mode: true; configured secret has the sk_live_ prefix (value not read or recorded).
+- Queue connection: redis.
+- Sentry configured on API and Web; Plausible configured on Web.
+
+Fresh local CI-equivalent baseline
+- bun install --frozen-lockfile: PASS (local Bun 1.3.14; CI pins Bun 1.2.22).
+- bun audit --audit-level=high: PASS.
+- lint: PASS with 0 errors and 4 known warnings.
+- typecheck: PASS.
+- unit/pre-build tests: 284 pass, 120 SSR placeholders skipped, 0 fail.
+- build: PASS; output 4.93 MB / 1.17 MB gzip.
+- required SSR suites: 84 pass, 0 fail.
+- required directory SSR suite: 20 pass, 0 fail.
+- portable output: PASS; no .output/server/node_modules and server answered on :3010.
+
+Baseline verdict
+- READY for the Phase E state/surface matrix.
+- No external mutation was performed while collecting this baseline.
