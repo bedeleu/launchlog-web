@@ -69,42 +69,12 @@
   --color-release-seam: var(--release-seam);
   --color-release-focus: var(--release-focus);
 
-  /* Compatibility aliases keep existing surfaces coherent while each phase
-     moves to the explicit material tokens above. */
-  --color-brand-bg: var(--release-ink);
-  --color-brand-fg: #f6f1e7;
-  --color-brand-accent: var(--release-blaze);
-  --color-brand-success: var(--release-signal);
-  --color-brand-warning: var(--release-warning);
-  /* 5.12:1 on --color-brand-bg, clearing WCAG AA 4.5:1 for normal text.
-     Was #6B7280 at 3.98:1, which failed AA everywhere it was used as body text.
-     Opacity variants do NOT clear AA: /80 is 3.65:1 and /60 is 2.57:1. Every /80 use
-     was semantic text (status labels, API Docs labels, footer column headings, the
-     legal "On this page" label) and has been raised to full opacity. The three
-     surviving /60 uses are two SVG icons and an input placeholder, which are not
-     body text. Do not reintroduce an opacity variant for anything a user reads. */
-  --color-brand-muted: var(--release-paper-muted);
-  --color-brand-border: var(--release-seam);
-
   --font-sans: "Geist Variable", "Inter", system-ui, sans-serif;
   --font-mono: "Geist Mono Variable", "JetBrains Mono", ui-monospace, monospace;
 }
 
 @theme inline {
   --font-heading: var(--font-sans);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -149,19 +119,6 @@
   --border: oklch(0.92 0.004 286.32);
   --input: oklch(0.92 0.004 286.32);
   --ring: oklch(0.705 0.015 286.067);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-primary: oklch(0.21 0.006 285.885);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-  --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
-  --sidebar-border: oklch(0.92 0.004 286.32);
-  --sidebar-ring: oklch(0.705 0.015 286.067);
 }
 
 .dark {
@@ -183,19 +140,6 @@
   --border: var(--release-seam);
   --input: rgba(232, 224, 207, 0.22);
   --ring: var(--release-focus);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.21 0.006 285.885);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.552 0.016 285.938);
 }
 
 @layer base {

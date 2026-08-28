@@ -155,7 +155,7 @@ const actionLabel = computed(() => {
       <p class="mt-1 text-sm text-release-paper-muted">No field changes were proposed.</p>
     </div>
 
-    <div class="border-t border-release-seam bg-black/10 px-4 py-3 sm:px-5">
+    <div class="border-t border-release-seam bg-release-rail px-4 py-3 sm:px-5">
       <button
         type="button"
         class="flex w-full items-center justify-between py-1 text-left text-xs font-medium text-release-paper-muted outline-none transition-colors hover:text-release-paper focus-visible:ring-2 focus-visible:ring-release-warning"

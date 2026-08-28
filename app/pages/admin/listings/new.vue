@@ -4,7 +4,7 @@ useHead({ title: 'Admin · Add a listing', meta: [{ name: 'robots', content: 'no
 </script>
 
 <template>
-  <main class="min-h-screen bg-release-ink">
+  <div class="min-h-screen bg-release-ink">
     <ReleaseShell
       eyebrow="Operator desk · URL intake"
       title="Add a listing by URL."
@@ -15,5 +15,5 @@ useHead({ title: 'Admin · Add a listing', meta: [{ name: 'robots', content: 'no
       </NuxtLink>
       <IntakePreviewForm />
     </ReleaseShell>
-  </main>
+  </div>
 </template>

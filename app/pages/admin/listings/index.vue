@@ -31,12 +31,12 @@ const screenshotMessage = ref<string | null>(null)
 let loadRequestId = 0
 
 const statusClass: Record<ListingStatus, string> = {
-  published: 'border-brand-accent/40 bg-brand-accent/10 text-brand-accent',
-  pending_review: 'border-amber-500/40 bg-amber-500/10 text-amber-400',
-  rejected: 'border-red-500/40 bg-red-500/10 text-red-400',
-  draft: 'border-brand-border bg-white/[0.04] text-brand-muted',
-  archived: 'border-brand-border bg-white/[0.04] text-brand-muted',
-  spam: 'border-red-500/40 bg-red-500/10 text-red-400',
+  published: 'border-release-blaze/40 bg-release-blaze/10 text-release-blaze',
+  pending_review: 'border-release-warning/40 bg-release-warning/10 text-release-warning',
+  rejected: 'border-release-destructive/40 bg-release-destructive/10 text-release-destructive',
+  draft: 'border-release-seam bg-release-rail text-release-paper-muted',
+  archived: 'border-release-seam bg-release-rail text-release-paper-muted',
+  spam: 'border-release-destructive/40 bg-release-destructive/10 text-release-destructive',
 }
 
 function errorMessage(e: unknown, fallback: string): string {
@@ -139,7 +139,7 @@ onMounted(async () => {
 <template>
   <div class="mx-auto max-w-7xl px-4 py-8">
     <div class="flex flex-wrap items-center justify-between gap-4">
-      <h1 class="text-2xl font-bold text-brand-fg">
+      <h1 class="text-2xl font-bold text-release-paper">
         Listings
       </h1>
       <Button as-child>
@@ -149,16 +149,16 @@ onMounted(async () => {
       </Button>
     </div>
 
-    <section class="mt-6 rounded-xl border border-brand-border bg-white/[0.03] p-4">
+    <section class="mt-6 border border-release-seam bg-release-rail p-4">
       <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
-          <div class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-muted">
+          <div class="text-xs font-semibold uppercase tracking-[0.24em] text-release-paper-muted">
             Founding screenshots
           </div>
-          <p class="mt-1 max-w-2xl text-sm text-brand-muted">
+          <p class="mt-1 max-w-2xl text-sm text-release-paper-muted">
             Runs inside Railway, writes thumbnails to Cloudflare R2, and only picks listings without a public screenshot.
           </p>
-          <p v-if="screenshotMessage" class="mt-2 text-sm text-brand-accent">
+          <p v-if="screenshotMessage" class="mt-2 text-sm text-release-blaze">
             {{ screenshotMessage }}
           </p>
         </div>
@@ -176,20 +176,20 @@ onMounted(async () => {
           </Button>
         </div>
       </div>
-      <div v-if="screenshotStatus?.log_file" class="mt-4 rounded-lg border border-brand-border bg-black/20 p-3">
-        <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-brand-muted">
+      <div v-if="screenshotStatus?.log_file" class="mt-4 border border-release-seam bg-release-ink p-3">
+        <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-release-paper-muted">
           <span>{{ screenshotStatus.log_file }}</span>
           <span>{{ screenshotStatus.modified_at }}</span>
         </div>
-        <pre class="mt-3 max-h-52 overflow-auto whitespace-pre-wrap text-xs leading-relaxed text-brand-muted">{{ screenshotStatus.tail.join('\n') }}</pre>
+        <pre class="mt-3 max-h-52 overflow-auto whitespace-pre-wrap text-xs leading-relaxed text-release-paper-muted">{{ screenshotStatus.tail.join('\n') }}</pre>
       </div>
     </section>
 
     <!-- Filters -->
     <div class="mt-6 flex flex-wrap items-end gap-3">
-      <label class="flex flex-col gap-1 text-xs text-brand-muted">
+      <label class="flex flex-col gap-1 text-xs text-release-paper-muted">
         Status
-        <select v-model="filters.status" class="rounded-md border border-brand-border bg-transparent px-2 py-1.5 text-sm text-brand-fg" @change="load(1)">
+        <select v-model="filters.status" class="release-field h-10 min-w-36 px-3 text-sm" @change="load(1)">
           <option value="">All</option>
           <option value="published">Published</option>
           <option value="pending_review">Pending review</option>
@@ -198,17 +198,17 @@ onMounted(async () => {
           <option value="archived">Archived</option>
         </select>
       </label>
-      <label class="flex flex-col gap-1 text-xs text-brand-muted">
+      <label class="flex flex-col gap-1 text-xs text-release-paper-muted">
         Tier
-        <select v-model="filters.tier" class="rounded-md border border-brand-border bg-transparent px-2 py-1.5 text-sm text-brand-fg" @change="load(1)">
+        <select v-model="filters.tier" class="release-field h-10 min-w-32 px-3 text-sm" @change="load(1)">
           <option value="">All</option>
           <option value="basic">Standard</option>
           <option value="featured">Featured</option>
         </select>
       </label>
-      <label class="flex flex-col gap-1 text-xs text-brand-muted">
+      <label class="flex flex-col gap-1 text-xs text-release-paper-muted">
         Source
-        <select v-model="filters.source" class="rounded-md border border-brand-border bg-transparent px-2 py-1.5 text-sm text-brand-fg" @change="load(1)">
+        <select v-model="filters.source" class="release-field h-10 min-w-32 px-3 text-sm" @change="load(1)">
           <option value="">All</option>
           <option value="founding">Founding</option>
           <option value="customer">Customer</option>
@@ -216,23 +216,23 @@ onMounted(async () => {
           <option value="seed">Seed</option>
         </select>
       </label>
-      <label class="flex flex-1 flex-col gap-1 text-xs text-brand-muted">
+      <label class="flex flex-1 flex-col gap-1 text-xs text-release-paper-muted">
         Search
-        <input v-model="filters.q" type="search" placeholder="name, url, tagline" class="rounded-md border border-brand-border bg-transparent px-2 py-1.5 text-sm text-brand-fg" @keyup.enter="load(1)">
+        <input v-model="filters.q" type="search" placeholder="name, url, tagline" class="release-field h-10 min-w-52 px-3 text-sm" @keyup.enter="load(1)">
       </label>
       <Button variant="outline" :disabled="loading" @click="load(1)">
         Apply
       </Button>
     </div>
 
-    <p v-if="error" class="mt-4 text-sm text-red-400">
+    <p v-if="error" class="mt-4 text-sm text-release-destructive">
       {{ error }}
     </p>
 
     <!-- Table -->
-    <div class="mt-6 overflow-x-auto rounded-xl border border-brand-border">
+    <div class="mt-6 overflow-x-auto border border-release-seam">
       <table class="w-full text-left text-sm">
-        <thead class="border-b border-brand-border text-xs uppercase tracking-wider text-brand-muted">
+        <thead class="border-b border-release-seam text-xs uppercase tracking-wider text-release-paper-muted">
           <tr>
             <th class="px-4 py-3 font-medium">Name</th>
             <th class="px-4 py-3 font-medium">Status</th>
@@ -243,29 +243,29 @@ onMounted(async () => {
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="5" class="px-4 py-8 text-center text-brand-muted">
+            <td colspan="5" class="px-4 py-8 text-center text-release-paper-muted">
               <AppSpinner class="mx-auto" label="Loading listings" />
             </td>
           </tr>
           <tr v-else-if="!listings.length">
-            <td colspan="5" class="px-4 py-8 text-center text-brand-muted">
+            <td colspan="5" class="px-4 py-8 text-center text-release-paper-muted">
               No listings match.
             </td>
           </tr>
-          <tr v-for="l in listings" v-else :key="l.id" class="border-b border-brand-border/60 last:border-0">
+          <tr v-for="l in listings" v-else :key="l.id" class="border-b border-release-seam/60 last:border-0">
             <td class="px-4 py-3">
-              <NuxtLink :to="`/admin/listings/${l.id}`" class="font-medium text-brand-fg hover:text-brand-accent">
+              <NuxtLink :to="`/admin/listings/${l.id}`" class="font-medium text-release-paper hover:text-release-blaze">
                 {{ l.name }}
               </NuxtLink>
-              <div class="truncate text-xs text-brand-muted">{{ l.url }}</div>
+              <div class="truncate text-xs text-release-paper-muted">{{ l.url }}</div>
             </td>
             <td class="px-4 py-3">
-              <span class="inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider" :class="statusClass[l.status]">
+              <span class="inline-flex border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider" :class="statusClass[l.status]">
                 {{ l.status.replace('_', ' ') }}
               </span>
             </td>
-            <td class="px-4 py-3 text-brand-muted">{{ l.tier ?? '—' }}</td>
-            <td class="px-4 py-3 text-brand-muted">{{ l.source }}</td>
+            <td class="px-4 py-3 text-release-paper-muted">{{ l.tier ?? '—' }}</td>
+            <td class="px-4 py-3 text-release-paper-muted">{{ l.source }}</td>
             <td class="px-4 py-3">
               <div class="flex flex-wrap items-center justify-end gap-1.5">
                 <Button size="sm" variant="ghost" as-child>
@@ -279,12 +279,12 @@ onMounted(async () => {
                   <AppSpinner v-if="actionBusy[l.id] === 'unpublish'" class="mr-1.5" size="sm" color="text-current" label="Unpublishing listing" />
                   {{ actionBusy[l.id] === 'unpublish' ? 'Unpublishing…' : 'Unpublish to pending review' }}
                 </Button>
-                <Button v-if="l.status !== 'rejected'" size="sm" variant="ghost" class="text-red-400 hover:text-red-300" :disabled="!!actionBusy[l.id]" @click="act(l, 'reject')">
+                <Button v-if="l.status !== 'rejected'" size="sm" variant="ghost" class="text-release-destructive hover:text-release-destructive" :disabled="!!actionBusy[l.id]" @click="act(l, 'reject')">
                   <AppSpinner v-if="actionBusy[l.id] === 'reject'" class="mr-1.5" size="sm" color="text-current" label="Rejecting listing" />
                   {{ actionBusy[l.id] === 'reject' ? 'Rejecting…' : 'Reject' }}
                 </Button>
               </div>
-              <p v-if="actionErrors[l.id]" class="mt-2 text-right text-xs text-red-400" role="alert">
+              <p v-if="actionErrors[l.id]" class="mt-2 text-right text-xs text-release-destructive" role="alert">
                 {{ actionErrors[l.id] }}
               </p>
             </td>
@@ -293,7 +293,7 @@ onMounted(async () => {
       </table>
     </div>
 
-    <div v-if="pagination" class="mt-4 flex flex-col gap-3 text-sm text-brand-muted sm:flex-row sm:items-center sm:justify-between">
+    <div v-if="pagination" class="mt-4 flex flex-col gap-3 text-sm text-release-paper-muted sm:flex-row sm:items-center sm:justify-between">
       <p>
         <template v-if="pagination.from !== null && pagination.to !== null">
           Showing {{ pagination.from }}–{{ pagination.to }} of {{ pagination.total }}

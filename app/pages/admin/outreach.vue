@@ -47,7 +47,7 @@ const accepted = ref(false)
 const notice = ref<{ kind: 'success' | 'error', message: string } | null>(null)
 const { send } = useOutreachSend()
 
-const inputClass = 'mt-2 h-11 border-white/10 bg-black/20 text-brand-fg placeholder:text-brand-muted hover:border-white/20 focus-visible:border-brand-accent/70 focus-visible:ring-brand-accent/30'
+const inputClass = 'release-field mt-2 h-11 px-3'
 const contextSignature = computed(() => JSON.stringify([
   context.firstName.trim(),
   context.productName.trim(),
@@ -164,32 +164,32 @@ function startAnother(): void {
 </script>
 
 <template>
-  <main class="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
+  <div class="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
     <NuxtLink
       to="/admin"
-      class="inline-flex items-center gap-2 rounded-md text-sm font-medium text-brand-muted outline-none transition hover:text-brand-fg focus-visible:ring-2 focus-visible:ring-brand-accent/60 focus-visible:ring-offset-4 focus-visible:ring-offset-brand-bg"
+      class="inline-flex items-center gap-2 text-sm font-medium text-release-paper-muted outline-none transition hover:text-release-paper focus-visible:ring-2 focus-visible:ring-release-blaze/60 focus-visible:ring-offset-4 focus-visible:ring-offset-release-ink"
     >
       <ArrowLeft class="size-4" />
       Admin dashboard
     </NuxtLink>
 
     <header class="mt-8 max-w-3xl">
-      <p class="font-mono text-xs font-semibold uppercase tracking-[0.22em] text-brand-accent">Founder tool</p>
-      <h1 class="mt-3 text-3xl font-semibold tracking-tight text-brand-fg sm:text-4xl">Send one outreach email</h1>
-      <p class="mt-3 text-sm leading-6 text-brand-muted sm:text-base">
+      <p class="font-mono text-xs font-semibold uppercase tracking-[0.22em] text-release-blaze">Founder tool</p>
+      <h1 class="mt-3 text-3xl font-semibold tracking-tight text-release-paper sm:text-4xl">Send one outreach email</h1>
+      <p class="mt-3 text-sm leading-6 text-release-paper-muted sm:text-base">
         Add the recipient and product context, review the plain-text draft, then send it once.
       </p>
     </header>
 
     <form class="mt-8 grid items-start gap-5 lg:grid-cols-[0.82fr_1.18fr]" novalidate @submit.prevent="sendEmail">
-      <section class="space-y-5 rounded-2xl border border-brand-border bg-white/[0.035] p-5 sm:p-6" aria-labelledby="context-heading">
-        <div class="border-b border-white/[0.07] pb-4">
-          <p class="font-mono text-[11px] uppercase tracking-[0.2em] text-brand-muted">Context</p>
-          <h2 id="context-heading" class="mt-1 text-lg font-semibold text-brand-fg">Recipient and product</h2>
+      <section class="space-y-5 border border-release-seam bg-release-rail p-5 sm:p-6" aria-labelledby="context-heading">
+        <div class="border-b border-release-seam pb-4">
+          <p class="font-mono text-[11px] uppercase tracking-[0.2em] text-release-paper-muted">Context</p>
+          <h2 id="context-heading" class="mt-1 text-lg font-semibold text-release-paper">Recipient and product</h2>
         </div>
 
         <div>
-          <Label for="outreach-recipient" class="text-brand-fg">Recipient email <span class="text-brand-accent">*</span></Label>
+          <Label for="outreach-recipient" class="text-release-paper">Recipient email <span class="text-release-blaze">*</span></Label>
           <Input
             id="outreach-recipient"
             v-model="context.recipientEmail"
@@ -205,7 +205,7 @@ function startAnother(): void {
         </div>
 
         <div>
-          <Label for="outreach-product" class="text-brand-fg">Product or app <span class="text-brand-accent">*</span></Label>
+          <Label for="outreach-product" class="text-release-paper">Product or app <span class="text-release-blaze">*</span></Label>
           <Input
             id="outreach-product"
             v-model="context.productName"
@@ -219,7 +219,7 @@ function startAnother(): void {
         </div>
 
         <div>
-          <Label for="outreach-source" class="text-brand-fg">Found on <span class="text-brand-accent">*</span></Label>
+          <Label for="outreach-source" class="text-release-paper">Found on <span class="text-release-blaze">*</span></Label>
           <Input
             id="outreach-source"
             v-model="context.sourceName"
@@ -233,7 +233,7 @@ function startAnother(): void {
         </div>
 
         <div>
-          <Label for="outreach-first-name" class="text-brand-fg">First name <span class="font-normal text-brand-muted">— optional</span></Label>
+          <Label for="outreach-first-name" class="text-release-paper">First name <span class="font-normal text-release-paper-muted">— optional</span></Label>
           <Input
             id="outreach-first-name"
             v-model="context.firstName"
@@ -247,7 +247,7 @@ function startAnother(): void {
         </div>
 
         <div>
-          <Label for="outreach-preview-url" class="text-brand-fg">Private preview URL <span class="font-normal text-brand-muted">— optional</span></Label>
+          <Label for="outreach-preview-url" class="text-release-paper">Private preview URL <span class="font-normal text-release-paper-muted">— optional</span></Label>
           <Input
             id="outreach-preview-url"
             v-model="context.previewUrl"
@@ -264,7 +264,7 @@ function startAnother(): void {
         <Button
           type="button"
           variant="outline"
-          class="w-full border-white/10 bg-white/[0.04] text-brand-fg hover:border-white/20 hover:bg-white/[0.08] focus-visible:border-brand-accent/70 focus-visible:ring-brand-accent/30"
+          class="w-full"
           :disabled="accepted || sending"
           @click="createDraft"
         >
@@ -273,15 +273,15 @@ function startAnother(): void {
         </Button>
       </section>
 
-      <section class="rounded-2xl border border-brand-border bg-[#0D1220] p-5 sm:p-6 lg:sticky lg:top-24" aria-labelledby="draft-heading">
-        <div class="border-b border-white/[0.07] pb-4">
-          <p class="font-mono text-[11px] uppercase tracking-[0.2em] text-brand-muted">Review</p>
-          <h2 id="draft-heading" class="mt-1 text-lg font-semibold text-brand-fg">Editable email</h2>
+      <section class="border border-release-seam bg-release-rail p-5 sm:p-6 lg:sticky lg:top-24" aria-labelledby="draft-heading">
+        <div class="border-b border-release-seam pb-4">
+          <p class="font-mono text-[11px] uppercase tracking-[0.2em] text-release-paper-muted">Review</p>
+          <h2 id="draft-heading" class="mt-1 text-lg font-semibold text-release-paper">Editable email</h2>
         </div>
 
         <div class="mt-5 space-y-5">
           <div>
-            <Label for="outreach-subject" class="text-brand-fg">Subject</Label>
+            <Label for="outreach-subject" class="text-release-paper">Subject</Label>
             <Input
               id="outreach-subject"
               v-model="subject"
@@ -295,12 +295,12 @@ function startAnother(): void {
           </div>
 
           <div>
-            <Label for="outreach-text" class="text-brand-fg">Message</Label>
+            <Label for="outreach-text" class="text-release-paper">Message</Label>
             <textarea
               id="outreach-text"
               v-model="text"
               rows="16"
-              class="mt-2 min-h-80 w-full resize-y rounded-xl border border-white/10 bg-black/20 px-3.5 py-3 font-mono text-[13px] leading-6 text-brand-fg outline-none transition placeholder:text-brand-muted hover:border-white/20 focus-visible:border-brand-accent/70 focus-visible:ring-2 focus-visible:ring-brand-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
+              class="release-field mt-2 min-h-80 w-full resize-y px-3.5 py-3 font-mono text-[13px] leading-6"
               placeholder="Create the draft first"
               :disabled="accepted || sending"
               :aria-invalid="draftErrors.text ? 'true' : undefined"
@@ -310,15 +310,15 @@ function startAnother(): void {
           </div>
         </div>
 
-        <p v-if="draftIsStale" class="mt-4 rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-200" role="status">
+        <p v-if="draftIsStale" class="mt-4 border border-release-warning/20 bg-release-warning/10 px-3 py-2 text-xs text-release-warning" role="status">
           Context changed. Create the draft again before sending.
         </p>
         <p
           v-if="notice"
-          class="mt-4 rounded-lg border px-3 py-2 text-sm"
+          class="mt-4 border px-3 py-2 text-sm"
           :class="notice.kind === 'success'
-            ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-200'
-            : 'border-red-400/25 bg-red-400/10 text-red-200'"
+            ? 'border-release-signal/20 bg-release-signal/10 text-release-signal'
+            : 'border-release-destructive/25 bg-release-destructive/10 text-release-destructive'"
           :role="notice.kind === 'error' ? 'alert' : 'status'"
           aria-live="polite"
         >
@@ -330,7 +330,6 @@ function startAnother(): void {
           <Button
             type="submit"
             size="lg"
-            class="bg-brand-accent text-white hover:bg-brand-accent/85 focus-visible:border-brand-accent focus-visible:ring-brand-accent/40"
             :disabled="sendDisabled"
           >
             <LoaderCircle v-if="sending" class="size-4 animate-spin" />
@@ -342,7 +341,7 @@ function startAnother(): void {
             type="button"
             size="lg"
             variant="outline"
-            class="border-white/10 bg-white/[0.04] text-brand-fg hover:bg-white/[0.08]"
+            class="border-release-seam bg-release-rail text-release-paper hover:bg-release-paper/10"
             @click="startAnother"
           >
             <RotateCcw class="size-4" />
@@ -351,5 +350,5 @@ function startAnother(): void {
         </div>
       </section>
     </form>
-  </main>
+  </div>
 </template>

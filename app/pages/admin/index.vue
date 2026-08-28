@@ -67,28 +67,28 @@ const kpis = computed(() => {
       value: totals?.published ?? 0,
       detail: `${data.value?.coverage.published_percent ?? 0}% of directory`,
       icon: CheckCircle2,
-      accent: 'text-emerald-300',
+      accent: 'text-release-signal',
     },
     {
       label: 'Pending review',
       value: totals?.pending_review ?? 0,
       detail: 'Needs moderation',
       icon: Clock3,
-      accent: 'text-amber-300',
+      accent: 'text-release-warning',
     },
     {
       label: 'R2 screenshots ready',
       value: totals?.with_screenshots ?? 0,
       detail: `${data.value?.coverage.screenshot_percent ?? 0}% CDN coverage`,
       icon: Camera,
-      accent: 'text-cyan-300',
+      accent: 'text-release-paper',
     },
     {
       label: 'Total records',
       value: totals?.listings ?? 0,
       detail: 'All statuses',
       icon: Gauge,
-      accent: 'text-slate-200',
+      accent: 'text-release-paper-muted',
     },
   ]
 })
@@ -154,10 +154,10 @@ const screenshotLimitNotice = computed(() => {
 })
 
 function listingStatusClass(listing: AdminListing) {
-  if (listing.status === 'published') return 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300'
-  if (listing.status === 'pending_review') return 'border-amber-400/30 bg-amber-400/10 text-amber-300'
-  if (listing.status === 'rejected') return 'border-red-400/30 bg-red-400/10 text-red-300'
-  return 'border-white/10 bg-white/[0.04] text-slate-400'
+  if (listing.status === 'published') return 'border-release-signal/30 bg-release-signal/10 text-release-signal'
+  if (listing.status === 'pending_review') return 'border-release-warning/30 bg-release-warning/10 text-release-warning'
+  if (listing.status === 'rejected') return 'border-release-destructive/30 bg-release-destructive/10 text-release-destructive'
+  return 'border-release-seam bg-release-rail text-release-paper-muted'
 }
 
 onMounted(async () => {
@@ -172,16 +172,16 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+  <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
     <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
       <div>
-        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-300">
+        <p class="font-mono text-xs font-semibold uppercase tracking-[0.24em] text-release-warning">
           LaunchLog operations
         </p>
-        <h1 class="mt-3 text-3xl font-semibold tracking-tight text-brand-fg sm:text-4xl">
+        <h1 class="mt-3 text-3xl font-semibold tracking-tight text-release-paper sm:text-4xl">
           Admin dashboard
         </h1>
-        <p class="mt-3 max-w-2xl text-sm leading-6 text-brand-muted">
+        <p class="mt-3 max-w-2xl text-sm leading-6 text-release-paper-muted">
           Manage listings, moderation, founding screenshots, and public directory quality from one place.
         </p>
       </div>
@@ -208,11 +208,11 @@ onMounted(async () => {
       </div>
     </div>
 
-    <div v-if="loading" class="mt-16 flex items-center justify-center rounded-lg border border-brand-border bg-white/[0.03] py-20">
+    <div v-if="loading" class="mt-16 flex items-center justify-center border border-release-seam bg-release-rail py-20">
       <AppSpinner label="Loading admin dashboard" />
     </div>
 
-    <p v-else-if="error" class="mt-8 rounded-lg border border-red-400/25 bg-red-400/10 px-4 py-3 text-sm text-red-200">
+    <p v-else-if="error" class="mt-8 border border-release-destructive/25 bg-release-destructive/10 px-4 py-3 text-sm text-release-destructive">
       {{ error }}
     </p>
 
@@ -221,55 +221,55 @@ onMounted(async () => {
         <article
           v-for="kpi in kpis"
           :key="kpi.label"
-          class="rounded-lg border border-brand-border bg-white/[0.035] p-4"
+          class="border border-release-seam bg-release-rail p-4"
         >
           <div class="flex items-start justify-between gap-3">
             <div>
-              <p class="text-xs font-medium uppercase tracking-[0.18em] text-brand-muted">
+              <p class="text-xs font-medium uppercase tracking-[0.18em] text-release-paper-muted">
                 {{ kpi.label }}
               </p>
-              <p class="mt-3 text-3xl font-semibold text-brand-fg">
+              <p class="mt-3 text-3xl font-semibold text-release-paper">
                 {{ numberFormat.format(kpi.value) }}
               </p>
             </div>
             <component :is="kpi.icon" class="size-5" :class="kpi.accent" />
           </div>
-          <p class="mt-3 text-sm text-brand-muted">
+          <p class="mt-3 text-sm text-release-paper-muted">
             {{ kpi.detail }}
           </p>
         </article>
       </section>
 
       <section class="mt-6 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-        <article class="rounded-lg border border-brand-border bg-white/[0.035] p-5">
+        <article class="border border-release-seam bg-release-rail p-5">
           <div class="flex items-start justify-between gap-4">
             <div>
-              <p class="text-xs font-semibold uppercase tracking-[0.22em] text-brand-muted">
+              <p class="text-xs font-semibold uppercase tracking-[0.22em] text-release-paper-muted">
                 Directory health
               </p>
-              <h2 class="mt-2 text-xl font-semibold text-brand-fg">
+              <h2 class="mt-2 text-xl font-semibold text-release-paper">
                 Screenshot and moderation pipeline
               </h2>
             </div>
-            <ShieldCheck class="size-5 text-emerald-300" />
+            <ShieldCheck class="size-5 text-release-signal" />
           </div>
 
           <div class="mt-6 grid gap-3 sm:grid-cols-3">
-            <div class="rounded-md border border-white/10 bg-black/20 p-3">
-              <p class="text-xs text-brand-muted">Missing R2 screenshots</p>
-              <p class="mt-2 text-2xl font-semibold text-brand-fg">
+            <div class="border border-release-seam bg-release-ink p-3">
+              <p class="text-xs text-release-paper-muted">Missing R2 screenshots</p>
+              <p class="mt-2 text-2xl font-semibold text-release-paper">
                 {{ numberFormat.format(data.totals.missing_screenshots) }}
               </p>
             </div>
-            <div class="rounded-md border border-white/10 bg-black/20 p-3">
-              <p class="text-xs text-brand-muted">Founding backlog</p>
-              <p class="mt-2 text-2xl font-semibold text-brand-fg">
+            <div class="border border-release-seam bg-release-ink p-3">
+              <p class="text-xs text-release-paper-muted">Founding backlog</p>
+              <p class="mt-2 text-2xl font-semibold text-release-paper">
                 {{ numberFormat.format(data.totals.founding_missing_screenshots) }}
               </p>
             </div>
-            <div class="rounded-md border border-white/10 bg-black/20 p-3">
-              <p class="text-xs text-brand-muted">CDN screenshot coverage</p>
-              <p class="mt-2 text-2xl font-semibold text-brand-fg">
+            <div class="border border-release-seam bg-release-ink p-3">
+              <p class="text-xs text-release-paper-muted">CDN screenshot coverage</p>
+              <p class="mt-2 text-2xl font-semibold text-release-paper">
                 {{ data.coverage.screenshot_percent }}%
               </p>
             </div>
@@ -292,118 +292,118 @@ onMounted(async () => {
           </div>
 
           <div v-if="lastBatchSummary" class="mt-5 grid gap-2 sm:grid-cols-4">
-            <div class="rounded-md border border-emerald-400/20 bg-emerald-400/10 p-2">
-              <p class="text-[11px] uppercase tracking-[0.16em] text-emerald-300">Captured</p>
-              <p class="mt-1 text-lg font-semibold text-brand-fg">{{ lastBatchSummary.captured }}</p>
+            <div class="border border-release-signal/20 bg-release-signal/10 p-2">
+              <p class="text-[11px] uppercase tracking-[0.16em] text-release-signal">Captured</p>
+              <p class="mt-1 text-lg font-semibold text-release-paper">{{ lastBatchSummary.captured }}</p>
             </div>
-            <div class="rounded-md border border-cyan-400/20 bg-cyan-400/10 p-2">
-              <p class="text-[11px] uppercase tracking-[0.16em] text-cyan-300">Reused</p>
-              <p class="mt-1 text-lg font-semibold text-brand-fg">{{ lastBatchSummary.reused }}</p>
+            <div class="border border-release-paper-muted/20 bg-release-paper/10 p-2">
+              <p class="text-[11px] uppercase tracking-[0.16em] text-release-paper">Reused</p>
+              <p class="mt-1 text-lg font-semibold text-release-paper">{{ lastBatchSummary.reused }}</p>
             </div>
-            <div class="rounded-md border border-white/10 bg-black/20 p-2">
-              <p class="text-[11px] uppercase tracking-[0.16em] text-brand-muted">Skipped</p>
-              <p class="mt-1 text-lg font-semibold text-brand-fg">{{ lastBatchSummary.skipped }}</p>
+            <div class="border border-release-seam bg-release-ink p-2">
+              <p class="text-[11px] uppercase tracking-[0.16em] text-release-paper-muted">Skipped</p>
+              <p class="mt-1 text-lg font-semibold text-release-paper">{{ lastBatchSummary.skipped }}</p>
             </div>
-            <div class="rounded-md border p-2" :class="lastBatchSummary.failed > 0 ? 'border-amber-400/30 bg-amber-400/10' : 'border-white/10 bg-black/20'">
-              <p class="text-[11px] uppercase tracking-[0.16em]" :class="lastBatchSummary.failed > 0 ? 'text-amber-300' : 'text-brand-muted'">Failed</p>
-              <p class="mt-1 text-lg font-semibold text-brand-fg">{{ lastBatchSummary.failed }}</p>
+            <div class="border p-2" :class="lastBatchSummary.failed > 0 ? 'border-release-warning/30 bg-release-warning/10' : 'border-release-seam bg-release-ink'">
+              <p class="text-[11px] uppercase tracking-[0.16em]" :class="lastBatchSummary.failed > 0 ? 'text-release-warning' : 'text-release-paper-muted'">Failed</p>
+              <p class="mt-1 text-lg font-semibold text-release-paper">{{ lastBatchSummary.failed }}</p>
             </div>
           </div>
-          <p v-if="lastBatchSummary" class="mt-2 text-xs leading-5 text-brand-muted">
+          <p v-if="lastBatchSummary" class="mt-2 text-xs leading-5 text-release-paper-muted">
             Captured = new screenshot written now. Reused = an existing R2 snapshot was attached to the listing. Failed does not count as ready.
           </p>
-          <p v-if="screenshotLimitNotice" class="mt-3 rounded-md border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-sm text-amber-200">
+          <p v-if="screenshotLimitNotice" class="mt-3 border border-release-warning/25 bg-release-warning/10 px-3 py-2 text-sm text-release-warning">
             {{ screenshotLimitNotice }}
           </p>
 
-          <div v-if="screenshotMessage || screenshotStatus?.log_file" class="mt-5 rounded-md border border-white/10 bg-black/25 p-3">
-            <p v-if="screenshotMessage" class="text-sm text-emerald-300">
+          <div v-if="screenshotMessage || screenshotStatus?.log_file" class="mt-5 border border-release-seam bg-release-ink p-3">
+            <p v-if="screenshotMessage" class="text-sm text-release-signal">
               {{ screenshotMessage }}
             </p>
             <div v-if="screenshotStatus?.log_file" class="mt-3">
-              <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-brand-muted">
+              <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-release-paper-muted">
                 <span>{{ screenshotStatus.log_file }}</span>
-                <button type="button" class="text-emerald-300 hover:text-emerald-200" @click="refreshScreenshotStatus">
+                <button type="button" class="text-release-signal hover:text-release-signal" @click="refreshScreenshotStatus">
                   Refresh log
                 </button>
               </div>
-              <pre class="mt-3 max-h-40 overflow-auto whitespace-pre-wrap text-xs leading-relaxed text-brand-muted">{{ screenshotStatus.tail.join('\n') }}</pre>
+              <pre class="mt-3 max-h-40 overflow-auto whitespace-pre-wrap text-xs leading-relaxed text-release-paper-muted">{{ screenshotStatus.tail.join('\n') }}</pre>
             </div>
           </div>
         </article>
 
-        <article class="rounded-lg border border-brand-border bg-white/[0.035] p-5">
+        <article class="border border-release-seam bg-release-rail p-5">
           <div class="flex items-start justify-between gap-4">
             <div>
-              <p class="text-xs font-semibold uppercase tracking-[0.22em] text-brand-muted">
+              <p class="text-xs font-semibold uppercase tracking-[0.22em] text-release-paper-muted">
                 Package mix
               </p>
-              <h2 class="mt-2 text-xl font-semibold text-brand-fg">
+              <h2 class="mt-2 text-xl font-semibold text-release-paper">
                 Billing tiers
               </h2>
             </div>
-            <Sparkles class="size-5 text-cyan-300" />
+            <Sparkles class="size-5 text-release-paper" />
           </div>
 
           <div class="mt-5 space-y-3">
-            <div v-for="[label, count] in tierRows" :key="label" class="flex items-center justify-between border-b border-white/10 pb-3 last:border-0 last:pb-0">
-              <span class="text-sm text-brand-muted">{{ label }}</span>
-              <span class="font-medium text-brand-fg">{{ numberFormat.format(count) }}</span>
+            <div v-for="[label, count] in tierRows" :key="label" class="flex items-center justify-between border-b border-release-seam pb-3 last:border-0 last:pb-0">
+              <span class="text-sm text-release-paper-muted">{{ label }}</span>
+              <span class="font-medium text-release-paper">{{ numberFormat.format(count) }}</span>
             </div>
           </div>
         </article>
       </section>
 
       <section class="mt-6 grid gap-4 lg:grid-cols-3">
-        <article class="rounded-lg border border-brand-border bg-white/[0.035] p-5">
-          <h2 class="text-sm font-semibold uppercase tracking-[0.2em] text-brand-muted">
+        <article class="border border-release-seam bg-release-rail p-5">
+          <h2 class="text-sm font-semibold uppercase tracking-[0.2em] text-release-paper-muted">
             Status
           </h2>
           <div class="mt-4 space-y-3">
             <div v-for="[label, count] in statusRows" :key="label" class="flex items-center justify-between">
-              <span class="text-sm text-brand-muted">{{ label }}</span>
-              <span class="font-medium text-brand-fg">{{ numberFormat.format(count) }}</span>
+              <span class="text-sm text-release-paper-muted">{{ label }}</span>
+              <span class="font-medium text-release-paper">{{ numberFormat.format(count) }}</span>
             </div>
           </div>
         </article>
 
-        <article class="rounded-lg border border-brand-border bg-white/[0.035] p-5">
-          <h2 class="text-sm font-semibold uppercase tracking-[0.2em] text-brand-muted">
+        <article class="border border-release-seam bg-release-rail p-5">
+          <h2 class="text-sm font-semibold uppercase tracking-[0.2em] text-release-paper-muted">
             Source
           </h2>
           <div class="mt-4 space-y-3">
             <div v-for="[label, count] in sourceRows" :key="label" class="flex items-center justify-between">
-              <span class="text-sm text-brand-muted">{{ label }}</span>
-              <span class="font-medium text-brand-fg">{{ numberFormat.format(count) }}</span>
+              <span class="text-sm text-release-paper-muted">{{ label }}</span>
+              <span class="font-medium text-release-paper">{{ numberFormat.format(count) }}</span>
             </div>
           </div>
         </article>
 
-        <article class="rounded-lg border border-brand-border bg-white/[0.035] p-5">
-          <h2 class="text-sm font-semibold uppercase tracking-[0.2em] text-brand-muted">
+        <article class="border border-release-seam bg-release-rail p-5">
+          <h2 class="text-sm font-semibold uppercase tracking-[0.2em] text-release-paper-muted">
             Fast actions
           </h2>
           <div class="mt-4 grid gap-2">
-            <NuxtLink to="/admin/listings?status=pending_review" class="rounded-md border border-white/10 px-3 py-2 text-sm text-brand-fg transition-colors hover:border-emerald-300/40 hover:text-emerald-300">
+            <NuxtLink to="/admin/listings?status=pending_review" class="border border-release-seam px-3 py-2 text-sm text-release-paper transition-colors hover:border-release-signal/40 hover:text-release-signal">
               Review pending listings
             </NuxtLink>
-            <NuxtLink to="/admin/listings?source=founding" class="rounded-md border border-white/10 px-3 py-2 text-sm text-brand-fg transition-colors hover:border-emerald-300/40 hover:text-emerald-300">
+            <NuxtLink to="/admin/listings?source=founding" class="border border-release-seam px-3 py-2 text-sm text-release-paper transition-colors hover:border-release-signal/40 hover:text-release-signal">
               Manage founding imports
             </NuxtLink>
-            <NuxtLink to="/submit" class="rounded-md border border-white/10 px-3 py-2 text-sm text-brand-fg transition-colors hover:border-emerald-300/40 hover:text-emerald-300">
+            <NuxtLink to="/submit" class="border border-release-seam px-3 py-2 text-sm text-release-paper transition-colors hover:border-release-signal/40 hover:text-release-signal">
               Add listing from URL
             </NuxtLink>
           </div>
         </article>
       </section>
 
-      <section class="mt-6 rounded-lg border border-brand-border bg-white/[0.035]">
-        <div class="flex items-center justify-between gap-4 border-b border-brand-border px-5 py-4">
+      <section class="mt-6 border border-release-seam bg-release-rail">
+        <div class="flex items-center justify-between gap-4 border-b border-release-seam px-5 py-4">
           <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.22em] text-brand-muted">
+            <p class="text-xs font-semibold uppercase tracking-[0.22em] text-release-paper-muted">
               Recent activity
             </p>
-            <h2 class="mt-1 text-lg font-semibold text-brand-fg">
+            <h2 class="mt-1 text-lg font-semibold text-release-paper">
               Latest edited listings
             </h2>
           </div>
@@ -414,30 +414,30 @@ onMounted(async () => {
           </Button>
         </div>
 
-        <div class="divide-y divide-brand-border/70">
+        <div class="divide-y divide-release-seam/70">
           <div
             v-for="listing in data.recent_listings"
             :key="listing.id"
             class="grid gap-3 px-5 py-4 md:grid-cols-[1fr_auto_auto]"
           >
             <div class="min-w-0">
-              <NuxtLink :to="`/admin/listings/${listing.id}`" class="truncate font-medium text-brand-fg hover:text-emerald-300">
+              <NuxtLink :to="`/admin/listings/${listing.id}`" class="truncate font-medium text-release-paper hover:text-release-signal">
                 {{ listing.name }}
               </NuxtLink>
-              <p class="mt-1 truncate text-xs text-brand-muted">
+              <p class="mt-1 truncate text-xs text-release-paper-muted">
                 {{ listing.url }}
               </p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
-              <span class="rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em]" :class="listingStatusClass(listing)">
+              <span class="border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em]" :class="listingStatusClass(listing)">
                 {{ listing.status.replace('_', ' ') }}
               </span>
-              <span class="rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300">
+              <span class="border border-release-seam px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-release-paper-muted">
                 {{ listing.tier ?? 'no tier' }}
               </span>
             </div>
             <div class="flex items-center justify-start md:justify-end">
-              <NuxtLink :to="`/listing/${listing.slug}`" target="_blank" class="text-sm text-brand-muted hover:text-emerald-300">
+              <NuxtLink :to="`/listing/${listing.slug}`" target="_blank" class="text-sm text-release-paper-muted hover:text-release-signal">
                 Public page
               </NuxtLink>
             </div>
@@ -445,5 +445,5 @@ onMounted(async () => {
         </div>
       </section>
     </template>
-  </main>
+  </div>
 </template>

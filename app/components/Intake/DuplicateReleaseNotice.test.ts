@@ -12,6 +12,6 @@ describe('DuplicateReleaseNotice', () => {
     expect(source).toContain('Request ownership')
     expect(source).toContain('No duplicate payment is needed')
     expect(source).not.toContain('linear-gradient')
-    expect(source).not.toContain('brand-accent')
+    expect(source).not.toMatch(/brand-(?:bg|fg|accent|success|warning|muted|border)/)
   })
 })

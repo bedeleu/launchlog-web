@@ -131,7 +131,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="min-h-[72vh] px-4 py-10 sm:px-6 sm:py-16">
+  <div class="min-h-[72vh] px-4 py-10 sm:px-6 sm:py-16">
     <ReleaseShell
       compact
       :eyebrow="releaseCopy.eyebrow"
@@ -184,5 +184,5 @@ onBeforeUnmount(() => {
         </aside>
       </div>
     </ReleaseShell>
-  </main>
+  </div>
 </template>

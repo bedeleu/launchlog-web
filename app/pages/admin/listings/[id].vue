@@ -144,7 +144,7 @@ onMounted(load)
 </script>
 
 <template>
-  <main class="min-h-screen bg-release-ink">
+  <div class="min-h-screen bg-release-ink">
     <ReleaseShell
       eyebrow="Operator desk · release record"
       :title="listing?.name ?? 'Listing record'"
@@ -223,5 +223,5 @@ onMounted(load)
         </div>
       </template>
     </ReleaseShell>
-  </main>
+  </div>
 </template>

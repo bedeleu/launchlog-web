@@ -242,7 +242,7 @@ const tierLabel = (tier: string | null | undefined): string => {
 </script>
 
 <template>
-  <main class="min-h-[calc(100vh-5rem)] bg-release-ink">
+  <div class="min-h-[calc(100vh-5rem)] bg-release-ink">
     <ReleaseShell
       title="Your release shelf"
       description="Maintain the public copy, billing record, and verifiable artifacts for every release you own."
@@ -495,5 +495,5 @@ const tierLabel = (tier: string | null | undefined): string => {
         </article>
       </div>
     </ReleaseShell>
-  </main>
+  </div>
 </template>

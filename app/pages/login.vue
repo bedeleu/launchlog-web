@@ -98,34 +98,29 @@ useHead({ title: 'Sign in · LaunchLog', meta: [{ name: 'robots', content: 'noin
 </script>
 
 <template>
-  <main class="relative isolate flex min-h-[calc(100vh-5rem)] items-center overflow-hidden px-4 py-12 sm:px-6">
-    <div class="pointer-events-none absolute inset-0 -z-10" aria-hidden="true">
-      <div class="absolute left-1/2 top-0 h-px w-[min(56rem,90vw)] -translate-x-1/2 bg-gradient-to-r from-transparent via-brand-accent/60 to-transparent" />
-      <div class="absolute left-1/2 top-0 h-72 w-[32rem] -translate-x-1/2 rounded-full bg-brand-accent/[0.07] blur-3xl" />
-    </div>
-
-    <section class="mx-auto grid w-full max-w-4xl overflow-hidden rounded-2xl border border-brand-border bg-[#0d1220]/95 shadow-2xl shadow-black/30 md:grid-cols-[0.85fr_1.15fr]">
-      <div class="border-b border-brand-border bg-white/[0.025] p-7 sm:p-10 md:border-b-0 md:border-r">
-        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-accent">
+  <div class="flex min-h-[calc(100vh-5rem)] items-center bg-release-ink px-4 py-12 sm:px-6">
+    <section class="release-panel mx-auto grid w-full max-w-5xl border-t-4 border-t-release-blaze md:grid-cols-[0.9fr_1.1fr]">
+      <div class="border-b border-release-seam bg-release-paper p-7 text-release-ink sm:p-10 md:border-r md:border-b-0">
+        <p class="release-kicker">
           Customer access
         </p>
-        <h1 class="mt-5 text-3xl font-bold tracking-tight text-white sm:text-4xl">
+        <h1 class="mt-5 max-w-sm text-3xl font-bold tracking-[-0.035em] sm:text-4xl">
           Return to what you shipped.
         </h1>
-        <p class="mt-5 text-sm leading-7 text-brand-muted">
+        <p class="mt-5 max-w-sm text-sm leading-7 text-[#575044]">
           Edit your public listing, manage its subscription, and inspect the discovery facts published by LaunchLog.
         </p>
-        <div class="mt-10 border-l border-brand-accent/40 pl-4 text-xs leading-5 text-brand-muted">
+        <div class="mt-10 border-l-2 border-release-blaze pl-4 font-mono text-xs leading-5 text-[#575044]">
           Password-free access. Use Google or a secure link sent to the email attached to your listing.
         </div>
       </div>
 
       <div class="p-7 sm:p-10">
         <template v-if="mounted && user">
-          <p class="text-xs font-semibold uppercase tracking-[0.2em] text-brand-muted">
+          <p class="release-kicker text-release-paper-muted">
             Signed in
           </p>
-          <p class="mt-3 truncate text-lg font-medium text-white">
+          <p class="mt-3 truncate text-lg font-medium text-release-paper">
             {{ user.email ?? 'LaunchLog customer' }}
           </p>
           <Button class="mt-7 w-full" size="lg" as-child>
@@ -141,13 +136,13 @@ useHead({ title: 'Sign in · LaunchLog', meta: [{ name: 'robots', content: 'noin
         </template>
 
         <template v-else-if="needsEmailConfirmation">
-          <p class="text-xs font-semibold uppercase tracking-[0.2em] text-brand-accent">
+          <p class="release-kicker">
             Cross-device sign-in
           </p>
-          <h2 class="mt-3 text-xl font-semibold text-white">
+          <h2 class="mt-3 text-xl font-semibold text-release-paper">
             Confirm your email
           </h2>
-          <p class="mt-2 text-sm leading-6 text-brand-muted">
+          <p class="mt-2 text-sm leading-6 text-release-paper-muted">
             Enter the address that received this sign-in link to finish securely.
           </p>
 
@@ -163,7 +158,7 @@ useHead({ title: 'Sign in · LaunchLog', meta: [{ name: 'robots', content: 'noin
                 required
                 placeholder="you@example.com"
                 :disabled="busy !== null"
-                class="h-11 border-brand-border bg-black/10 text-white focus-visible:border-brand-accent focus-visible:ring-brand-accent/30"
+                class="release-field h-11 px-3"
               />
             </div>
             <Button class="w-full" size="lg" type="submit" :disabled="busy !== null">
@@ -179,10 +174,11 @@ useHead({ title: 'Sign in · LaunchLog', meta: [{ name: 'robots', content: 'noin
         </template>
 
         <template v-else>
-          <h2 class="text-xl font-semibold text-white">
+          <p class="release-kicker">Account record</p>
+          <h2 class="mt-3 text-xl font-semibold text-release-paper">
             Sign in to your dashboard
           </h2>
-          <p class="mt-2 text-sm text-brand-muted">
+          <p class="mt-2 text-sm text-release-paper-muted">
             Choose the same email used for your LaunchLog purchase.
           </p>
 
@@ -199,9 +195,9 @@ useHead({ title: 'Sign in · LaunchLog', meta: [{ name: 'robots', content: 'noin
           </Button>
 
           <div class="my-7 flex items-center gap-3" aria-hidden="true">
-            <span class="h-px flex-1 bg-brand-border" />
-            <span class="text-[11px] font-semibold uppercase tracking-[0.2em] text-brand-muted">or email</span>
-            <span class="h-px flex-1 bg-brand-border" />
+            <span class="h-px flex-1 bg-release-seam" />
+            <span class="text-[11px] font-semibold uppercase tracking-[0.2em] text-release-paper-muted">or email</span>
+            <span class="h-px flex-1 bg-release-seam" />
           </div>
 
           <form class="space-y-4" @submit.prevent="onMagic">
@@ -216,7 +212,7 @@ useHead({ title: 'Sign in · LaunchLog', meta: [{ name: 'robots', content: 'noin
                 required
                 placeholder="you@example.com"
                 :disabled="busy !== null"
-                class="h-11 border-brand-border bg-black/10 text-white focus-visible:border-brand-accent focus-visible:ring-brand-accent/30"
+                class="release-field h-11 px-3"
               />
             </div>
             <Button class="w-full" size="lg" type="submit" :disabled="busy !== null">
@@ -235,5 +231,5 @@ useHead({ title: 'Sign in · LaunchLog', meta: [{ name: 'robots', content: 'noin
         </p>
       </div>
     </section>
-  </main>
+  </div>
 </template>

@@ -20,7 +20,7 @@ const selectedPlan = computed(() => findPlan(requestedTier))
 </script>
 
 <template>
-  <main class="min-h-screen py-8 lg:py-12">
+  <div class="min-h-screen py-8 lg:py-12">
     <ReleaseShell
       compact
       eyebrow="Private capture · step 01"
@@ -37,5 +37,5 @@ const selectedPlan = computed(() => findPlan(requestedTier))
         </p>
       </div>
     </ReleaseShell>
-  </main>
+  </div>
 </template>

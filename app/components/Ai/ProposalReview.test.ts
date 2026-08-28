@@ -32,6 +32,6 @@ describe('one-step AI approval', () => {
     expect(review).not.toMatch(/indigo|violet|purple|bg-gradient|backdrop-blur/)
     expect(review).not.toContain('rounded-xl')
     expect(review).not.toContain('rounded-lg')
-    expect(review).not.toContain('brand-accent')
+    expect(review).not.toMatch(/brand-(?:bg|fg|accent|success|warning|muted|border)/)
   })
 })

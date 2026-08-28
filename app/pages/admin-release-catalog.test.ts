@@ -25,7 +25,7 @@ describe('Release Catalog admin listing flow', () => {
     expect(form).toContain('border-release-seam')
     expect(form).toContain('text-release-paper')
     expect(form).not.toMatch(/indigo|violet|purple|bg-gradient|backdrop-blur/)
-    expect(form).not.toMatch(/brand-accent|brand-border|brand-fg|brand-muted/)
+    expect(form).not.toMatch(/brand-(?:bg|fg|accent|success|warning|muted|border)/)
     expect(form).not.toContain('rounded-xl')
     expect(form).not.toContain('rounded-lg')
   })

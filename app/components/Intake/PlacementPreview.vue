@@ -88,7 +88,7 @@ const previewListings = computed<ListingCard[]>(() => [buyerCard.value, ...conte
 <template>
   <div>
     <div class="flex items-center justify-between gap-3">
-      <h2 class="text-sm font-semibold uppercase tracking-[0.2em] text-brand-muted">
+      <h2 class="text-sm font-semibold uppercase tracking-[0.2em] text-release-paper-muted">
         Your LaunchLog placement
       </h2>
       <span class="shrink-0 border border-release-seam px-2.5 py-1 font-mono text-[0.62rem] font-semibold tracking-[0.1em] text-release-paper-muted uppercase">
@@ -122,7 +122,7 @@ const previewListings = computed<ListingCard[]>(() => [buyerCard.value, ...conte
 
     <dl class="mt-4 grid gap-x-8 gap-y-4 border-y border-release-seam py-4 sm:grid-cols-2">
       <div class="min-w-0">
-        <dt class="text-xs font-medium text-brand-muted">
+        <dt class="text-xs font-medium text-release-paper-muted">
           Listing title
         </dt>
         <dd class="mt-1 break-words text-base font-semibold leading-6 text-white">
@@ -130,7 +130,7 @@ const previewListings = computed<ListingCard[]>(() => [buyerCard.value, ...conte
         </dd>
       </div>
       <div class="min-w-0">
-        <dt class="text-xs font-medium text-brand-muted">
+        <dt class="text-xs font-medium text-release-paper-muted">
           Website
         </dt>
         <dd class="mt-1 break-all font-mono text-sm leading-6 text-white/90">
@@ -138,7 +138,7 @@ const previewListings = computed<ListingCard[]>(() => [buyerCard.value, ...conte
         </dd>
       </div>
       <div class="min-w-0 sm:col-span-2">
-        <dt class="text-xs font-medium text-brand-muted">
+        <dt class="text-xs font-medium text-release-paper-muted">
           Short description
         </dt>
         <dd class="mt-1 break-words text-sm leading-6 text-white/80">
@@ -147,7 +147,7 @@ const previewListings = computed<ListingCard[]>(() => [buyerCard.value, ...conte
       </div>
     </dl>
 
-    <p class="mt-3 text-xs text-brand-muted">
+    <p class="mt-3 text-xs text-release-paper-muted">
       <template v-if="isFeatured">
         Featured takes the editorial spotlight card, placed first on eligible browse and category
         pages, plus eligibility for one of up to three homepage Featured slots. Order within

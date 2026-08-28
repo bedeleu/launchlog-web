@@ -433,13 +433,13 @@ watch(
 </script>
 
 <template>
-  <main class="mx-auto max-w-[90rem] px-5 py-10 sm:px-6 lg:py-14">
+  <div class="mx-auto max-w-[90rem] px-5 py-10 sm:px-6 lg:py-14">
     <!-- Not found / expired -->
     <div v-if="error || !preview" class="py-16 text-center">
-      <h1 class="text-3xl font-bold text-brand-fg">
+      <h1 class="text-3xl font-bold text-release-paper">
         Preview not found
       </h1>
-      <p class="mx-auto mt-3 max-w-md text-brand-muted">
+      <p class="mx-auto mt-3 max-w-md text-release-paper-muted">
         This preview may have expired (previews last 7 days) or the link is invalid.
       </p>
       <NuxtLink to="/" class="mt-6 inline-block text-release-warning underline">
@@ -498,10 +498,10 @@ watch(
           <!-- Compact warning: the capture failed, publishing still works. -->
           <div
             v-if="!domainConflict && !isGenerating && (isFailed || !hasScreenshot)"
-            class="mt-4 rounded-xl border border-brand-warning/40 bg-brand-warning/[0.07] p-4"
+            class="mt-4 border border-release-warning/40 bg-release-warning/[0.07] p-4"
             role="status"
           >
-            <p class="text-sm font-medium text-brand-fg">
+            <p class="text-sm font-medium text-release-paper">
               <template v-if="screenshotFailed || !hasScreenshot">
                 We couldn't capture a screenshot for this site.
               </template>
@@ -509,7 +509,7 @@ watch(
                 We couldn't finish building this preview.
               </template>
             </p>
-            <p class="mt-1 text-sm text-brand-muted">
+            <p class="mt-1 text-sm text-release-paper-muted">
               You can still publish your listing now — we'll show the placeholder until a capture succeeds,
               and you can retry the screenshot at any time.
             </p>
@@ -522,7 +522,7 @@ watch(
                 Try another URL
               </NuxtLink>
             </div>
-            <p v-if="recaptureError" class="mt-3 text-sm text-brand-warning" role="alert">
+            <p v-if="recaptureError" class="mt-3 text-sm text-release-warning" role="alert">
               {{ recaptureError }}
             </p>
           </div>
@@ -561,7 +561,7 @@ watch(
           <template v-else>
           <!-- 01 — Select package -->
           <section>
-            <h2 class="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-brand-muted">
+            <h2 class="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-release-paper-muted">
               {{ !authReady ? '01 — Checking access' : isAdminAccount ? '01 — Select admin placement' : '01 — Select package' }}
             </h2>
             <IntakePlanSelector
@@ -572,21 +572,21 @@ watch(
             />
             <div
               v-else
-              class="flex min-h-24 items-center gap-3 rounded-xl border border-brand-border bg-white/[0.02] px-4 py-3"
+              class="flex min-h-24 items-center gap-3 border border-release-seam bg-release-rail px-4 py-3"
               aria-busy="true"
               aria-live="polite"
             >
               <AppSpinner class="shrink-0" label="Checking publishing access" />
-              <p class="text-sm text-brand-muted">Checking publishing access…</p>
+              <p class="text-sm text-release-paper-muted">Checking publishing access…</p>
             </div>
-            <p v-if="checkoutReserved && !isAdminAccount" class="mt-2 text-xs leading-5 text-brand-muted">
+            <p v-if="checkoutReserved && !isAdminAccount" class="mt-2 text-xs leading-5 text-release-paper-muted">
               This plan is locked to your saved Stripe checkout so returning cannot create a different order.
             </p>
           </section>
 
           <!-- 02 — Publishing identity -->
           <section class="space-y-4">
-            <h2 class="text-sm font-semibold uppercase tracking-[0.2em] text-brand-muted">
+            <h2 class="text-sm font-semibold uppercase tracking-[0.2em] text-release-paper-muted">
               {{ isAdminAccount
                 ? '02 — Admin publishing'
                 : checkoutReserved
@@ -597,13 +597,13 @@ watch(
             </h2>
             <div
               v-if="checkoutCancellationState === 'done'"
-              class="flex items-start gap-3 rounded-xl border border-brand-success/35 bg-brand-success/[0.07] px-4 py-4"
+              class="flex items-start gap-3 border border-release-signal/35 bg-release-signal/[0.07] px-4 py-4"
               role="status"
             >
-              <CheckCircle2 class="mt-0.5 size-5 shrink-0 text-brand-success" aria-hidden="true" />
+              <CheckCircle2 class="mt-0.5 size-5 shrink-0 text-release-signal" aria-hidden="true" />
               <div>
-                <p class="text-sm font-semibold text-brand-fg">Checkout cancelled</p>
-                <p class="mt-1 text-sm leading-6 text-brand-muted">
+                <p class="text-sm font-semibold text-release-paper">Checkout cancelled</p>
+                <p class="mt-1 text-sm leading-6 text-release-paper-muted">
                   Nothing was charged or published. This website is available again, so you can change the plan or retry.
                 </p>
               </div>
@@ -613,14 +613,14 @@ watch(
               class="border border-release-warning/45 bg-release-warning/[0.05] px-4 py-4"
               role="status"
             >
-              <p class="text-sm font-semibold text-brand-fg">
+              <p class="text-sm font-semibold text-release-paper">
                 {{ checkoutCancellationState === 'pending'
                   ? 'Cancelling secure checkout…'
                   : checkoutCancellationState === 'error'
                     ? 'Checkout could not be cancelled'
                     : 'Your secure checkout is ready to resume' }}
               </p>
-              <p class="mt-1 text-sm leading-6 text-brand-muted">
+              <p class="mt-1 text-sm leading-6 text-release-paper-muted">
                 <template v-if="checkoutCancellationState === 'pending'">
                   Confirming with Stripe and releasing this website now.
                 </template>
@@ -629,7 +629,7 @@ watch(
                 </template>
                 <template v-else>
                   Continue with the same {{ selectedPlan.name }} plan for
-                  <span class="font-medium text-brand-fg">{{ account.email }}</span>.
+                  <span class="font-medium text-release-paper">{{ account.email }}</span>.
                 </template>
               </p>
               <Button
@@ -643,28 +643,28 @@ watch(
             </div>
             <div
               v-else-if="!authReady"
-              class="flex min-h-20 items-center gap-3 rounded-xl border border-brand-border bg-white/[0.02] px-4 py-3"
+              class="flex min-h-20 items-center gap-3 border border-release-seam bg-release-rail px-4 py-3"
               aria-busy="true"
               aria-live="polite"
             >
               <AppSpinner class="shrink-0" label="Checking your LaunchLog account" />
-              <p class="text-sm text-brand-muted">
+              <p class="text-sm text-release-paper-muted">
                 Checking your LaunchLog account…
               </p>
             </div>
             <div
               v-else-if="isAuthenticatedBuyer"
-              class="flex items-start gap-3 rounded-xl border border-white/15 bg-white/[0.035] px-4 py-3.5"
+              class="flex items-start gap-3 border border-release-seam bg-release-rail px-4 py-3.5"
             >
-              <CheckCircle2 class="mt-0.5 size-5 shrink-0 text-brand-success" aria-hidden="true" />
+              <CheckCircle2 class="mt-0.5 size-5 shrink-0 text-release-signal" aria-hidden="true" />
               <div class="min-w-0">
-                <p class="text-xs font-medium uppercase tracking-[0.14em] text-brand-muted">
+                <p class="text-xs font-medium uppercase tracking-[0.14em] text-release-paper-muted">
                   {{ isAdminAccount ? 'Admin publishing' : 'Publishing as' }}
                 </p>
-                <p class="mt-1 break-words text-sm font-semibold text-brand-fg">
+                <p class="mt-1 break-words text-sm font-semibold text-release-paper">
                   {{ authenticatedEmail }}
                 </p>
-                <p class="mt-1 text-xs leading-5 text-brand-muted">
+                <p class="mt-1 text-xs leading-5 text-release-paper-muted">
                   {{ isAdminAccount
                     ? 'This placement will be published directly without Stripe or a subscription.'
                     : 'This listing will be added directly to your signed-in account.' }}
@@ -676,7 +676,7 @@ watch(
                 <Label for="a-email">Email address</Label>
                 <span
                   class="text-right text-[11px] font-medium"
-                  :class="emailShowsInvalid ? 'text-brand-warning' : 'text-brand-muted'"
+                  :class="emailShowsInvalid ? 'text-release-warning' : 'text-release-paper-muted'"
                 >
                   {{ emailShowsInvalid ? 'Invalid email' : 'Required' }}
                 </span>
@@ -691,7 +691,7 @@ watch(
               />
               <p
                 class="min-h-4 text-xs"
-                :class="emailShowsInvalid ? 'text-brand-warning' : 'text-brand-muted'"
+                :class="emailShowsInvalid ? 'text-release-warning' : 'text-release-paper-muted'"
                 aria-live="polite"
               >
                 {{ emailHelpText }}
@@ -732,18 +732,18 @@ watch(
                         : `Pay & publish — ${selectedPlan.priceLabel}/year` }}
             </Button>
             <div class="mt-3 min-h-5 text-center text-xs" aria-live="polite">
-              <p v-if="adminPublishError || checkoutError" class="text-brand-warning" role="alert">
+              <p v-if="adminPublishError || checkoutError" class="text-release-warning" role="alert">
                 {{ adminPublishError || checkoutError }}
               </p>
-              <p v-else-if="isGenerating" class="text-brand-muted">
+              <p v-else-if="isGenerating" class="text-release-paper-muted">
                 {{ isAdminAccount
                   ? 'Admin publishing unlocks automatically when the preview is ready.'
                   : 'Checkout unlocks automatically when the preview is ready.' }}
               </p>
-              <p v-else-if="isAdminAccount && !domainConflict" class="text-brand-muted">
+              <p v-else-if="isAdminAccount && !domainConflict" class="text-release-paper-muted">
                 Manual admin placement · no checkout or subscription.
               </p>
-              <p v-else-if="!domainConflict" class="text-brand-muted">
+              <p v-else-if="!domainConflict" class="text-release-paper-muted">
                 That's just {{ selectedPlan.monthlyLabel }}/mo · pay only when you publish · 7-day money-back guarantee.
               </p>
             </div>
@@ -752,5 +752,5 @@ watch(
         </div>
       </div>
     </template>
-  </main>
+  </div>
 </template>

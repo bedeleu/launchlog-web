@@ -82,7 +82,7 @@ useFaqSchema(faqs.map(f => ({ q: f.question, a: f.answer })))
 </script>
 
 <template>
-  <main class="min-h-screen bg-release-ink">
+  <div class="min-h-screen bg-release-ink">
     <ReleaseShell
       eyebrow="Release catalog · placement"
       title="Choose how your release enters the catalog."
@@ -237,5 +237,5 @@ useFaqSchema(faqs.map(f => ({ q: f.question, a: f.answer })))
         </ReleaseActionRail>
       </template>
     </ReleaseShell>
-  </main>
+  </div>
 </template>
