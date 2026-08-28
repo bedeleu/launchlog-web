@@ -3,7 +3,7 @@ import { ArrowRight, LogOut, Mail } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { toErrorLike } from '~/utils/error-like'
+import { firebaseAuthErrorMessage } from '~/utils/auth-error'
 
 const { user, loginWithGoogle, sendMagicLink, completeMagicLink, logout, waitForAuthReady } = useAuth()
 const route = useRoute()
@@ -42,7 +42,7 @@ onMounted(async () => {
     await processMagicLink()
   }
   catch (linkError: unknown) {
-    error.value = toErrorLike(linkError).message ?? 'Magic link verification failed.'
+    error.value = firebaseAuthErrorMessage(linkError, 'magic-verify')
   }
   finally {
     busy.value = null
@@ -56,7 +56,7 @@ async function confirmMagicEmail() {
     await processMagicLink(confirmationEmail.value)
   }
   catch (linkError: unknown) {
-    error.value = toErrorLike(linkError).message ?? 'Magic link verification failed.'
+    error.value = firebaseAuthErrorMessage(linkError, 'magic-verify')
   }
   finally {
     busy.value = null
@@ -71,7 +71,7 @@ async function onGoogle() {
     if (result) await finishLogin()
   }
   catch (googleError: unknown) {
-    error.value = toErrorLike(googleError).message ?? 'Google sign-in failed.'
+    error.value = firebaseAuthErrorMessage(googleError, 'google')
   }
   finally {
     busy.value = null
@@ -87,7 +87,7 @@ async function onMagic() {
     status.value = `A secure sign-in link was sent to ${email.value}.`
   }
   catch (emailError: unknown) {
-    error.value = toErrorLike(emailError).message ?? 'The magic link could not be sent.'
+    error.value = firebaseAuthErrorMessage(emailError, 'magic-send')
   }
   finally {
     busy.value = null
@@ -187,14 +187,14 @@ useHead({ title: 'Sign in · LaunchLog', meta: [{ name: 'robots', content: 'noin
           </p>
 
           <Button
-            class="mt-7 w-full border-brand-border bg-white/[0.03] hover:bg-white/[0.07]"
+            class="mt-7 w-full border-[#8e918f] bg-[#131314] text-[#e3e3e3] hover:bg-[#1f1f20]"
             size="lg"
             variant="outline"
             :disabled="busy !== null"
             @click="onGoogle"
           >
             <AppSpinner v-if="busy === 'google'" color="text-current" label="Signing in with Google" />
-            <span v-else class="flex size-5 items-center justify-center rounded-full bg-white text-xs font-bold text-[#0A0E1A]" aria-hidden="true">G</span>
+            <img v-else src="/images/google-g.png" alt="" width="20" height="20" class="h-5 w-auto shrink-0" aria-hidden="true">
             Continue with Google
           </Button>
 
@@ -227,10 +227,10 @@ useHead({ title: 'Sign in · LaunchLog', meta: [{ name: 'robots', content: 'noin
           </form>
         </template>
 
-        <p v-if="status" class="mt-6 rounded-lg border border-brand-success/20 bg-brand-success/[0.06] px-4 py-3 text-sm leading-6 text-emerald-200" role="status">
+        <p v-if="status" class="mt-6 border border-release-signal/40 border-l-2 bg-release-rail px-4 py-3 text-sm leading-6 text-release-signal" role="status">
           {{ status }}
         </p>
-        <p v-if="error" class="mt-6 rounded-lg border border-red-400/20 bg-red-400/[0.06] px-4 py-3 text-sm leading-6 text-red-200" role="alert">
+        <p v-if="error" class="mt-6 border border-release-destructive border-l-2 bg-release-rail px-4 py-3 text-sm leading-6 text-release-destructive" role="alert">
           {{ error }}
         </p>
       </div>

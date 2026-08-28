@@ -88,6 +88,15 @@ watch(() => props.listing.screenshot_url, () => {
 })
 const showImage = computed(() => Boolean(props.listing.screenshot_url) && !imageFailed.value)
 
+/**
+ * A Featured capture is evidence, not decorative cover art. Its split layout is
+ * often taller than the source 16:10 image, so cover would crop both horizontal
+ * edges. Keep Featured captures complete; ordinary directory covers retain the
+ * denser crop used by the standard grid.
+ */
+const imageFitClass = computed(() =>
+  isPriorityPlacement.value ? 'object-contain object-top' : 'object-cover object-top')
+
 const cardClass = computed(() => {
   // Release covers are square-cornered ink plates with hairline seams. The tier
   // steps the seam value only; composition and the obi band carry the placement,
@@ -185,8 +194,8 @@ const taglineClass = computed(() => {
           loading="lazy"
           width="960"
           height="600"
-          class="size-full object-cover object-top"
-          :class="isDirectorySpotlight ? 'absolute inset-0' : ''"
+          class="size-full"
+          :class="[imageFitClass, isDirectorySpotlight ? 'absolute inset-0' : '']"
           @error="imageFailed = true"
         >
         <ListingShotFallback

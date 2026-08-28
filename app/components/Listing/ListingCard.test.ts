@@ -38,12 +38,13 @@ describe('release cover material', () => {
     expect(fallback).not.toContain('brand-')
   })
 
-  test('keeps the screenshot as the cover with a stable capture frame', () => {
+  test('keeps a stable capture frame without cropping Featured evidence', () => {
     expect(source).toContain('aspect-[16/10]')
     expect(source).toContain('loading="lazy"')
     expect(source).toContain('width="960"')
     expect(source).toContain('height="600"')
-    expect(source).toContain('object-cover object-top')
+    expect(source).toContain("isPriorityPlacement.value ? 'object-contain object-top' : 'object-cover object-top'")
+    expect(source).toContain(':class="[imageFitClass, isDirectorySpotlight ? \'absolute inset-0\' : \'\']"')
   })
 
   test('stays link-free so the grid keeps owning the anchor', () => {
