@@ -26,6 +26,7 @@ const renderPage = async (relativePath: string, setup: Record<string, unknown>) 
   app.component('ListChecks', passthrough('span'))
   app.component('FilePlus2', passthrough('span'))
   app.component('ScanLine', passthrough('span'))
+  app.component('ReleaseSelect', passthrough('div'))
   app.component('AdminListingForm', passthrough('form'))
   app.component('IntakePreviewForm', passthrough('form'))
   return renderToString(app)
@@ -75,6 +76,9 @@ describe('admin listing entry points', () => {
       screenshotMessage: null,
       screenshotStatus: null,
       statusClass: {},
+      statusOptions: [],
+      tierOptions: [],
+      sourceOptions: [],
       load: () => undefined,
       act: () => undefined,
       refreshScreenshotStatus: () => undefined,
