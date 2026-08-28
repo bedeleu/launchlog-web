@@ -30,4 +30,13 @@ describe('Release Catalog reading shell', () => {
       expect(footer).toContain(`to: '${route}'`)
     }
   })
+
+  test('keeps footer links on a minimum 24px touch target', async () => {
+    const footer = await Bun.file(new URL('../Footer.vue', import.meta.url)).text()
+
+    expect(footer).toContain('class="mt-6 inline-flex min-h-6 items-center')
+    expect(footer).toContain('class="inline-flex min-h-6 min-w-6 items-center justify-center')
+    expect(footer).toContain('class="inline-flex min-h-6 items-center text-sm')
+    expect(footer.match(/class="inline-flex min-h-6 items-center font-mono/g) ?? []).toHaveLength(2)
+  })
 })

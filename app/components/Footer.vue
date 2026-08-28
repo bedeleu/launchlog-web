@@ -70,7 +70,7 @@ const columns = [
           </p>
           <a
             :href="`mailto:${SITE_IDENTITY.publicEmail}`"
-            class="mt-6 inline-flex font-mono text-xs uppercase tracking-[0.12em] text-release-blaze underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus"
+            class="mt-6 inline-flex min-h-6 items-center font-mono text-xs uppercase tracking-[0.12em] text-release-blaze underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus"
           >
             {{ SITE_IDENTITY.publicEmail }}
           </a>
@@ -81,7 +81,7 @@ const columns = [
               :href="social.href"
               target="_blank"
               rel="noopener"
-              class="font-mono text-[11px] uppercase tracking-[0.1em] text-release-paper-muted hover:text-[#f6f1e7] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus"
+              class="inline-flex min-h-6 min-w-6 items-center justify-center font-mono text-[11px] uppercase tracking-[0.1em] text-release-paper-muted hover:text-[#f6f1e7] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus"
             >
               {{ social.label }}
             </a>
@@ -101,7 +101,7 @@ const columns = [
               <li v-for="link in col.links" :key="link.to">
                 <NuxtLink
                   :to="link.to"
-                  class="text-sm text-release-paper-muted hover:text-[#f6f1e7] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus"
+                  class="inline-flex min-h-6 items-center text-sm text-release-paper-muted hover:text-[#f6f1e7] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus"
                 >
                   {{ link.label }}
                 </NuxtLink>
@@ -120,11 +120,11 @@ const columns = [
           :href="statusPageUrl"
           target="_blank"
           rel="noopener noreferrer"
-          class="font-mono text-[11px] uppercase tracking-[0.1em] text-release-paper-muted hover:text-[#f6f1e7] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus"
+          class="inline-flex min-h-6 items-center font-mono text-[11px] uppercase tracking-[0.1em] text-release-paper-muted hover:text-[#f6f1e7] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus"
         >
           Service status ↗
         </a>
-        <NuxtLink v-else to="/status" class="font-mono text-[11px] uppercase tracking-[0.1em] text-release-paper-muted hover:text-[#f6f1e7] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus">
+        <NuxtLink v-else to="/status" class="inline-flex min-h-6 items-center font-mono text-[11px] uppercase tracking-[0.1em] text-release-paper-muted hover:text-[#f6f1e7] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus">
           Service status
         </NuxtLink>
       </div>
