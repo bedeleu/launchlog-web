@@ -31,6 +31,13 @@ export default defineEventHandler(async (event) => {
   const slug = url.pathname.replace('/listing/', '').replace(/\/$/, '')
   if (!slug) return
 
+  // Only the listing URL itself negotiates. /listing/{slug}/markdown and
+  // /listing/{slug}/schema are the dedicated proof artifacts and own their own
+  // representation, so this middleware must not swallow them: it used to treat
+  // "{slug}/markdown" as a slug, miss it upstream, and answer the AI clients the
+  // feature exists for with a 404 on the very routes the record links to.
+  if (slug.includes('/')) return
+
   const config = useRuntimeConfig()
 
   try {

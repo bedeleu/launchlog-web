@@ -1,26 +1,18 @@
 <script setup lang="ts">
-import {
-  Check,
-  Code2,
-  ExternalLink,
-  FileJson2,
-  FileText,
-  Globe,
-  ImageOff,
-  Layers,
-  ListTree,
-  Lock,
-  Sparkles,
-  Tag,
-} from '@lucide/vue'
+import { ExternalLink } from '@lucide/vue'
+import { Button } from '@/components/ui/button'
 import { listingAbsenceStatus } from '#shared/utils/listing-http-status'
-import type { ListingCard, ListingTier } from '~/composables/useListings'
+import type { ListingCard } from '~/composables/useListings'
+import { listingProofDestinations } from '~/utils/customer-receipt'
+import { serializeJsonLd } from '~/utils/json-ld'
 import { buildListingSchema } from '~/utils/listing-schema'
+import { releaseEdition } from '~/utils/release-edition'
 
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? ''))
 const config = useRuntimeConfig()
 const domain = config.public.domain as string
+const siteUrl = `https://${domain}`
 
 const { getListing, listListings } = useListings()
 
@@ -70,13 +62,6 @@ const hostname = (url?: string | null): string => {
   }
 }
 
-const formatDate = (iso?: string | null): string => {
-  if (!iso) return 'Unknown'
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return 'Unknown'
-  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-}
-
 const isSecure = computed(() => (listing.value?.url ?? '').startsWith('https'))
 const logoFailed = ref(false)
 
@@ -92,7 +77,7 @@ const socialLabel = (url: string): string => {
   return host
 }
 
-// Gracefully fall back to the placeholder when a screenshot_url 404s (file not
+// Gracefully fall back to the blank cover when a screenshot_url 404s (file not
 // on the CDN yet / stale snapshot) instead of rendering a broken-image glyph.
 const heroShotFailed = ref(false)
 
@@ -103,45 +88,36 @@ const descriptionParagraphs = computed<string[]>(() =>
     .filter(Boolean),
 )
 
-const tierMeta: Record<ListingTier, { label: string, classes: string }> = {
-  featured: {
-    label: 'Featured',
-    classes: 'border-white/25 bg-white/[0.06] text-brand-fg',
-  },
-  basic: {
-    label: 'Standard',
-    classes: 'border-brand-border bg-transparent text-brand-muted',
-  },
-}
-const tier = computed(() => tierMeta[(listing.value?.tier ?? 'basic') as ListingTier] ?? tierMeta.basic)
+/** The placement word, exactly as the directory register prints it. */
+const placementLabel = computed(() => listing.value?.tier === 'featured' ? 'Featured' : 'Standard')
 
-// These surfaces are provided by the public route for every published listing.
-// Legacy per-row flags are intentionally not used: founding imports predate the
-// platform-wide Markdown, schema and discovery feeds.
-const aiDiscovery = computed(() => {
+/** The edition marker: the date LaunchLog listed the release, nothing inferred. */
+const edition = computed(() => releaseEdition(listing.value?.published_at))
+
+/**
+ * The record's own facts, printed as a hairline register. Every value comes from
+ * the API payload or from the listing URL — nothing here is a score, a rank or a
+ * derived quality signal.
+ */
+const recordFacts = computed(() => {
+  const l = listing.value
+  if (!l) return []
+
   return [
-    {
-      label: 'schema.org @graph',
-      detail: 'Structured data emitted on this page',
-      enabled: true,
-    },
-    {
-      label: 'Markdown endpoint',
-      detail: 'GET /listing/{slug} with Accept: text/markdown',
-      enabled: true,
-    },
-    {
-      label: 'Included in llms.txt surfaces',
-      detail: 'Included in LaunchLog machine-readable discovery feeds',
-      enabled: true,
-    },
-    {
-      label: 'Sitemap discovery',
-      detail: 'Included in the LaunchLog listing sitemap',
-      enabled: true,
-    },
+    { label: 'Listed', value: edition.value || 'Unlisted' },
+    { label: 'Placement', value: placementLabel.value },
+    { label: 'Category', value: l.category?.name ?? 'Uncategorised' },
+    { label: 'Connection', value: isSecure.value ? 'HTTPS' : 'HTTP' },
   ]
 })
+
+/**
+ * The proof ledger. Four artifacts, four separately resolvable URLs — replacing
+ * the four hardcoded check marks that named surfaces the page never linked and
+ * could not verify from here.
+ */
+const proofDestinations = computed(() =>
+  listing.value ? listingProofDestinations(siteUrl, listing.value.slug) : [])
 
 // --- SEO + schema.org @graph (D-009) ---
 const seoTitle = computed(() => {
@@ -178,110 +154,126 @@ useSeoMeta({
 const jsonLd = computed(() => {
   const l = listing.value
   if (!l) return null
-  return buildListingSchema(l, `https://${domain}`)
+  return buildListingSchema(l, siteUrl)
 })
 
 useHead({
   script: computed(() =>
     jsonLd.value
-      ? [{ type: 'application/ld+json', innerHTML: JSON.stringify(jsonLd.value) }]
+      // serializeJsonLd escapes every `<`, so a listing name containing markup
+      // cannot close the script tag early. The rest of the repo already emits
+      // JSON-LD through this helper.
+      ? [{ type: 'application/ld+json', innerHTML: serializeJsonLd(jsonLd.value) }]
       : [],
   ),
 })
 </script>
 
 <template>
-  <main class="mx-auto max-w-6xl px-6 py-12 lg:py-16">
-    <!-- Not found -->
-    <div v-if="error || !listing" class="py-20 text-center">
-      <h1 class="text-3xl font-bold text-brand-fg">
-        Listing not found
-      </h1>
-      <p class="mx-auto mt-3 max-w-md text-brand-muted">
-        This listing may have been removed, or the link is incorrect.
+  <section class="mx-auto w-full max-w-[96rem] border-x border-release-seam bg-release-ink px-4 py-8 text-[#f6f1e7] sm:px-8 lg:px-12 lg:py-12">
+    <!-- Absence. The two terminal states read differently on purpose: a
+         withdrawn release was really here and is gone, while a 404 address never
+         held one. Telling a 410 visitor their link is wrong is a false answer. -->
+    <div v-if="absenceStatus === 410" class="mx-auto max-w-xl py-20 text-center">
+      <p class="font-mono text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-release-warning">
+        Record 410 · withdrawn
       </p>
-      <NuxtLink
-        to="/browse-all"
-        class="mt-6 inline-flex h-10 items-center justify-center rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80"
-      >
-        Browse all listings
-      </NuxtLink>
+      <h1 class="mt-4 text-3xl font-semibold tracking-[-0.03em]">
+        Release withdrawn
+      </h1>
+      <p class="mt-3 text-release-paper-muted">
+        This release record was withdrawn and is no longer part of the public catalog.
+      </p>
+      <Button as-child class="mt-7" size="lg">
+        <NuxtLink to="/browse-all">
+          Browse the catalog
+        </NuxtLink>
+      </Button>
+    </div>
+
+    <div v-else-if="absenceStatus || error || !listing" class="mx-auto max-w-xl py-20 text-center">
+      <p class="font-mono text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-release-paper-muted">
+        Record 404 · not found
+      </p>
+      <h1 class="mt-4 text-3xl font-semibold tracking-[-0.03em]">
+        Release not found
+      </h1>
+      <p class="mt-3 text-release-paper-muted">
+        No release is cataloged at this address. It may never have been published, or the link is incorrect.
+      </p>
+      <Button as-child class="mt-7" size="lg">
+        <NuxtLink to="/browse-all">
+          Browse the catalog
+        </NuxtLink>
+      </Button>
     </div>
 
     <template v-else>
-      <!-- Breadcrumb -->
-      <nav class="mb-8 flex flex-wrap items-center gap-1.5 text-sm text-brand-muted">
-        <NuxtLink to="/" class="transition-colors hover:text-brand-fg">
+      <nav class="mb-8 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[0.68rem] uppercase tracking-[0.16em] text-release-paper-muted">
+        <NuxtLink to="/" class="transition-colors hover:text-release-paper">
           Home
         </NuxtLink>
         <span aria-hidden="true">/</span>
-        <NuxtLink to="/browse-all" class="transition-colors hover:text-brand-fg">
+        <NuxtLink to="/browse-all" class="transition-colors hover:text-release-paper">
           Browse
         </NuxtLink>
         <span aria-hidden="true">/</span>
-        <span class="text-brand-fg">{{ listing.name }}</span>
+        <span class="text-release-paper">{{ listing.name }}</span>
       </nav>
 
-      <!-- HERO -->
-      <header class="max-w-3xl">
-        <div class="flex flex-wrap items-center gap-2">
-          <span
-            class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wider"
-            :class="tier.classes"
-          >
-            <Sparkles v-if="listing.tier === 'featured'" class="size-3.5" />
-            {{ tier.label }}
-          </span>
-          <!-- Founding listing marker (D-060) — origin, independent of billing tier -->
-          <span
-            v-if="listing.source === 'founding'"
-            class="inline-flex items-center rounded-full border border-brand-border bg-white/[0.04] px-3 py-1 text-xs font-semibold uppercase tracking-wider text-brand-fg/85"
-          >
-            Founding
-          </span>
-        </div>
+      <header class="max-w-4xl border-b border-release-seam pb-7">
+        <p class="mb-3 flex flex-wrap items-center gap-x-2 font-mono text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-release-blaze">
+          <span>Release record</span>
+          <span aria-hidden="true">·</span>
+          <span>{{ placementLabel }}</span>
+          <template v-if="listing.source === 'founding'">
+            <span aria-hidden="true">·</span>
+            <span>Founding</span>
+          </template>
+        </p>
 
-        <div class="mt-4 flex items-center gap-4">
+        <div class="flex items-center gap-4">
           <img
             v-if="listing.logo_url && !logoFailed"
             :src="listing.logo_url"
             :alt="`${listing.name} logo`"
-            class="size-14 shrink-0 rounded-xl border border-brand-border bg-white/[0.04] object-contain p-1.5 sm:size-16"
+            class="size-14 shrink-0 border border-release-seam bg-release-rail object-contain p-1.5 sm:size-16"
             width="64"
             height="64"
             @error="logoFailed = true"
           >
-          <h1 class="min-w-0 text-4xl font-bold tracking-tight text-brand-fg lg:text-5xl">
+          <h1 class="min-w-0 text-3xl font-semibold tracking-[-0.035em] sm:text-4xl lg:text-5xl">
             {{ listing.name }}
           </h1>
         </div>
-        <p class="mt-3 text-lg text-brand-muted">
+        <p class="mt-4 max-w-2xl text-base leading-7 text-release-paper-muted">
           {{ listing.tagline }}
         </p>
 
-        <div class="mt-5 flex flex-wrap items-center gap-3">
-          <a
-            :href="listing.url"
-            target="_blank"
-            rel="noopener sponsored"
-            class="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/80"
-          >
-            Visit Website
-            <ExternalLink class="size-4" />
-          </a>
-          <span class="inline-flex items-center gap-1.5 text-sm text-brand-muted">
-            <Globe class="size-4" />
+        <div class="mt-6 flex flex-wrap items-center gap-x-4 gap-y-3">
+          <Button as-child size="lg">
+            <a
+              :href="listing.url"
+              target="_blank"
+              rel="noopener sponsored"
+            >
+              Visit website
+              <ExternalLink class="size-4" aria-hidden="true" />
+            </a>
+          </Button>
+          <span class="font-mono text-xs text-release-paper-muted">
             {{ hostname(listing.url) }}
           </span>
         </div>
-        <nav v-if="listing.social_links?.length" aria-label="Social profiles" class="mt-4 flex flex-wrap gap-2">
+
+        <nav v-if="listing.social_links?.length" aria-label="Social profiles" class="mt-5 flex flex-wrap gap-2">
           <a
             v-for="socialUrl in listing.social_links"
             :key="socialUrl"
             :href="socialUrl"
             target="_blank"
             rel="noopener noreferrer"
-            class="inline-flex items-center gap-1.5 rounded-full border border-brand-border bg-white/[0.025] px-3 py-1.5 text-xs font-medium text-brand-muted transition-colors hover:border-brand-accent/40 hover:text-brand-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/60"
+            class="inline-flex items-center gap-1.5 border border-release-seam px-3 py-1.5 font-mono text-[0.68rem] uppercase tracking-[0.14em] text-release-paper-muted transition-colors hover:border-release-paper-muted hover:text-release-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus focus-visible:ring-offset-2 focus-visible:ring-offset-release-ink"
           >
             {{ socialLabel(socialUrl) }}
             <ExternalLink class="size-3" aria-hidden="true" />
@@ -289,24 +281,10 @@ useHead({
         </nav>
       </header>
 
-      <!-- Screenshot — framed as a real browser viewport (reads as authentic product,
-           not a floating AI image). Featured gets an accent ring + glow. -->
-      <figure
-        class="mt-8 overflow-hidden rounded-2xl border bg-[#0c1120] shadow-2xl shadow-black/40"
-        :class="listing.tier === 'featured'
-          ? 'border-brand-accent/40 ring-1 ring-brand-accent/20 shadow-[0_28px_70px_-16px_rgba(99,102,241,0.3)]'
-          : 'border-brand-border'"
-      >
-        <div class="flex items-center gap-2 border-b border-brand-border bg-white/[0.03] px-4 py-2.5">
-          <span class="size-2.5 rounded-full bg-white/15" />
-          <span class="size-2.5 rounded-full bg-white/15" />
-          <span class="size-2.5 rounded-full bg-white/15" />
-          <div class="mx-auto flex max-w-full items-center gap-1.5 truncate rounded-md bg-black/30 px-3 py-1 text-xs text-brand-muted">
-            <Globe class="size-3 shrink-0" />
-            <span class="truncate">{{ hostname(listing.url) }}</span>
-          </div>
-        </div>
-        <div class="aspect-[16/10] w-full bg-white/[0.02]">
+      <!-- The cover: the captured website in a rail-coloured mat, with the
+           address printed on the caption ledger. No browser skeuomorphism. -->
+      <figure class="mt-8 border border-release-seam bg-release-rail p-3 sm:p-4">
+        <div class="relative aspect-[16/10] w-full overflow-hidden border border-release-seam bg-release-ink">
           <img
             v-if="listing.screenshot_url && !heroShotFailed"
             :src="listing.screenshot_url"
@@ -316,79 +294,78 @@ useHead({
             height="800"
             @error="heroShotFailed = true"
           >
-          <div
-            v-else
-            class="flex size-full flex-col items-center justify-center gap-2 text-brand-muted"
-          >
-            <ImageOff class="size-8" />
-            <span class="text-sm">No screenshot available</span>
+          <div v-else class="relative grid size-full place-items-center px-8 text-center">
+            <span aria-hidden="true" class="absolute inset-y-0 left-1/3 border-l border-dashed border-release-seam" />
+            <span aria-hidden="true" class="absolute inset-y-0 right-1/3 border-r border-dashed border-release-seam" />
+            <p class="max-w-sm font-mono text-xs uppercase tracking-[0.16em] text-release-paper-muted">
+              Website capture unavailable
+            </p>
           </div>
         </div>
+        <figcaption class="mt-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 font-mono text-[0.68rem] uppercase tracking-[0.16em] text-release-paper-muted">
+          <span>{{ hostname(listing.url) }}</span>
+          <span v-if="edition">Captured for edition {{ edition }}</span>
+        </figcaption>
       </figure>
 
-      <!-- Facts row -->
-      <div class="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-brand-muted">
-        <span>
-          Listed since <span class="text-brand-fg">{{ formatDate(listing.published_at) }}</span>
-        </span>
-        <NuxtLink
-          v-if="listing.category"
-          :to="`/browse-all?category=${listing.category.slug}`"
-          class="inline-flex items-center gap-1.5 transition-colors hover:text-brand-fg"
-        >
-          <Layers class="size-4" />
-          {{ listing.category.name }}
-        </NuxtLink>
-        <span class="inline-flex items-center gap-1.5">
-          <span class="size-2 rounded-full bg-brand-success" />
-          <span class="text-brand-success">Active</span>
-        </span>
-      </div>
+      <!-- The record register: hairline cells whose separators are the seam. -->
+      <dl class="mt-8 grid gap-px border border-release-seam bg-release-seam sm:grid-cols-2 lg:grid-cols-4">
+        <div v-for="fact in recordFacts" :key="fact.label" class="bg-release-ink px-4 py-3.5">
+          <dt class="font-mono text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-release-paper-muted">
+            {{ fact.label }}
+          </dt>
+          <dd class="mt-1.5 font-mono text-sm text-release-paper">
+            <NuxtLink
+              v-if="fact.label === 'Category' && listing.category"
+              :to="`/browse-all?category=${listing.category.slug}`"
+              class="text-release-paper underline-offset-4 transition-colors hover:text-release-blaze hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus focus-visible:ring-offset-2 focus-visible:ring-offset-release-ink"
+            >
+              {{ fact.value }}
+            </NuxtLink>
+            <template v-else>
+              {{ fact.value }}
+            </template>
+          </dd>
+        </div>
+      </dl>
 
-      <!-- BODY: main + sidebar -->
-      <div class="mt-12 grid gap-12 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
-        <!-- MAIN COLUMN -->
+      <div class="mt-12 grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-12">
         <div class="min-w-0 space-y-12">
-          <!-- About (omit entirely if no description) -->
           <section v-if="descriptionParagraphs.length">
-            <h2 class="text-xl font-semibold text-brand-fg">
-              About {{ listing.name }}
+            <h2 class="border-b border-release-seam pb-2.5 font-mono text-xs font-medium uppercase tracking-[0.22em] text-release-paper">
+              About
             </h2>
-            <div class="mt-4 space-y-4 text-brand-muted leading-relaxed">
+            <div class="mt-5 space-y-4 text-base leading-7 text-release-paper-muted">
               <p v-for="(para, i) in descriptionParagraphs" :key="i">
                 {{ para }}
               </p>
             </div>
           </section>
 
-          <!-- Built with -->
           <section v-if="listing.tech_stack.length">
-            <h2 class="flex items-center gap-2 text-xl font-semibold text-brand-fg">
-              <Code2 class="size-5 text-brand-muted" />
+            <h2 class="border-b border-release-seam pb-2.5 font-mono text-xs font-medium uppercase tracking-[0.22em] text-release-paper">
               Built with
             </h2>
-            <ul class="mt-4 flex flex-wrap gap-2">
+            <ul class="mt-5 flex flex-wrap gap-2">
               <li
                 v-for="tech in listing.tech_stack"
                 :key="tech"
-                class="rounded-md border border-brand-border bg-white/[0.03] px-2.5 py-1 font-mono text-xs text-brand-fg"
+                class="border border-release-seam bg-release-rail px-2.5 py-1 font-mono text-xs text-release-paper"
               >
                 {{ tech }}
               </li>
             </ul>
           </section>
 
-          <!-- Tags -->
           <section v-if="listing.tags.length">
-            <h2 class="flex items-center gap-2 text-xl font-semibold text-brand-fg">
-              <Tag class="size-5 text-brand-muted" />
+            <h2 class="border-b border-release-seam pb-2.5 font-mono text-xs font-medium uppercase tracking-[0.22em] text-release-paper">
               Tags
             </h2>
-            <ul class="mt-4 flex flex-wrap gap-2">
+            <ul class="mt-5 flex flex-wrap gap-2">
               <li v-for="t in listing.tags" :key="t.slug">
                 <NuxtLink
                   :to="`/browse-all?tag=${t.slug}`"
-                  class="inline-flex rounded-full border border-brand-border px-3 py-1 text-sm text-brand-muted transition-colors hover:border-brand-accent/50 hover:text-brand-fg"
+                  class="inline-flex border border-release-seam px-3 py-1 font-mono text-xs text-release-paper-muted transition-colors hover:border-release-paper-muted hover:text-release-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus focus-visible:ring-offset-2 focus-visible:ring-offset-release-ink"
                 >
                   {{ t.name }}
                 </NuxtLink>
@@ -396,127 +373,63 @@ useHead({
             </ul>
           </section>
 
-          <!-- AI Discovery (D-009 differentiator) -->
+          <!-- The proof ledger (D-009). Each artifact is named for what it is and
+               prints the address that serves it. -->
           <section>
-            <h2 class="flex items-center gap-2 text-xl font-semibold text-brand-fg">
-              <Sparkles class="size-5 text-brand-accent" />
-              AI Discovery
+            <h2 class="border-b border-release-seam pb-2.5 font-mono text-xs font-medium uppercase tracking-[0.22em] text-release-paper">
+              Published record
             </h2>
-            <p class="mt-2 text-sm text-brand-muted">
-              Published across search-friendly and machine-readable LaunchLog surfaces.
+            <p class="mt-4 max-w-prose text-sm leading-6 text-release-paper-muted">
+              The facts on this page are served at four separate addresses, one per representation.
             </p>
-            <ul class="mt-5 grid gap-3 sm:grid-cols-2">
-              <li
-                v-for="item in aiDiscovery"
-                :key="item.label"
-                class="flex items-start gap-3 rounded-xl border border-brand-border bg-white/[0.02] p-4"
-                :class="item.enabled ? '' : 'opacity-50'"
-              >
-                <span class="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-brand-accent/10">
-                  <Check class="size-3.5 text-brand-accent" />
-                </span>
-                <span class="min-w-0">
-                  <span class="block text-sm font-medium text-brand-fg">{{ item.label }}</span>
-                  <span class="mt-0.5 block text-xs text-brand-muted">{{ item.detail }}</span>
-                </span>
-              </li>
-            </ul>
+            <div class="mt-4 divide-y divide-release-seam border-y border-release-seam">
+              <ListingReceiptArtifact
+                v-for="destination in proofDestinations"
+                :key="destination.key"
+                :destination="destination"
+              />
+            </div>
           </section>
         </div>
 
-        <!-- SIDEBAR -->
-        <aside class="lg:sticky lg:top-8">
-          <div class="rounded-2xl border border-brand-border bg-white/[0.02] p-6">
-            <h2 class="text-sm font-semibold uppercase tracking-[0.2em] text-brand-muted">
-              Site info
-            </h2>
-            <dl class="mt-5 space-y-4 text-sm">
-              <div class="flex items-center justify-between gap-3">
-                <dt class="inline-flex items-center gap-2 text-brand-muted">
-                  <Globe class="size-4" /> Domain
-                </dt>
-                <dd class="truncate text-right text-brand-fg">
-                  {{ hostname(listing.url) }}
-                </dd>
-              </div>
-              <div class="flex items-center justify-between gap-3">
-                <dt class="inline-flex items-center gap-2 text-brand-muted">
-                  <Lock class="size-4" /> SSL
-                </dt>
-                <dd class="text-right" :class="isSecure ? 'text-brand-success' : 'text-brand-warning'">
-                  {{ isSecure ? 'Secure' : 'Not secure' }}
-                </dd>
-              </div>
-              <div v-if="listing.category" class="flex items-center justify-between gap-3">
-                <dt class="inline-flex items-center gap-2 text-brand-muted">
-                  <Layers class="size-4" /> Category
-                </dt>
-                <dd class="text-right">
-                  <NuxtLink
-                    :to="`/browse-all?category=${listing.category.slug}`"
-                    class="text-brand-fg transition-colors hover:text-brand-accent"
-                  >
-                    {{ listing.category.name }}
-                  </NuxtLink>
-                </dd>
-              </div>
-              <div class="flex items-center justify-between gap-3">
-                <dt class="inline-flex items-center gap-2 text-brand-muted">
-                  <Layers class="size-4" /> Tier
-                </dt>
-                <dd class="text-right">
-                  <span
-                    class="inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider"
-                    :class="tier.classes"
-                  >
-                    {{ tier.label }}
-                  </span>
-                </dd>
-              </div>
-              <div class="flex items-center justify-between gap-3">
-                <dt class="inline-flex items-center gap-2 text-brand-muted">
-                  <ListTree class="size-4" /> Listed since
-                </dt>
-                <dd class="text-right text-brand-fg">
-                  {{ formatDate(listing.published_at) }}
-                </dd>
-              </div>
-            </dl>
-
-            <a
-              :href="listing.url"
-              target="_blank"
-              rel="noopener sponsored"
-              class="mt-6 inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/80"
-            >
-              Visit Site
-              <ExternalLink class="size-4" />
-            </a>
-          </div>
-
-          <!-- Tech edge mini-card -->
-          <div class="mt-4 rounded-2xl border border-brand-accent/20 bg-brand-accent/[0.04] p-5">
-            <p class="flex items-center gap-2 text-sm font-medium text-brand-fg">
-              <FileJson2 class="size-4 text-brand-accent" />
-              schema.org
-              <span class="text-brand-muted">·</span>
-              <FileText class="size-4 text-brand-accent" />
-              markdown
-            </p>
-            <p class="mt-2 text-xs text-brand-muted">
-              This listing exposes the same product facts as visible HTML, structured data and a markdown response.
-            </p>
+        <aside class="min-w-0 lg:sticky lg:top-24">
+          <div class="border border-release-seam bg-release-rail">
+            <div class="border-b border-release-seam px-5 py-4">
+              <p class="font-mono text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-release-warning">
+                Edition {{ edition || 'unlisted' }}
+              </p>
+              <h2 class="mt-2 text-lg font-semibold tracking-[-0.02em]">
+                Visit {{ listing.name }}
+              </h2>
+              <p class="mt-2 text-sm leading-6 text-release-paper-muted">
+                LaunchLog records the release; the product itself lives on its own site.
+              </p>
+            </div>
+            <div class="space-y-4 p-5">
+              <p class="break-all font-mono text-xs text-release-paper-muted">
+                {{ hostname(listing.url) }}
+              </p>
+              <Button as-child class="w-full" size="lg">
+                <a
+                  :href="listing.url"
+                  target="_blank"
+                  rel="noopener sponsored"
+                >
+                  Visit site
+                  <ExternalLink class="size-4" aria-hidden="true" />
+                </a>
+              </Button>
+            </div>
           </div>
         </aside>
       </div>
 
-      <!-- RELATED -->
-      <section v-if="related.length" class="mt-20">
-        <h2 class="text-xl font-semibold text-brand-fg">
-          Related listings
+      <section v-if="related.length" class="mt-16">
+        <h2 class="border-b border-release-seam pb-2.5 font-mono text-xs font-medium uppercase tracking-[0.22em] text-release-paper">
+          Related releases
         </h2>
-        <ListingGrid class="mt-6" :listings="related" mode="uniform" />
+        <ListingGrid class="mt-7" :listings="related" mode="uniform" />
       </section>
     </template>
-  </main>
+  </section>
 </template>
