@@ -100,12 +100,9 @@ const compactedContext = computed(() => new Set(
           :to="interactive && !contextual.has(item.listing.slug) ? `/listing/${item.listing.slug}` : undefined"
           :aria-hidden="contextual.has(item.listing.slug) ? 'true' : undefined"
           :tabindex="contextual.has(item.listing.slug) ? -1 : undefined"
-          class="group block min-w-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-bg"
+          class="group block min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus focus-visible:ring-offset-2 focus-visible:ring-offset-release-ink"
           :class="[
             spanClass[item.span],
-            // Standard cards focus in the brand accent. Featured placements use
-            // the same neutral treatment across public surfaces, including focus.
-            item.variant !== 'standard' ? 'focus-visible:ring-white/70' : 'focus-visible:ring-brand-accent',
             contextual.has(item.listing.slug) ? 'pointer-events-none select-none opacity-55 blur-[1.5px]' : '',
             compactedContext.has(item.listing.slug) ? 'hidden sm:block' : '',
           ]"

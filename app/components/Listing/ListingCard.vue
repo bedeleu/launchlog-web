@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ListingCard } from '~/composables/useListings'
 import type { ListingCardVariant } from '~/utils/listing-placement'
+import { releaseEdition } from '~/utils/release-edition'
 
 const props = withDefaults(defineProps<{
   listing: ListingCard
@@ -39,17 +40,47 @@ const registerHost = computed(() => {
 })
 
 /**
- * The ledger register (approved Concept C): the tier is disclosed in the bottom
- * register line — FEATURED · category · domain — never as a pill or a mark above
+ * The ledger register: the tier is disclosed in the bottom register line —
+ * FEATURED · category · domain · listing date — never as a pill or a mark above
  * the name. Standard entries carry no tier word; being unmarked is the entry
  * tier, and an unknown tier value is treated the same rather than trusted.
- * The rule above the line steps down in weight with the tier.
+ *
+ * The edition marker is the date LaunchLog listed the release. The approved comp
+ * prints a catalog number and a barcode; neither exists as real data, so the
+ * catalog prints the one durable identifier it actually holds.
+ *
+ * Category and the date never break internally; the domain stays breakable
+ * because a hostname wider than the column would otherwise overflow. The
+ * separators glue their middot to the preceding fact with a non-breaking space
+ * and allow a break after it, so a long fact drops whole to the next line.
  */
-const registerRuleClass = computed(() =>
-  props.listing.tier === 'featured' ? 'border-white/35' : 'border-white/15')
+const registerFacts = computed(() => {
+  const facts: Array<{ text: string, breakable: boolean }> = []
 
-const hasRegisterLine = computed(() =>
-  props.listing.tier === 'featured' || Boolean(props.listing.category) || registerHost.value !== '')
+  if (props.listing.category) facts.push({ text: props.listing.category.name, breakable: false })
+  if (registerHost.value) facts.push({ text: registerHost.value, breakable: true })
+
+  const edition = releaseEdition(props.listing.published_at)
+  if (edition) facts.push({ text: edition, breakable: false })
+
+  return facts
+})
+
+const showTierWord = computed(() => props.listing.tier === 'featured')
+const hasRegisterLine = computed(() => showTierWord.value || registerFacts.value.length > 0)
+
+/** The perforated rule that closes a standard cover. Steps in weight with the tier. */
+const registerRuleClass = computed(() =>
+  showTierWord.value ? 'border-release-paper/35' : 'border-release-seam')
+
+/**
+ * 12px/20px register text on the rail plate: release-paper measures 14.9:1 and
+ * release-paper-muted 10.3:1 against the rail, both far clear of WCAG AA. The
+ * earlier fg-opacity registers measured 3.69:1 on the Featured surface and are
+ * not reintroduced.
+ */
+const registerToneClass = computed(() =>
+  showTierWord.value ? 'text-release-paper' : 'text-release-paper-muted')
 
 const imageFailed = ref(false)
 watch(() => props.listing.screenshot_url, () => {
@@ -58,20 +89,18 @@ watch(() => props.listing.screenshot_url, () => {
 const showImage = computed(() => Boolean(props.listing.screenshot_url) && !imageFailed.value)
 
 const cardClass = computed(() => {
-  // Featured placement uses one monochrome frame-and-register system everywhere.
-  // Composition changes with available width, but the product never changes its
-  // visual status because it happens to be first in a list.
+  // Release covers are square-cornered ink plates with hairline seams. The tier
+  // steps the seam value only; composition and the obi band carry the placement,
+  // and no tier is told apart by an accent colour.
   if (isPriorityPlacement.value) {
-    return 'border-2 border-white/40 bg-white/[0.05] group-hover:border-white/60 group-focus-visible:border-white/60'
+    return 'border-release-paper/40 bg-release-rail group-hover:border-release-paper/70 group-focus-visible:border-release-paper/70'
   }
 
-  // Everywhere else the two tiers share one flat neutral system: surface value
-  // and hairline weight step with the tier, and no tier is told apart by indigo.
   if (props.listing.tier === 'featured') {
-    return 'border-white/25 bg-white/[0.03] group-hover:border-white/45 group-focus-visible:border-white/45'
+    return 'border-release-paper/25 bg-release-rail group-hover:border-release-paper/45 group-focus-visible:border-release-paper/45'
   }
 
-  return 'border-brand-border bg-white/[0.02] group-hover:border-white/30 group-focus-visible:border-white/30'
+  return 'border-release-seam bg-release-rail group-hover:border-release-paper-muted/45 group-focus-visible:border-release-paper-muted/45'
 })
 
 const layoutClass = computed(() => {
@@ -86,11 +115,15 @@ const layoutClass = computed(() => {
   return 'flex flex-col'
 })
 
-/** Below lg both directory cards stay ordinary stacked cards with a 16/10 shot. */
+/**
+ * Below the split breakpoint both directory cards stay ordinary stacked covers
+ * with a 16/10 capture, so the seam runs under the cover. Once the cover moves
+ * into its own grid track the seam turns and runs beside it.
+ */
 const mediaClass = computed(() => {
-  if (isSpotlight.value) return 'md:aspect-auto md:h-full'
-  if (isDirectorySpotlight.value) return 'lg:aspect-auto lg:h-full'
-  return ''
+  if (isSpotlight.value) return 'border-b md:aspect-auto md:h-full md:border-b-0 md:border-r'
+  if (isDirectorySpotlight.value) return 'border-b lg:aspect-auto lg:h-full lg:border-b-0 lg:border-r'
+  return 'border-b'
 })
 
 const contentClass = computed(() => {
@@ -100,9 +133,9 @@ const contentClass = computed(() => {
 })
 
 const headingClass = computed(() => {
-  if (isSpotlight.value) return 'line-clamp-2 text-2xl leading-[1.1] tracking-tight md:text-3xl'
-  if (isDirectorySpotlight.value) return 'line-clamp-3 text-xl leading-6 tracking-tight 2xl:text-2xl 2xl:leading-7'
-  return 'truncate'
+  if (isSpotlight.value) return 'line-clamp-2 text-2xl leading-[1.15] tracking-[-0.03em] md:text-3xl'
+  if (isDirectorySpotlight.value) return 'line-clamp-3 text-xl leading-6 tracking-[-0.025em] 2xl:text-2xl 2xl:leading-7'
+  return 'truncate tracking-[-0.02em]'
 })
 
 const taglineClass = computed(() => {
@@ -115,105 +148,96 @@ const taglineClass = computed(() => {
 
 <template>
   <!-- Still, by request: no hover motion on the card or the screenshot. The only
-       hover feedback is the border-colour step from cardClass. -->
+       hover feedback is the seam-colour step from cardClass. -->
   <article
-    class="flex h-full min-w-0 flex-col overflow-hidden rounded-xl border transition-colors duration-200"
+    class="flex h-full min-w-0 flex-col overflow-hidden border transition-colors duration-200"
     :class="cardClass"
   >
     <!-- The split lives on an inner wrapper so the directory Featured card can
-         close with a register strip that runs under image and text alike. -->
+         close with an obi band that runs under cover and text alike. -->
     <div class="flex min-w-0 flex-1 flex-col" :class="layoutClass">
       <div
-        class="relative aspect-[16/10] w-full overflow-hidden bg-white/[0.03]"
+        class="relative aspect-[16/10] w-full overflow-hidden border-release-seam bg-release-ink"
         :class="mediaClass"
       >
-      <span
-        v-if="listing.source === 'founding'"
-        class="absolute left-2.5 top-2.5 z-10 inline-flex items-center rounded-sm border border-white/15 bg-brand-bg/85 px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wider text-brand-fg/85 backdrop-blur"
-      >
-        Founding
-      </span>
-      <img
-        v-if="showImage"
-        :src="listing.screenshot_url ?? undefined"
-        :alt="`${listing.name} screenshot`"
-        loading="lazy"
-        width="960"
-        height="600"
-        class="size-full object-cover object-top"
-        :class="isDirectorySpotlight ? 'absolute inset-0' : ''"
-        @error="imageFailed = true"
-      >
-      <!-- Featured placement is monochrome on every surface. -->
-      <ListingShotFallback
-        v-else
-        :name="listing.name"
-        :generating="generating"
-        neutral
-      />
+        <!-- A printed corner stamp rather than a floating pill: square, seamed
+             into the cover edge, and legible over any screenshot without blur. -->
+        <span
+          v-if="listing.source === 'founding'"
+          class="absolute left-0 top-0 z-10 inline-flex items-center border-b border-r border-release-seam bg-release-ink/90 px-2 py-1 font-mono text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-release-paper"
+        >
+          Founding
+        </span>
+        <img
+          v-if="showImage"
+          :src="listing.screenshot_url ?? undefined"
+          :alt="`${listing.name} screenshot`"
+          loading="lazy"
+          width="960"
+          height="600"
+          class="size-full object-cover object-top"
+          :class="isDirectorySpotlight ? 'absolute inset-0' : ''"
+          @error="imageFailed = true"
+        >
+        <ListingShotFallback
+          v-else
+          :name="listing.name"
+          :generating="generating"
+        />
+      </div>
+
+      <div class="flex min-w-0 flex-1 flex-col" :class="contentClass">
+        <!-- Nothing above the name, in any tier: the heading carries its own weight
+             and the tier is disclosed in the ledger register at the bottom. -->
+        <component
+          :is="headingLevel"
+          class="min-w-0 font-semibold text-[#f6f1e7]"
+          :class="headingClass"
+        >
+          {{ listing.name }}
+        </component>
+
+        <p class="text-release-paper-muted" :class="taglineClass">
+          {{ listing.tagline }}
+        </p>
+
+        <p
+          v-if="!isPriorityPlacement && hasRegisterLine"
+          class="mt-auto break-words border-t border-dashed pt-2.5 font-mono text-xs leading-5"
+          :class="[registerRuleClass, registerToneClass]"
+        >
+          <template v-if="showTierWord">
+            <span
+              class="whitespace-nowrap font-medium uppercase tracking-[0.18em] text-release-paper"
+            >{{ listing.tier }}</span>
+          </template>
+          <template v-for="(fact, index) in registerFacts" :key="fact.text">
+            <span v-if="showTierWord || index > 0">{{ '\u00A0· ' }}</span>
+            <span :class="fact.breakable ? '' : 'whitespace-nowrap'">{{ fact.text }}</span>
+          </template>
+        </p>
+      </div>
     </div>
 
-    <div class="flex min-w-0 flex-1 flex-col" :class="contentClass">
-      <!-- Nothing above the name, in any tier: the heading carries its own weight
-           and the tier is disclosed in the ledger register at the bottom. -->
-      <component
-        :is="headingLevel"
-        class="min-w-0 font-semibold text-brand-fg"
-        :class="headingClass"
-      >
-        {{ listing.name }}
-      </component>
-
-      <p class="text-brand-muted" :class="taglineClass">
-        {{ listing.tagline }}
-      </p>
-
-      <!-- The ledger register. Wraps rather than truncates: a domain cut mid-word
-           reads as a rendering bug, and the card has no fixed height to protect.
-           The tier word and category never break internally; the separators are
-           ordinary spaces so a long domain drops whole to the next line, and
-           break-words stays as the last resort for a hostname wider than the
-           column, which one unbreakable token would otherwise overflow.
-           12px/20px with fg-opacity neutrals: brand-muted measured under 4.5:1 on
-           the lifted Featured surfaces, so Featured metadata reads at fg/70 and
-           Standard keeps a quieter fg/60 — both clear WCAG AA with margin. -->
-      <p
-        v-if="!isPriorityPlacement && hasRegisterLine"
-        class="mt-auto break-words border-t pt-2.5 font-mono text-xs leading-5"
-        :class="[registerRuleClass, listing.tier === 'featured' ? 'text-brand-fg/70' : 'text-brand-fg/60']"
-      >
-        <template v-if="listing.tier === 'featured'">
-          <span
-            class="whitespace-nowrap font-medium uppercase tracking-[0.18em] text-brand-fg"
-          >{{ listing.tier }}</span>
-          <span v-if="listing.category || registerHost">{{ '\u00A0· ' }}</span>
-        </template>
-        <span v-if="listing.category" class="whitespace-nowrap">{{ listing.category.name }}</span>
-        <span v-if="listing.category && registerHost">{{ '\u00A0· ' }}</span>
-        <span v-if="registerHost">{{ registerHost }}</span>
-      </p>
-    </div>
-    </div>
-
-    <!-- The Featured register runs under image and text alike as a
-         tonal band: one surface step brighter than the card, never leaving the
-         dark theme. Structure carries the tier — no other card has a strip —
-         and the priority-placement disclosure lives here, on the Featured card
-         itself, naming the purchased benefit (both plans are paid, so "paid"
+    <!-- The obi. Featured closes on a warm paper band that runs the full width of
+         the cover, inverting the plate exactly once so the tier reads from
+         material and structure — no other card has a strip, and the directory's
+         blaze accent stays reserved for action. The priority-placement disclosure
+         lives here, naming the purchased benefit (both plans are paid, so "paid"
          differentiates nothing). Explicit stacked-then-two-column layout: at
          390px flex-wrap dropped the descriptor onto an accidental second row. -->
     <div
       v-if="isPriorityPlacement && hasRegisterLine"
-      class="flex flex-col gap-y-1 border-t border-white/25 bg-white/[0.08] px-5 py-3 font-mono text-xs leading-5 text-brand-fg/70 sm:flex-row sm:items-baseline sm:justify-between sm:gap-x-4 md:px-6"
+      class="flex flex-col gap-y-1 border-t border-release-paper/40 bg-release-paper px-5 py-3 font-mono text-xs leading-5 text-release-ink/80 sm:flex-row sm:items-baseline sm:justify-between sm:gap-x-4 md:px-6"
     >
       <p class="min-w-0 break-words">
-        <span class="whitespace-nowrap font-semibold uppercase tracking-[0.3em] text-brand-fg">{{ listing.tier }}</span>
-        <span v-if="listing.category || registerHost">{{ '\u00A0· ' }}</span>
-        <span v-if="listing.category" class="whitespace-nowrap">{{ listing.category.name }}</span>
-        <span v-if="listing.category && registerHost">{{ '\u00A0· ' }}</span>
-        <span v-if="registerHost">{{ registerHost }}</span>
+        <span class="whitespace-nowrap font-semibold uppercase tracking-[0.3em] text-release-ink">{{ listing.tier }}</span>
+        <template v-for="fact in registerFacts" :key="fact.text">
+          <span>{{ '\u00A0· ' }}</span>
+          <span :class="fact.breakable ? '' : 'whitespace-nowrap'">{{ fact.text }}</span>
+        </template>
       </p>
-      <p class="whitespace-nowrap">
+      <p class="whitespace-nowrap font-medium">
         Priority placement
       </p>
     </div>

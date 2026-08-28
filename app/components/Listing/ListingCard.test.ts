@@ -3,11 +3,96 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 const source = readFileSync(fileURLToPath(new URL('./ListingCard.vue', import.meta.url)), 'utf8')
+const fallback = readFileSync(fileURLToPath(new URL('./ListingShotFallback.vue', import.meta.url)), 'utf8')
 
 describe('directory Featured typography', () => {
   test('keeps long names and descriptions useful inside the narrow text column', () => {
-    expect(source).toContain("line-clamp-3 text-xl leading-6 tracking-tight 2xl:text-2xl 2xl:leading-7")
-    expect(source).toContain("line-clamp-4 text-sm leading-6")
-    expect(source).not.toContain("line-clamp-2 text-3xl leading-[1.1] tracking-tight")
+    expect(source).toContain('line-clamp-3 text-xl leading-6 tracking-[-0.025em] 2xl:text-2xl 2xl:leading-7')
+    expect(source).toContain('line-clamp-4 text-sm leading-6')
+    expect(source).not.toContain('line-clamp-2 text-3xl leading-[1.1] tracking-tight')
+  })
+})
+
+describe('release cover material', () => {
+  test('is a square-cornered plate, not a rounded shadow card', () => {
+    expect(source).not.toContain('rounded-xl')
+    expect(source).not.toContain('rounded-full')
+    expect(source).not.toContain('shadow-')
+    expect(source).not.toContain('backdrop-blur')
+  })
+
+  test('carries no retired AI visual language', () => {
+    expect(source).not.toContain('linear-gradient')
+    expect(source).not.toMatch(/violet|purple|indigo|mauve/i)
+    expect(fallback).not.toContain('linear-gradient')
+    expect(fallback).not.toMatch(/violet|purple|indigo|mauve/i)
+  })
+
+  test('uses the Release Catalog materials instead of the brand-* compatibility aliases', () => {
+    expect(source).toContain('border-release-seam')
+    expect(source).toContain('bg-release-rail')
+    expect(source).toContain('text-release-paper-muted')
+    expect(source).not.toContain('brand-')
+    expect(source).not.toContain('border-white/')
+    expect(source).not.toContain('bg-white/[')
+    expect(fallback).not.toContain('brand-')
+  })
+
+  test('keeps the screenshot as the cover with a stable capture frame', () => {
+    expect(source).toContain('aspect-[16/10]')
+    expect(source).toContain('loading="lazy"')
+    expect(source).toContain('width="960"')
+    expect(source).toContain('height="600"')
+    expect(source).toContain('object-cover object-top')
+  })
+
+  test('stays link-free so the grid keeps owning the anchor', () => {
+    expect(source).not.toContain('<a ')
+    expect(source).not.toContain('NuxtLink')
+  })
+})
+
+describe('ledger register', () => {
+  test('closes the cover on a perforated rule', () => {
+    expect(source).toContain('border-t border-dashed')
+  })
+
+  test('prints the tier as a register word, never as a pill', () => {
+    expect(source).toContain('{{ listing.tier }}')
+    expect(source).not.toContain('Paid placement')
+    expect(source).toContain('Priority placement')
+  })
+
+  test('prints the real listing date as the edition marker', () => {
+    expect(source).toContain('releaseEdition')
+    expect(source).toContain('listing.published_at')
+    // The edition marker is a date LaunchLog actually holds, not an invented
+    // catalog number or barcode borrowed from the approved comp.
+    expect(source).not.toMatch(/LL-\d{4}-\d{4}/)
+  })
+})
+
+describe('Featured obi band', () => {
+  test('is a warm paper strip, so the tier reads from material and structure', () => {
+    expect(source).toContain('bg-release-paper')
+    expect(source).toContain('text-release-ink')
+  })
+
+  test('never reclaims the blaze accent the directory reserves for action', () => {
+    expect(source).not.toContain('release-blaze')
+  })
+})
+
+describe('missing capture fallback', () => {
+  test('is quiet catalog stock with no colour wash and no tinted mark', () => {
+    expect(fallback).not.toContain('rounded-xl')
+    expect(fallback).not.toContain('shadow-')
+    expect(fallback).toContain('bg-release-ink')
+    expect(fallback).toContain('border-dashed')
+  })
+
+  test('uses the same capture vocabulary as the Release primitives', () => {
+    expect(fallback).toContain('Capture in progress')
+    expect(fallback).toContain('Website capture unavailable')
   })
 })

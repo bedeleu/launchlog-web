@@ -119,3 +119,55 @@ describe('takeListingsWithoutSlugs', () => {
     expect(takeListingsWithoutSlugs([item('a', 'basic')], new Set(), 0)).toEqual([])
   })
 })
+
+/**
+ * The Release Catalog restyle changes how a card looks, never which listing
+ * receives which slot. These lock the placement inputs and outputs so a visual
+ * change cannot quietly move paid inventory.
+ */
+describe('paid placement contract under the Release Catalog restyle', () => {
+  test('a directory Featured card never receives the retired three-slot footprint', () => {
+    const page = packDirectoryPage([
+      item('f1', 'featured'),
+      item('f2', 'featured'),
+      item('f3', 'featured'),
+      item('b1', 'basic'),
+      item('b2', 'basic'),
+      item('b3', 'basic'),
+    ])
+
+    expect(page.featured.filter(p => p.variant === 'directory-spotlight').every(p => p.span === 'double')).toBeTrue()
+    expect([...page.featured, ...page.standard].some(p => p.span === 'full-short')).toBeFalse()
+  })
+
+  test('each Featured row consumes exactly one real Standard companion', () => {
+    const page = packDirectoryPage([
+      item('f1', 'featured'),
+      item('f2', 'featured'),
+      item('f3', 'featured'),
+      item('b1', 'basic'),
+      item('b2', 'basic'),
+      item('b3', 'basic'),
+      item('b4', 'basic'),
+      item('b5', 'basic'),
+    ])
+
+    expect(slugsOf(page.featured)).toEqual(['f1', 'b1', 'f2', 'b2', 'f3', 'b3'])
+    expect(slugsOf(page.standard)).toEqual(['b4', 'b5'])
+  })
+
+  test('the packer never mutates or reorders the page the API returned', () => {
+    const input = [item('f1', 'featured'), item('b1', 'basic'), item('b2', 'basic')]
+    const snapshot = input.map(l => l.slug)
+
+    packDirectoryPage(input)
+
+    expect(input.map(l => l.slug)).toEqual(snapshot)
+  })
+
+  test('/featured renders every record as an ordinary catalog cell', () => {
+    const placed = packUniform([item('f1', 'featured'), item('f2', 'featured')])
+
+    expect(placed.every(p => p.variant === 'standard' && p.span === 'unit')).toBeTrue()
+  })
+})

@@ -279,6 +279,6 @@ describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
     const html = await fetch(`${BASE}/browse-all`).then(response => response.text())
 
     // The page's own title is the h1, so cards must not jump straight to h3.
-    expect(html).toContain('<h2 class="min-w-0 font-semibold text-brand-fg')
+    expect(html).toContain('<h2 class="min-w-0 font-semibold text-[#f6f1e7]')
   })
 })
