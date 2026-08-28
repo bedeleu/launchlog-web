@@ -54,57 +54,65 @@ const columns = [
 </script>
 
 <template>
-  <footer class="mt-24 border-t border-brand-border bg-brand-bg">
-    <div class="mx-auto max-w-7xl px-4 py-14">
-      <!-- Brand + columns -->
-      <div class="grid gap-10 md:grid-cols-2 lg:grid-cols-[1.4fr_repeat(4,1fr)]">
-        <div class="max-w-xs">
-          <NuxtLink to="/" class="flex items-center gap-2.5">
+  <footer class="mt-24 border-t border-release-seam bg-release-ink text-[#f6f1e7]">
+    <div class="h-1 bg-release-blaze" aria-hidden="true" />
+    <div class="mx-auto max-w-7xl px-5 py-12 sm:px-8 md:py-16">
+      <div class="grid border-y border-release-seam md:grid-cols-[1.25fr_2fr]">
+        <div class="border-b border-release-seam py-8 md:border-r md:border-b-0 md:pr-10">
+          <NuxtLink to="/" class="inline-flex items-center gap-3 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus">
             <img src="/images/logo.webp" alt="LaunchLog" width="32" height="32" class="size-8">
-            <span class="text-lg font-bold tracking-tight text-brand-fg">
-              LaunchLog<span class="text-brand-muted">.ai</span>
+            <span class="text-lg font-semibold tracking-[-0.025em]">
+              LaunchLog<span class="text-release-paper-muted">.ai</span>
             </span>
           </NuxtLink>
-          <p class="mt-3 text-sm text-brand-muted">
+          <p class="mt-5 max-w-sm text-base leading-7 text-release-paper-muted">
             The log of what just shipped — structured for people, search engines, and AI discovery.
           </p>
           <a
             :href="`mailto:${SITE_IDENTITY.publicEmail}`"
-            class="mt-4 inline-flex text-sm font-medium text-brand-fg transition-colors hover:text-brand-accent"
+            class="mt-6 inline-flex font-mono text-xs uppercase tracking-[0.12em] text-release-blaze underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus"
           >
             {{ SITE_IDENTITY.publicEmail }}
           </a>
-          <div class="mt-4 flex flex-wrap gap-x-4 gap-y-2" aria-label="LaunchLog social profiles">
+          <div class="mt-5 flex flex-wrap gap-x-5 gap-y-2" aria-label="LaunchLog social profiles">
             <a
               v-for="social in socialLinks"
               :key="social.href"
               :href="social.href"
               target="_blank"
               rel="noopener"
-              class="text-xs font-medium text-brand-muted transition-colors hover:text-brand-fg"
+              class="font-mono text-[11px] uppercase tracking-[0.1em] text-release-paper-muted hover:text-[#f6f1e7] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus"
             >
               {{ social.label }}
             </a>
           </div>
         </div>
 
-        <div v-for="col in columns" :key="col.title">
-          <h3 class="text-xs font-semibold uppercase tracking-wider text-brand-muted">
-            {{ col.title }}
-          </h3>
-          <ul class="mt-4 space-y-3">
-            <li v-for="link in col.links" :key="link.to">
-              <NuxtLink :to="link.to" class="text-sm text-brand-muted transition-colors hover:text-brand-fg">
-                {{ link.label }}
-              </NuxtLink>
-            </li>
-          </ul>
+        <div class="grid grid-cols-2 sm:grid-cols-4">
+          <div
+            v-for="col in columns"
+            :key="col.title"
+            class="border-release-seam px-4 py-8 odd:border-r sm:border-r sm:last:border-r-0"
+          >
+            <h3 class="font-mono text-[11px] font-semibold uppercase tracking-[0.15em] text-release-blaze">
+              {{ col.title }}
+            </h3>
+            <ul class="mt-5 space-y-3">
+              <li v-for="link in col.links" :key="link.to">
+                <NuxtLink
+                  :to="link.to"
+                  class="text-sm text-release-paper-muted hover:text-[#f6f1e7] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus"
+                >
+                  {{ link.label }}
+                </NuxtLink>
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
 
-      <!-- Bottom bar -->
-      <div class="mt-12 flex flex-col items-center justify-between gap-3 border-t border-brand-border pt-6 sm:flex-row">
-        <p class="text-xs text-brand-muted">
+      <div class="flex flex-col justify-between gap-3 pt-6 sm:flex-row sm:items-center">
+        <p class="font-mono text-[11px] uppercase tracking-[0.1em] text-release-paper-muted">
           © {{ year }} LaunchLog.ai<span v-if="legalName"> · Operated by {{ legalName }}</span>
         </p>
         <a
@@ -112,11 +120,11 @@ const columns = [
           :href="statusPageUrl"
           target="_blank"
           rel="noopener noreferrer"
-          class="text-xs text-brand-muted transition-colors hover:text-brand-fg"
+          class="font-mono text-[11px] uppercase tracking-[0.1em] text-release-paper-muted hover:text-[#f6f1e7] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus"
         >
           Service status ↗
         </a>
-        <NuxtLink v-else to="/status" class="text-xs text-brand-muted transition-colors hover:text-brand-fg">
+        <NuxtLink v-else to="/status" class="font-mono text-[11px] uppercase tracking-[0.1em] text-release-paper-muted hover:text-[#f6f1e7] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus">
           Service status
         </NuxtLink>
       </div>
