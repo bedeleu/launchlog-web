@@ -119,9 +119,68 @@ describe.skipIf(!isBuilt)('tax notice is absent when the variable is empty', () 
   })
 
   test('/pricing keeps rendering without the notice block', async () => {
-    const text = await renderedText(base, '/pricing')
+    const response = await fetch(`${base}/pricing`)
+    const html = await response.text()
+    const text = html.replace(/<script[\s\S]*?<\/script>/g, '')
 
     expect(text).toContain('7-day guarantee')
-    expect(text).not.toContain('>\n              Tax\n')
+    // Anchored to the block's own marker rather than to its source indentation:
+    // the previous assertion matched a literal newline-and-fourteen-spaces and
+    // would have passed vacuously after any re-indent.
+    expect(html).not.toContain('data-tax-notice')
+  })
+
+  test('/pricing states the exact placement prices and billing period', async () => {
+    const text = await renderedText(base, '/pricing')
+
+    // The prices come from shared/constants/public-plans.ts. A redesign must not
+    // re-literal them, and must not quietly change what a buyer is charged.
+    expect(text).toContain('$24.99')
+    expect(text).toContain('$99')
+    expect(text).toContain('$2.08')
+    expect(text).toContain('$8.25')
+    expect(text).toContain('billed annually')
+    expect(text).toContain('7-day money-back guarantee')
+    // Premium is retired and no third edition may appear.
+    expect(text).not.toContain('Premium')
+    expect(text).not.toContain('$59.99')
+    expect(text).not.toContain('$149')
+  })
+
+  test('/pricing sends each edition to its own checkout entry point', async () => {
+    const html = await (await fetch(`${base}/pricing`)).text()
+
+    expect(html).toContain('href="/submit?tier=basic"')
+    expect(html).toContain('href="/submit?tier=featured"')
+  })
+
+  test('/pricing keeps the FAQ structured data matching the visible answers', async () => {
+    const html = await (await fetch(`${base}/pricing`)).text()
+    const text = html.replace(/<script[\s\S]*?<\/script>/g, '')
+    const faqScript = html.match(/<script type="application\/ld\+json"[^>]*>(\{"@context":"https:\/\/schema\.org","@type":"FAQPage"[\s\S]*?)<\/script>/)
+
+    expect(faqScript).not.toBeNull()
+    const faq = JSON.parse(faqScript![1]!) as { mainEntity: Array<{ name: string, acceptedAnswer: { text: string } }> }
+
+    expect(faq.mainEntity.length).toBeGreaterThanOrEqual(7)
+    for (const entry of faq.mainEntity) {
+      expect(text).toContain(entry.name)
+    }
+    // Google requires the structured answers to be the visible ones.
+    expect(text).toContain(faq.mainEntity[0]!.acceptedAnswer.text)
+    // No unescaped angle bracket may reach the embedded graph.
+    expect(faqScript![1]).not.toContain('<')
+  })
+
+  test('/pricing is composed from Release Catalog materials', async () => {
+    const html = await (await fetch(`${base}/pricing`)).text()
+
+    expect(html).toContain('border-release-seam')
+    expect(html).toContain('bg-release-ink')
+    expect(html).not.toContain('rounded-xl')
+    expect(html).not.toContain('bg-white/[')
+    expect(html).not.toContain('border-white/')
+    expect(html).not.toContain('linear-gradient')
+    expect(html).not.toMatch(/violet|purple|indigo|mauve/i)
   })
 })
