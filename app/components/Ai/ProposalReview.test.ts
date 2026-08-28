@@ -17,6 +17,17 @@ describe('one-step AI approval', () => {
     expect(dashboard).toContain('@apply="fields => applyAiDraft(listing, fields)"')
   })
 
+  test('puts the final approval actions after the proposed changes and evidence', () => {
+    expect(review).toContain('data-ai-review-actions')
+    expect(review.indexOf('data-ai-review-actions')).toBeGreaterThan(review.indexOf('Evidence used:'))
+    expect(review.indexOf('data-ai-review-actions')).toBeGreaterThan(review.indexOf('v-for="field in changedFields"'))
+  })
+
+  test('keeps owner approval failures visible while the proposal stays open', () => {
+    expect(dashboard).toContain('v-if="aiProposals[listing.id] && actionErrors[listing.id]"')
+    expect(dashboard).toContain('role="alert"')
+  })
+
   test('uses Release Catalog materials without rounded AI cards', () => {
     expect(review).not.toMatch(/indigo|violet|purple|bg-gradient|backdrop-blur/)
     expect(review).not.toContain('rounded-xl')

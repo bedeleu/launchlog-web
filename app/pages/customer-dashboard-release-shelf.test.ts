@@ -34,6 +34,13 @@ describe('customer release shelf', () => {
     expect(proofArtifactSource).toContain('w-full max-w-full break-all')
   })
 
+  test('keeps account and new-release actions above the shelf below desktop width', () => {
+    expect(source).toContain('data-mobile-account-actions')
+    expect(source).toContain('class="mb-6 border border-release-seam bg-release-rail p-4 xl:hidden"')
+    expect(source.indexOf('data-mobile-account-actions')).toBeLessThan(source.indexOf('v-if="loading"'))
+    expect(source).toContain('class="hidden xl:block"')
+  })
+
   test('renders stable loading, empty, load-error, save-error, and billing-error states', () => {
     expect(source).toContain('Loading release shelf')
     expect(source).toContain('No releases recorded')

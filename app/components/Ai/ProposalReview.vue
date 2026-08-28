@@ -86,7 +86,7 @@ const actionLabel = computed(() => {
 
 <template>
   <section class="overflow-hidden border border-release-seam bg-release-rail">
-    <header class="flex flex-col gap-4 border-b border-release-seam px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+    <header class="border-b border-release-seam px-4 py-4 sm:px-5">
       <div class="flex min-w-0 items-start gap-3">
         <span class="inline-flex size-9 shrink-0 items-center justify-center border border-release-warning bg-release-warning text-release-ink">
           <FileDiff class="size-4" aria-hidden="true" />
@@ -98,15 +98,6 @@ const actionLabel = computed(() => {
             Grounded in {{ evidenceSummary }}. Selected fields publish immediately.
           </p>
         </div>
-      </div>
-      <div class="flex shrink-0 flex-col-reverse gap-2 sm:flex-row sm:items-center">
-        <Button type="button" variant="ghost" size="sm" class="rounded-none border border-transparent font-mono text-xs text-release-paper-muted hover:border-release-seam hover:bg-release-ink hover:text-release-paper" :disabled="busy" @click="emit('reject')">
-          <RotateCcw class="mr-1.5 size-3.5" aria-hidden="true" /> Keep current
-        </Button>
-        <Button type="button" size="sm" class="rounded-none border border-release-paper bg-release-paper font-mono text-xs text-release-ink hover:border-release-warning hover:bg-release-warning" :disabled="busy || selected.length === 0" @click="emit('apply', selected)">
-          <AppSpinner v-if="busy" class="mr-2" color="text-current" label="Applying selected suggestions" />
-          {{ busy ? 'Applying…' : actionLabel }}
-        </Button>
       </div>
     </header>
 
@@ -179,6 +170,16 @@ const actionLabel = computed(() => {
         <div v-if="evidenceExcerpt('about_text')" class="border border-release-seam bg-release-ink p-3"><span class="font-semibold text-release-paper">About</span><p class="mt-1">{{ evidenceExcerpt('about_text') }}</p></div>
         <div v-if="evidenceExcerpt('json_ld_facts')" class="border border-release-seam bg-release-ink p-3"><span class="font-semibold text-release-paper">Structured data</span><p class="mt-1">{{ evidenceExcerpt('json_ld_facts') }}</p></div>
       </div>
+    </div>
+
+    <div data-ai-review-actions class="flex flex-col-reverse gap-2 border-t border-release-seam bg-release-ink px-4 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-5">
+      <Button type="button" variant="ghost" size="sm" class="rounded-none border border-transparent font-mono text-xs text-release-paper-muted hover:border-release-seam hover:bg-release-rail hover:text-release-paper" :disabled="busy" @click="emit('reject')">
+        <RotateCcw class="mr-1.5 size-3.5" aria-hidden="true" /> Keep current
+      </Button>
+      <Button type="button" size="sm" class="rounded-none border border-release-paper bg-release-paper font-mono text-xs text-release-ink hover:border-release-warning hover:bg-release-warning" :disabled="busy || selected.length === 0" @click="emit('apply', selected)">
+        <AppSpinner v-if="busy" class="mr-2" color="text-current" label="Applying selected suggestions" />
+        {{ busy ? 'Applying…' : actionLabel }}
+      </Button>
     </div>
 
   </section>

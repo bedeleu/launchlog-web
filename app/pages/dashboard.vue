@@ -196,6 +196,7 @@ async function rejectAiDraft(listing: CustomerListing) {
   const proposal = aiProposals[listing.id]
   if (!proposal || aiBusyIds.has(listing.id)) return
   aiBusyIds.add(listing.id)
+  actionErrors[listing.id] = null
   try {
     await rejectOwnerProposal(proposal.id)
     aiProposals[listing.id] = null
@@ -248,17 +249,52 @@ const tierLabel = (tier: string | null | undefined): string => {
       wide-rail
     >
       <template #rail>
-        <ReleaseActionRail
-          title="Account holder"
-          :description="authReady && user?.email ? user.email : 'Verifying signed-in account…'"
-        >
-          <ReleaseStateMarker
-            label="Private workspace"
-            detail="Only releases attached to this signed-in account appear here."
-            state="success"
-          />
+        <div class="hidden xl:block">
+          <ReleaseActionRail
+            title="Account holder"
+            :description="authReady && user?.email ? user.email : 'Verifying signed-in account…'"
+          >
+            <ReleaseStateMarker
+              label="Private workspace"
+              detail="Only releases attached to this signed-in account appear here."
+              state="success"
+            />
+            <Button
+              class="w-full rounded-none border-release-seam bg-release-ink font-mono text-xs uppercase tracking-[0.08em] text-release-paper hover:border-release-paper hover:bg-release-rail"
+              variant="outline"
+              :disabled="signingOut"
+              @click="signOut"
+            >
+              <AppSpinner v-if="signingOut" color="text-current" label="Signing out" />
+              <LogOut v-else aria-hidden="true" />
+              {{ signingOut ? 'Signing out…' : 'Sign out' }}
+            </Button>
+            <template #footer>
+              <NuxtLink
+                to="/submit"
+                class="flex min-h-12 items-center justify-between border border-release-paper bg-release-paper px-4 font-mono text-xs font-semibold uppercase tracking-[0.08em] text-release-ink transition-colors hover:border-release-warning hover:bg-release-warning focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus"
+              >
+                Record another release
+                <ArrowUpRight class="size-4" aria-hidden="true" />
+              </NuxtLink>
+            </template>
+          </ReleaseActionRail>
+        </div>
+      </template>
+
+      <section data-mobile-account-actions class="mb-6 border border-release-seam bg-release-rail p-4 xl:hidden" aria-label="Account actions">
+        <p class="font-mono text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-release-warning">Private workspace</p>
+        <p class="mt-2 break-all text-sm text-release-paper-muted">{{ authReady && user?.email ? user.email : 'Verifying signed-in account…' }}</p>
+        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+          <NuxtLink
+            to="/submit"
+            class="flex min-h-11 items-center justify-between border border-release-paper bg-release-paper px-4 font-mono text-xs font-semibold uppercase tracking-[0.08em] text-release-ink transition-colors hover:border-release-warning hover:bg-release-warning focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus"
+          >
+            Record another release
+            <ArrowUpRight class="size-4" aria-hidden="true" />
+          </NuxtLink>
           <Button
-            class="w-full rounded-none border-release-seam bg-release-ink font-mono text-xs uppercase tracking-[0.08em] text-release-paper hover:border-release-paper hover:bg-release-rail"
+            class="min-h-11 rounded-none border-release-seam bg-release-ink font-mono text-xs uppercase tracking-[0.08em] text-release-paper hover:border-release-paper hover:bg-release-rail"
             variant="outline"
             :disabled="signingOut"
             @click="signOut"
@@ -267,17 +303,8 @@ const tierLabel = (tier: string | null | undefined): string => {
             <LogOut v-else aria-hidden="true" />
             {{ signingOut ? 'Signing out…' : 'Sign out' }}
           </Button>
-          <template #footer>
-            <NuxtLink
-              to="/submit"
-              class="flex min-h-12 items-center justify-between border border-release-paper bg-release-paper px-4 font-mono text-xs font-semibold uppercase tracking-[0.08em] text-release-ink transition-colors hover:border-release-warning hover:bg-release-warning focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus"
-            >
-              Record another release
-              <ArrowUpRight class="size-4" aria-hidden="true" />
-            </NuxtLink>
-          </template>
-        </ReleaseActionRail>
-      </template>
+        </div>
+      </section>
 
       <section v-if="loading" class="border border-release-seam bg-release-rail px-6 py-14 text-center" aria-live="polite">
         <AppSpinner class="mx-auto" size="size-6" label="Loading release shelf" />
@@ -410,6 +437,9 @@ const tierLabel = (tier: string | null | undefined): string => {
                 @apply="fields => applyAiDraft(listing, fields)"
                 @reject="rejectAiDraft(listing)"
               />
+              <p v-if="aiProposals[listing.id] && actionErrors[listing.id]" class="mt-3 border-l-2 border-release-destructive bg-release-rail px-4 py-3 text-sm text-release-destructive" role="alert">
+                {{ actionErrors[listing.id] }}
+              </p>
 
               <div v-if="drafts[listing.id] && !aiProposals[listing.id]" class="mt-6 space-y-5">
                 <div class="space-y-2">
