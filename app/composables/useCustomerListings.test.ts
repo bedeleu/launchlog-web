@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import type { CustomerListing } from './useCustomerListings'
 import { useCustomerDashboardState, useCustomerListings } from './useCustomerListings'
+import { isCustomerListingDirty } from '../utils/customer-listing-draft'
 
 const API = 'https://api.launchlog.test'
 const TOKEN = 'firebase-id-token'
@@ -160,5 +161,28 @@ describe('customer dashboard private state', () => {
     expect(state.savingIds.size).toBe(0)
     expect(state.billingIds.size).toBe(0)
     expect(state.savedIds.size).toBe(0)
+  })
+
+  test('a successful save replaces the listing baseline and resets dirty state', () => {
+    const state = useCustomerDashboardState()
+    state.syncListings([LISTING])
+    state.drafts['listing-1']!.name = 'New public name'
+
+    expect(isCustomerListingDirty(state.listings.value[0]!, state.drafts['listing-1']!)).toBeTrue()
+
+    state.commitListing({ ...LISTING, name: 'New public name' })
+
+    expect(state.listings.value[0]!.name).toBe('New public name')
+    expect(isCustomerListingDirty(state.listings.value[0]!, state.drafts['listing-1']!)).toBeFalse()
+  })
+
+  test('a failed save preserves the edited draft and dirty state', () => {
+    const state = useCustomerDashboardState()
+    state.syncListings([LISTING])
+    state.drafts['listing-1']!.description = 'An unsaved correction'
+    state.actionErrors['listing-1'] = 'Save failed'
+
+    expect(state.drafts['listing-1']!.description).toBe('An unsaved correction')
+    expect(isCustomerListingDirty(state.listings.value[0]!, state.drafts['listing-1']!)).toBeTrue()
   })
 })

@@ -21,8 +21,9 @@ const {
   savingIds,
   billingIds,
   savedIds,
-  syncDraft,
   syncListings,
+  commitListing,
+  isDirty,
   clearPrivateData,
   beginSaving,
   finishSaving,
@@ -104,6 +105,7 @@ async function save(listing: CustomerListing) {
   const generation = dashboardGeneration
   const draft = drafts[listing.id]
   if (!draft) return
+  if (!isDirty(listing.id) || savingIds.has(listing.id)) return
 
   const validationError = validateDraft(draft)
   actionErrors[listing.id] = validationError
@@ -120,9 +122,7 @@ async function save(listing: CustomerListing) {
   try {
     const updated = await update(listing.id, fields)
     if (generation !== dashboardGeneration || signingOut.value) return
-    const index = listings.value.findIndex(item => item.id === listing.id)
-    if (index !== -1) listings.value[index] = updated
-    syncDraft(updated)
+    commitListing(updated)
     markSaved(listing.id)
   }
   catch (saveError: unknown) {
@@ -352,7 +352,7 @@ const tierLabel = (tier: string | null | undefined): string => {
 
         <div class="grid lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)]">
           <form class="p-5 sm:p-7" @submit.prevent="save(listing)">
-            <div class="flex items-center justify-between gap-4">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.2em] text-brand-muted">
                   Listing details
@@ -361,13 +361,23 @@ const tierLabel = (tier: string | null | undefined): string => {
                   Edit the three core text fields here. AI suggestions can also propose category, logo, and social links, each requiring your review.
                 </p>
               </div>
-              <div class="flex flex-wrap items-center justify-end gap-3">
-                <span v-if="savedIds.has(listing.id)" class="text-xs font-medium text-brand-success" role="status">Saved</span>
+              <div class="shrink-0 sm:w-44">
                 <Button type="button" size="sm" variant="outline" :disabled="aiBusyIds.has(listing.id)" @click="generateAiDraft(listing)">
                   <AppSpinner v-if="aiBusyIds.has(listing.id) && !aiProposals[listing.id]" color="text-current" label="Preparing grounded draft" />
                   <FileDiff v-else aria-hidden="true" />
                   {{ aiBusyIds.has(listing.id) && !aiProposals[listing.id] ? 'Preparing…' : 'Draft with AI' }}
                 </Button>
+                <div class="mt-2 h-10 overflow-y-auto text-xs leading-5" aria-live="polite" aria-atomic="true">
+                  <p v-if="savingIds.has(listing.id)" class="text-brand-muted" role="status">
+                    Saving changes…
+                  </p>
+                  <p v-else-if="actionErrors[listing.id]" class="text-red-300" role="alert">
+                    {{ actionErrors[listing.id] }}
+                  </p>
+                  <p v-else-if="savedIds.has(listing.id)" class="font-medium text-brand-success" role="status">
+                    Saved
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -428,11 +438,7 @@ const tierLabel = (tier: string | null | undefined): string => {
               </div>
             </div>
 
-            <p v-if="actionErrors[listing.id]" class="mt-4 text-sm text-red-300" role="alert">
-              {{ actionErrors[listing.id] }}
-            </p>
-
-            <Button type="submit" class="mt-6 w-full sm:w-auto" size="lg" :disabled="savingIds.has(listing.id)">
+            <Button type="submit" class="mt-6 w-full sm:w-auto" size="lg" :disabled="savingIds.has(listing.id) || !isDirty(listing.id)">
               <AppSpinner v-if="savingIds.has(listing.id)" color="text-current" label="Saving listing" />
               <Save v-else aria-hidden="true" />
               {{ savingIds.has(listing.id) ? 'Saving…' : 'Save details' }}

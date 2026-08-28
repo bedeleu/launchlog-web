@@ -1,4 +1,5 @@
 import type { PlanTier } from '~/composables/usePlans'
+import { customerDraft, isCustomerListingDirty } from '../utils/customer-listing-draft'
 import { reactive, ref } from 'vue'
 
 export type CustomerListingStatus = 'draft' | 'pending_review' | 'published' | 'archived' | 'spam' | 'rejected'
@@ -56,11 +57,7 @@ export const useCustomerDashboardState = () => {
   const savedIds = reactive(new Set<string>())
 
   const syncDraft = (listing: CustomerListing): void => {
-    drafts[listing.id] = {
-      name: listing.name,
-      tagline: listing.tagline ?? '',
-      description: listing.description ?? '',
-    }
+    drafts[listing.id] = customerDraft(listing)
   }
 
   const syncListings = (items: CustomerListing[]): void => {
@@ -77,6 +74,20 @@ export const useCustomerDashboardState = () => {
     for (const key of Object.keys(actionErrors)) Reflect.deleteProperty(actionErrors, key)
   }
 
+  const commitListing = (listing: CustomerListing): void => {
+    const index = listings.value.findIndex(item => item.id === listing.id)
+    if (index === -1) listings.value.push(listing)
+    else listings.value[index] = listing
+    syncDraft(listing)
+    actionErrors[listing.id] = null
+  }
+
+  const isDirty = (id: string): boolean => {
+    const listing = listings.value.find(item => item.id === id)
+    const draft = drafts[id]
+    return Boolean(listing && draft && isCustomerListingDirty(listing, draft))
+  }
+
   return {
     listings,
     drafts,
@@ -86,6 +97,8 @@ export const useCustomerDashboardState = () => {
     savedIds,
     syncDraft,
     syncListings,
+    commitListing,
+    isDirty,
     clearPrivateData,
     beginSaving: (id: string) => savingIds.add(id),
     finishSaving: (id: string) => savingIds.delete(id),
