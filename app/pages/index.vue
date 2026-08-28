@@ -182,6 +182,7 @@ useHead({
 <template>
   <main class="min-h-screen">
     <ReleaseShell
+      wide-rail
       eyebrow="Release catalog · 2027"
       title="The log of what just shipped."
       description="A permanent public record for products worth finding — built for people, search engines, and machine-readable discovery."
@@ -212,7 +213,7 @@ useHead({
           title="Prepare your release"
           description="Paste one public URL. We capture the site and prepare the listing before you choose a placement."
         >
-          <IntakePreviewForm />
+          <IntakePreviewForm stacked />
           <ReleaseStateMarker
             state="success"
             label="Human approval"

@@ -7,6 +7,12 @@ import { Input } from '@/components/ui/input'
 import type { ExistingListingConflict } from '~/composables/usePreviews'
 import { existingListingConflictFromError } from '~/composables/usePreviews'
 
+withDefaults(defineProps<{
+  stacked?: boolean
+}>(), {
+  stacked: false,
+})
+
 const { createPreview } = usePreviews()
 const intake = useIntakeStore()
 
@@ -71,11 +77,14 @@ const onSubmit = handleSubmit(async (values) => {
 </script>
 
 <template>
-  <form class="w-full" novalidate @submit="onSubmit">
+  <form class="w-full" novalidate :data-intake-layout="stacked ? 'stacked' : 'responsive'" @submit="onSubmit">
     <label for="preview-url" class="block font-mono text-[0.68rem] font-semibold tracking-[0.12em] text-release-paper-muted uppercase">
       Website URL
     </label>
-    <div class="mt-2 flex flex-col gap-3 sm:flex-row">
+    <div
+      data-intake-controls
+      :class="['mt-2 flex gap-3', stacked ? 'flex-col' : 'flex-col sm:flex-row']"
+    >
       <Input
         id="preview-url"
         v-model="url"
@@ -85,9 +94,14 @@ const onSubmit = handleSubmit(async (values) => {
         placeholder="https://yourproduct.com"
         autocomplete="url"
         :disabled="submitting"
-        class="h-12 flex-1 text-base"
+        class="h-12 w-full min-w-0 flex-1 text-base"
       />
-      <Button type="submit" size="lg" class="h-12 w-full shrink-0 px-5 sm:w-48" :disabled="submitting">
+      <Button
+        type="submit"
+        size="lg"
+        :class="['h-12 w-full shrink-0 px-5', stacked ? '' : 'sm:w-48']"
+        :disabled="submitting"
+      >
         <AppSpinner v-if="submitting" color="text-current" />
         <span class="inline-block truncate">{{ submitting ? 'Checking website…' : 'Preview my listing' }}</span>
       </Button>
@@ -120,25 +134,25 @@ const onSubmit = handleSubmit(async (values) => {
           We never reassign a listing from a URL alone. Send an ownership request and our team will verify it.
         </template>
       </p>
-      <div class="mt-4 flex flex-wrap gap-3">
+      <div :class="['mt-4 gap-3', stacked ? 'grid grid-cols-1 sm:grid-cols-2' : 'flex flex-wrap']">
         <NuxtLink
           v-if="existingListing.action === 'manage'"
           :to="existingListing.dashboard_path || '/dashboard'"
-          class="inline-flex h-10 items-center justify-center border border-release-paper bg-release-paper px-4 text-sm font-semibold text-release-ink transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus"
+          :class="['inline-flex h-10 items-center justify-center border border-release-paper bg-release-paper px-4 text-sm font-semibold text-release-ink transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus', stacked ? 'w-full' : '']"
         >
           Manage listing
         </NuxtLink>
         <NuxtLink
           v-else
           :to="claimPath"
-          class="inline-flex h-10 items-center justify-center border border-release-paper bg-release-paper px-4 text-sm font-semibold text-release-ink transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus"
+          :class="['inline-flex h-10 items-center justify-center border border-release-paper bg-release-paper px-4 text-sm font-semibold text-release-ink transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus', stacked ? 'w-full' : '']"
         >
           Request ownership
         </NuxtLink>
         <NuxtLink
           v-if="existingListing.listing_path"
           :to="existingListing.listing_path"
-          class="inline-flex h-10 items-center justify-center border border-release-seam px-4 text-sm font-medium text-release-paper transition-colors hover:border-release-paper-muted hover:bg-[#1a1c16] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus"
+          :class="['inline-flex h-10 items-center justify-center border border-release-seam px-4 text-sm font-medium text-release-paper transition-colors hover:border-release-paper-muted hover:bg-[#1a1c16] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus', stacked ? 'w-full' : '']"
         >
           View listing
         </NuxtLink>

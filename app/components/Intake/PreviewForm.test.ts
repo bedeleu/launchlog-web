@@ -22,6 +22,7 @@ const passthrough = (tag: string) => defineComponent({
 const renderForm = async (
   existingListing: Record<string, unknown> | null,
   submitting = false,
+  stacked = false,
 ) => {
   const draft = { token: 'p'.repeat(64), domain: 'maker.example' }
   const app = createSSRApp({
@@ -34,6 +35,7 @@ const renderForm = async (
       errors: {},
       serverError: null,
       submitting,
+      stacked,
       url: 'https://maker.example',
       urlAttrs: {},
       onSubmit: () => undefined,
@@ -79,6 +81,17 @@ describe('PreviewForm existing-listing state', () => {
     expect(idle).toContain('sm:w-48')
     expect(loading).toContain('w-full')
     expect(loading).toContain('sm:w-48')
+  })
+
+  test('keeps the website field and action full-width in a narrow action rail', async () => {
+    const html = await renderForm(null, false, true)
+
+    expect(html).toContain('data-intake-layout="stacked"')
+    expect(html).toContain('data-intake-controls')
+    expect(html).toContain('flex-col')
+    expect(html).toContain('min-w-0')
+    expect(html).not.toContain('sm:flex-row')
+    expect(html).not.toContain('sm:w-48')
   })
 
   test('keeps duplicate feedback flat and payment-terminal', async () => {
