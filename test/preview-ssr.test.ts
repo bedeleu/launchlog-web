@@ -159,7 +159,8 @@ describe.skipIf(!isBuilt)('preview and ownership-request SSR', () => {
     const html = await response.text()
 
     expect(response.status).toBe(200)
-    expect(html).toContain('Send a request')
+    expect(html).toContain('Request file')
+    expect(html).toContain('Send request')
     expect(html).toContain('Claim a listing')
     expect(html).toContain('value="https://maker.example"')
     expect(html).toContain('No automated ownership transfers.')

@@ -107,49 +107,50 @@ useHead({
 </script>
 
 <template>
-  <main class="mx-auto max-w-6xl px-6 py-14 md:py-20">
-    <header class="max-w-2xl">
-      <p class="text-sm font-semibold uppercase tracking-[0.18em] text-brand-muted">
-        Help Center
-      </p>
-      <h1 class="mt-5 text-4xl font-bold tracking-normal text-white md:text-6xl">
-        How can we help?
-      </h1>
-      <p class="mt-6 text-lg leading-8 text-brand-muted">
-        Straight answers about getting listed, pricing, the tech edge and your
-        account. Current contact channels are listed on the Contact page.
-      </p>
-    </header>
+  <ContentReadingShell
+    wide
+    label="Reference desk · Help center"
+    title="How can we help?"
+    intro="Straight answers about private previews, publication, billing, discovery and account access."
+  >
+    <template #meta>
+      <ContentReadingMeta
+        :items="[
+        { label: 'Sections', value: String(categories.length) },
+        { label: 'Format', value: 'Operational reference' },
+        { label: 'Escalation', value: 'Human support' },
+        ]"
+      />
+    </template>
 
-    <div class="mt-14 space-y-12">
+    <div class="space-y-14">
       <section
         v-for="category in categories"
-        :key="category.id"
         :id="category.id"
-        class="scroll-mt-24 grid gap-8 lg:grid-cols-[260px_minmax(0,1fr)]"
+        :key="category.id"
+        class="scroll-mt-24 grid gap-7 lg:grid-cols-[16rem_minmax(0,1fr)]"
       >
         <div class="lg:sticky lg:top-24 lg:self-start">
-          <h2 class="text-2xl font-semibold text-white">
+          <p class="release-kicker">{{ category.id.replace('-', ' ') }}</p>
+          <h2 class="mt-3 text-2xl font-semibold tracking-tight text-[#f6f1e7]">
             {{ category.title }}
           </h2>
-          <p class="mt-3 leading-7 text-brand-muted">
+          <p class="mt-3 leading-7 text-release-paper-muted">
             {{ category.summary }}
           </p>
         </div>
 
-        <div class="divide-y divide-brand-border overflow-hidden rounded-lg border border-brand-border bg-white/[0.02]">
+        <div class="border-t border-release-seam">
           <details
             v-for="faq in category.faqs"
             :key="faq.q"
-            class="group"
+            class="group border-b border-release-seam"
           >
-            <summary class="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-base font-medium text-white transition-colors hover:bg-white/[0.03]">
+            <summary class="flex min-h-16 cursor-pointer list-none items-center justify-between gap-5 py-4 text-base font-semibold text-[#f6f1e7] transition-colors hover:text-release-blaze focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus">
               {{ faq.q }}
-              <svg class="size-5 shrink-0 text-brand-muted transition-transform duration-200 group-open:rotate-45" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
-              </svg>
+              <span class="font-mono text-lg font-normal text-release-blaze" aria-hidden="true">＋</span>
             </summary>
-            <div class="px-5 pb-5 leading-7 text-brand-muted">
+            <div class="max-w-3xl pb-6 pr-8 leading-8 text-release-paper-muted">
               {{ faq.a }}
             </div>
           </details>
@@ -157,13 +158,12 @@ useHead({
       </section>
     </div>
 
-    <section class="mt-16 rounded-lg border border-brand-border bg-white/[0.03] p-6 md:p-8">
+    <section class="mt-16 border-y border-release-seam py-9">
       <div class="grid gap-6 md:grid-cols-[1fr_auto] md:items-center">
         <div>
-          <h2 class="text-2xl font-semibold text-white">
-            Still stuck?
-          </h2>
-          <p class="mt-3 max-w-xl leading-7 text-brand-muted">
+          <p class="release-kicker">Escalation</p>
+          <h2 class="mt-3 text-2xl font-semibold tracking-tight text-[#f6f1e7]">Still stuck?</h2>
+          <p class="mt-3 max-w-xl leading-7 text-release-paper-muted">
             Use the Contact page to find any support or legal channel that has
             been configured for LaunchLog.
           </p>
@@ -171,19 +171,19 @@ useHead({
         <div class="flex flex-wrap gap-3">
           <NuxtLink
             to="/contact"
-            class="inline-flex rounded-md border border-brand-border px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/[0.04]"
+            class="release-action-secondary"
           >
             Contact us
           </NuxtLink>
           <a
             v-if="supportEmail"
             :href="`mailto:${supportEmail}`"
-            class="inline-flex rounded-md bg-brand-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-accent/90"
+            class="release-action"
           >
             Email support
           </a>
         </div>
       </div>
     </section>
-  </main>
+  </ContentReadingShell>
 </template>

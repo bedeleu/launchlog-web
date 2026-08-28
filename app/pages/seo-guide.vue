@@ -147,261 +147,102 @@ useHead({
 </script>
 
 <template>
-  <main class="mx-auto max-w-6xl px-6 py-14 md:py-20">
-    <!-- Hero -->
-    <section class="max-w-3xl">
-      <p class="text-sm font-semibold uppercase tracking-[0.18em] text-brand-muted">
-        SEO Guide · {{ updated }}
-      </p>
-      <h1 class="mt-5 text-4xl font-bold leading-[1.1] tracking-normal text-white md:text-6xl">
-        Make your launch useful, crawlable <span class="text-brand-accent">and machine-readable.</span>
-      </h1>
-      <p class="mt-6 text-lg leading-8 text-brand-muted">
-        AI search starts with the same web fundamentals as search: useful public
-        content, crawl access, correct indexing signals and a stable source of
-        product facts. This guide separates those foundations from unsupported
-        AEO and GEO shortcuts.
-      </p>
-    </section>
+  <ContentReadingShell
+    wide
+    :label="`Field guide · Updated ${updated}`"
+    title="Make your launch useful, crawlable and machine-readable."
+    intro="AI search starts with the same web fundamentals as search: useful public content, crawl access, correct indexing signals and a stable source of product facts."
+  >
+    <template #meta>
+      <ContentReadingMeta
+        :items="[
+        { label: 'Edition', value: '2026' },
+        { label: 'Audience', value: 'Product teams' },
+        { label: 'Method', value: 'Primary sources' },
+        ]"
+      />
+    </template>
 
-    <!-- The shift -->
-    <section class="mt-16 grid gap-10 md:grid-cols-[0.7fr_1fr]">
+    <section class="grid gap-8 border-b border-release-seam pb-12 lg:grid-cols-[18rem_minmax(0,1fr)]">
       <div>
-        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-brand-muted">
-          The shift
-        </p>
-        <h2 class="mt-4 text-3xl font-bold tracking-normal text-white md:text-4xl">
-          One public source, several kinds of readers.
-        </h2>
+        <p class="release-kicker">The shift</p>
+        <h2 class="mt-4 text-3xl font-semibold tracking-tight text-[#f6f1e7]">One source, several kinds of readers.</h2>
       </div>
-      <div class="space-y-6 leading-8 text-brand-muted">
-        <p>
-          A launch page may be read by a founder, a buyer, a search crawler or a
-          user-triggered browser agent. Each system has its own discovery and
-          selection rules, but all benefit from stable URLs and clear public facts.
-        </p>
-        <p>
-          Keep the visible copy, canonical metadata, structured data and alternate
-          representations consistent. That reduces ambiguity without pretending
-          that markup can force a crawler to index or select the page.
-        </p>
+      <div class="reading-prose">
+        <p>A launch page may be read by a founder, a buyer, a search crawler or a user-triggered browser agent. Each system has its own selection rules, but all benefit from stable URLs and clear public facts.</p>
+        <p class="mt-5">Keep visible copy, canonical metadata, structured data and alternate representations consistent. That reduces ambiguity without pretending markup can force indexing or citation.</p>
       </div>
     </section>
 
-    <!-- The three pillars -->
-    <section class="mt-16">
-      <div class="max-w-2xl">
-        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-brand-muted">
-          The tech edge
-        </p>
-        <h2 class="mt-4 text-3xl font-bold tracking-normal text-white md:text-4xl">
-          Three things LaunchLog builds into every listing.
-        </h2>
-      </div>
-      <div class="mt-8 grid gap-4 md:grid-cols-3">
-        <article
-          v-for="pillar in pillars"
-          :key="pillar.n"
-          class="rounded-lg border border-brand-border bg-white/[0.03] p-6"
-        >
-          <p class="font-mono text-sm text-brand-accent">
-            {{ pillar.n }}
-          </p>
-          <h3 class="mt-5 text-xl font-semibold text-white">
-            {{ pillar.title }}
-          </h3>
-          <p class="mt-4 leading-7 text-brand-muted">
-            {{ pillar.body }}
-          </p>
+    <section class="mt-14">
+      <p class="release-kicker">LaunchLog publication contract</p>
+      <div class="mt-5 grid border-t border-l border-release-seam md:grid-cols-3">
+        <article v-for="pillar in pillars" :key="pillar.n" class="border-r border-b border-release-seam p-6">
+          <p class="font-mono text-xs text-release-blaze">{{ pillar.n }}</p>
+          <h2 class="mt-5 text-xl font-semibold tracking-tight text-[#f6f1e7]">{{ pillar.title }}</h2>
+          <p class="mt-4 leading-7 text-release-paper-muted">{{ pillar.body }}</p>
         </article>
       </div>
     </section>
 
-    <!-- Checklists -->
-    <section class="mt-16">
-      <div class="max-w-2xl">
-        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-brand-muted">
-          Fundamentals
-        </p>
-        <h2 class="mt-4 text-3xl font-bold tracking-normal text-white md:text-4xl">
-          The checklist that still wins.
-        </h2>
-        <p class="mt-4 leading-8 text-brand-muted">
-          None of this is glamorous, and all of it compounds. Get these right
-          before chasing anything clever.
-        </p>
+    <section class="mt-14 grid gap-8 lg:grid-cols-[18rem_minmax(0,1fr)]">
+      <div>
+        <p class="release-kicker">Fundamentals</p>
+        <h2 class="mt-4 text-3xl font-semibold tracking-tight text-[#f6f1e7]">The checklist that still wins.</h2>
+        <p class="mt-4 leading-7 text-release-paper-muted">Get these right before chasing anything clever.</p>
       </div>
-      <div class="mt-8 grid gap-4 md:grid-cols-2">
-        <div class="rounded-lg border border-brand-border p-6">
-          <h3 class="text-lg font-semibold text-white">
-            Technical SEO
-          </h3>
+      <div class="grid border-t border-l border-release-seam md:grid-cols-2">
+        <div v-for="group in [{ title: 'Technical SEO', items: technicalChecklist }, { title: 'Content optimisation', items: contentChecklist }]" :key="group.title" class="border-r border-b border-release-seam p-6">
+          <h3 class="text-lg font-semibold text-[#f6f1e7]">{{ group.title }}</h3>
           <ul class="mt-5 space-y-3">
-            <li
-              v-for="item in technicalChecklist"
-              :key="item"
-              class="flex gap-3 leading-7 text-brand-muted"
-            >
-              <svg class="mt-1 size-4 shrink-0 text-brand-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-              <span>{{ item }}</span>
-            </li>
-          </ul>
-        </div>
-        <div class="rounded-lg border border-brand-border p-6">
-          <h3 class="text-lg font-semibold text-white">
-            Content optimisation
-          </h3>
-          <ul class="mt-5 space-y-3">
-            <li
-              v-for="item in contentChecklist"
-              :key="item"
-              class="flex gap-3 leading-7 text-brand-muted"
-            >
-              <svg class="mt-1 size-4 shrink-0 text-brand-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-              <span>{{ item }}</span>
-            </li>
+            <li v-for="item in group.items" :key="item" class="flex gap-3 leading-7 text-release-paper-muted"><span class="mt-2.5 size-2 shrink-0 bg-release-signal" aria-hidden="true" /><span>{{ item }}</span></li>
           </ul>
         </div>
       </div>
     </section>
 
-    <!-- Discovery methods -->
-    <section class="mt-16">
-      <div class="max-w-2xl">
-        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-brand-muted">
-          Where listings fit
-        </p>
-        <h2 class="mt-4 text-3xl font-bold tracking-normal text-white md:text-4xl">
-          Discovery is a portfolio, not a hack.
-        </h2>
-      </div>
-      <div class="mt-8 grid gap-4 md:grid-cols-3">
-        <article
-          v-for="method in discovery"
-          :key="method.title"
-          class="rounded-lg border border-brand-border bg-white/[0.03] p-6"
-        >
-          <h3 class="text-lg font-semibold text-white">
-            {{ method.title }}
-          </h3>
-          <p class="mt-3 leading-7 text-brand-muted">
-            {{ method.body }}
-          </p>
+    <section class="mt-14">
+      <p class="release-kicker">Where listings fit</p>
+      <h2 class="mt-4 text-3xl font-semibold tracking-tight text-[#f6f1e7]">Discovery is a portfolio, not a hack.</h2>
+      <div class="mt-6 grid border-t border-l border-release-seam md:grid-cols-3">
+        <article v-for="method in discovery" :key="method.title" class="border-r border-b border-release-seam p-6">
+          <h3 class="text-lg font-semibold text-[#f6f1e7]">{{ method.title }}</h3>
+          <p class="mt-3 leading-7 text-release-paper-muted">{{ method.body }}</p>
         </article>
       </div>
     </section>
 
-    <!-- Comparison -->
-    <section class="mt-16">
-      <div class="max-w-2xl">
-        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-brand-muted">
-          The difference
-        </p>
-        <h2 class="mt-4 text-3xl font-bold tracking-normal text-white md:text-4xl">
-          A page, not a row.
-        </h2>
+    <section class="mt-14 grid border-t border-l border-release-seam md:grid-cols-2">
+      <article v-for="record in [comparison.generic, comparison.launchlog]" :key="record.label" class="border-r border-b border-release-seam p-7" :class="record === comparison.launchlog ? 'border-t-2 border-t-release-blaze bg-release-rail' : ''">
+        <p class="release-kicker">{{ record.label }}</p>
+        <ul class="mt-5 space-y-3">
+          <li v-for="point in record.points" :key="point" class="flex gap-3 leading-7 text-release-paper-muted"><span class="font-mono text-release-blaze" aria-hidden="true">—</span><span>{{ point }}</span></li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="mt-14 grid gap-8 border-y border-release-seam py-10 lg:grid-cols-[18rem_minmax(0,1fr)]">
+      <div>
+        <p class="release-kicker">Primary references</p>
+        <h2 class="mt-4 text-3xl font-semibold tracking-tight text-[#f6f1e7]">Check the source, not an AEO score.</h2>
       </div>
-      <div class="mt-8 grid gap-4 md:grid-cols-2">
-        <div class="rounded-lg border border-brand-border p-6">
-          <p class="text-sm font-semibold text-brand-muted">
-            {{ comparison.generic.label }}
-          </p>
-          <ul class="mt-5 space-y-3">
-            <li
-              v-for="point in comparison.generic.points"
-              :key="point"
-              class="flex gap-3 leading-7 text-brand-muted"
-            >
-              <svg class="mt-1 size-4 shrink-0 text-brand-muted/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              <span>{{ point }}</span>
-            </li>
-          </ul>
-        </div>
-        <div class="rounded-lg border border-brand-accent/40 bg-brand-accent/[0.06] p-6">
-          <p class="text-sm font-semibold text-white">
-            {{ comparison.launchlog.label }}
-          </p>
-          <ul class="mt-5 space-y-3">
-            <li
-              v-for="point in comparison.launchlog.points"
-              :key="point"
-              class="flex gap-3 leading-7 text-brand-fg/90"
-            >
-              <svg class="mt-1 size-4 shrink-0 text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-              <span>{{ point }}</span>
-            </li>
-          </ul>
-        </div>
+      <div>
+        <p class="max-w-3xl leading-8 text-release-paper-muted">This guide is maintained against first-party documentation. Search and crawler behavior changes, so these sources take precedence over any summary here.</p>
+        <ul class="mt-6 border-t border-release-seam">
+          <li v-for="source in officialSources" :key="source.href" class="border-b border-release-seam py-3">
+            <a :href="source.href" target="_blank" rel="noopener" class="font-medium text-[#f6f1e7] underline-offset-4 hover:text-release-blaze hover:underline">{{ source.label }} ↗</a>
+          </li>
+        </ul>
       </div>
     </section>
 
-    <section class="mt-16 border-t border-brand-border pt-10">
-      <div class="grid gap-8 md:grid-cols-[0.7fr_1fr]">
-        <div>
-          <p class="text-sm font-semibold uppercase tracking-[0.18em] text-brand-muted">
-            Primary references
-          </p>
-          <h2 class="mt-4 text-3xl font-bold tracking-normal text-white md:text-4xl">
-            Check the source, not an AEO score.
-          </h2>
-        </div>
-        <div>
-          <p class="leading-8 text-brand-muted">
-            This guide is maintained against first-party documentation. Search
-            and crawler behavior changes, so these sources take precedence over
-            any summary on this page.
-          </p>
-          <ul class="mt-6 space-y-3">
-            <li v-for="source in officialSources" :key="source.href">
-              <a
-                :href="source.href"
-                target="_blank"
-                rel="noopener"
-                class="font-medium text-brand-accent transition-colors hover:text-white hover:underline"
-              >
-                {{ source.label }}
-              </a>
-            </li>
-          </ul>
-        </div>
+    <section class="mt-14 flex flex-col gap-6 border-l-2 border-release-blaze bg-release-rail p-7 md:flex-row md:items-center md:justify-between">
+      <div>
+        <p class="release-kicker">Private preview</p>
+        <h2 class="mt-3 text-2xl font-semibold tracking-tight text-[#f6f1e7]">See how your product would appear.</h2>
+        <p class="mt-3 max-w-2xl leading-7 text-release-paper-muted">Paste your URL and review the structured release before you publish.</p>
       </div>
+      <div class="flex flex-wrap gap-3"><NuxtLink to="/pricing" class="release-action-secondary">View pricing</NuxtLink><NuxtLink to="/submit" class="release-action">Preview for free</NuxtLink></div>
     </section>
-
-    <!-- CTA -->
-    <section class="mt-16 border-t border-brand-border pt-10">
-      <div class="grid gap-6 md:grid-cols-[1fr_auto] md:items-center">
-        <div>
-          <h2 class="text-3xl font-bold tracking-normal text-white">
-            See how your product would appear.
-          </h2>
-          <p class="mt-4 max-w-2xl leading-7 text-brand-muted">
-            Paste your URL and get a free, private preview of a fully structured
-            listing — schema, metadata and all. Pay only when you publish.
-          </p>
-        </div>
-        <div class="flex flex-wrap gap-3">
-          <NuxtLink
-            to="/pricing"
-            class="inline-flex rounded-md border border-brand-border px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/[0.04]"
-          >
-            View pricing
-          </NuxtLink>
-          <NuxtLink
-            to="/submit"
-            class="inline-flex rounded-md bg-brand-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-accent/90"
-          >
-            Preview for free
-          </NuxtLink>
-        </div>
-      </div>
-    </section>
-  </main>
+  </ContentReadingShell>
 </template>

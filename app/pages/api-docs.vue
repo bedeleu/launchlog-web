@@ -89,9 +89,9 @@ const updateExample = `curl -X PATCH \\
   "${apiBase}/dashboard/listings/{id}"`
 
 const methodClass: Record<Endpoint['method'], string> = {
-  GET: 'border-brand-success/30 bg-brand-success/10 text-brand-success',
-  PATCH: 'border-brand-warning/30 bg-brand-warning/10 text-brand-warning',
-  POST: 'border-brand-accent/30 bg-brand-accent/10 text-brand-accent',
+  GET: 'border-release-signal text-release-signal',
+  PATCH: 'border-release-warning text-release-warning',
+  POST: 'border-release-blaze text-release-blaze',
 }
 
 useSeoMeta({
@@ -127,55 +127,47 @@ useHead({
 </script>
 
 <template>
-  <main class="mx-auto max-w-6xl px-6 py-14 md:py-20">
-    <header class="max-w-3xl">
-      <p class="text-sm font-semibold uppercase tracking-[0.18em] text-brand-muted">
-        Developers
-      </p>
-      <h1 class="mt-5 text-4xl font-bold tracking-normal text-white md:text-6xl">
-        API Documentation
-      </h1>
-      <p class="mt-6 text-lg leading-8 text-brand-muted">
-        Implemented listing and customer-dashboard routes. Public reads require
-        no API key; customer routes require a current Firebase ID token.
-      </p>
-    </header>
+  <ContentReadingShell
+    wide
+    label="Developer reference · API v1"
+    title="API documentation"
+    intro="Implemented listing and customer-dashboard routes. Public reads require no API key; customer routes require a current Firebase ID token."
+  >
+    <template #meta>
+      <ContentReadingMeta
+        :items="[
+        { label: 'Base', value: apiBase },
+        { label: 'Public reads', value: 'No key' },
+        { label: 'Customer auth', value: 'Firebase token' },
+        ]"
+      />
+    </template>
 
-    <section class="mt-12 grid gap-4 md:grid-cols-2">
-      <div class="rounded-lg border border-brand-border bg-white/[0.03] p-6">
-        <p class="text-xs font-semibold uppercase tracking-wider text-brand-muted">
-          Runtime base URL
-        </p>
-        <p class="mt-3 break-all font-mono text-sm text-brand-accent">
-          {{ apiBase }}
-        </p>
+    <section class="grid border-t border-l border-release-seam md:grid-cols-2">
+      <div class="border-r border-b border-release-seam p-6">
+        <p class="release-kicker">Runtime base URL</p>
+        <p class="mt-4 break-all font-mono text-sm text-[#f6f1e7]">{{ apiBase }}</p>
       </div>
-      <div class="rounded-lg border border-brand-border bg-white/[0.03] p-6">
-        <p class="text-xs font-semibold uppercase tracking-wider text-brand-muted">
-          Customer authentication
-        </p>
-        <p class="mt-3 text-sm leading-6 text-brand-muted">
-          Send <span class="font-mono text-xs text-brand-fg">Authorization: Bearer &lt;firebase_id_token&gt;</span>.
-          Ownership is enforced by the API for every dashboard listing.
-        </p>
+      <div class="border-r border-b border-release-seam p-6">
+        <p class="release-kicker">Customer authentication</p>
+        <p class="mt-4 text-sm leading-7 text-release-paper-muted">Send <code class="border border-release-seam bg-release-rail px-1.5 py-1 font-mono text-xs text-[#f6f1e7]">Authorization: Bearer &lt;firebase_id_token&gt;</code>. Ownership is enforced by the API.</p>
       </div>
     </section>
 
     <section class="mt-14">
-      <h2 class="text-2xl font-semibold text-white">
-        Public GET routes
-      </h2>
-      <p class="mt-3 max-w-3xl leading-7 text-brand-muted">
+      <p class="release-kicker">Public surface</p>
+      <h2 class="mt-3 text-3xl font-semibold tracking-tight text-[#f6f1e7]">Public GET routes</h2>
+      <p class="mt-3 max-w-3xl leading-7 text-release-paper-muted">
         Listing and discovery data is public. Preview tokens grant access to private preview data,
         so treat each token as sensitive and do not share it.
       </p>
-      <div class="mt-6 divide-y divide-brand-border overflow-hidden rounded-lg border border-brand-border">
-        <div v-for="endpoint in publicEndpoints" :key="endpoint.path" class="grid gap-2 p-5 sm:grid-cols-[64px_240px_1fr] sm:items-start sm:gap-5">
-          <span class="inline-flex w-fit items-center rounded border px-2 py-0.5 font-mono text-xs font-semibold" :class="methodClass[endpoint.method]">
+      <div class="mt-6 border-t border-release-seam">
+        <div v-for="endpoint in publicEndpoints" :key="endpoint.path" class="grid gap-3 border-b border-release-seam py-5 sm:grid-cols-[64px_260px_1fr] sm:items-start sm:gap-5">
+          <span class="inline-flex w-fit items-center border px-2 py-0.5 font-mono text-xs font-semibold" :class="methodClass[endpoint.method]">
             {{ endpoint.method }}
           </span>
-          <code class="break-all font-mono text-sm text-white">{{ endpoint.path }}</code>
-          <p class="text-sm leading-6 text-brand-muted">
+          <code class="break-all font-mono text-sm text-[#f6f1e7]">{{ endpoint.path }}</code>
+          <p class="text-sm leading-6 text-release-paper-muted">
             {{ endpoint.description }}
           </p>
         </div>
@@ -183,64 +175,54 @@ useHead({
     </section>
 
     <section class="mt-14">
-      <h2 class="text-2xl font-semibold text-white">
-        Listing query parameters
-      </h2>
-      <div class="mt-6 overflow-hidden rounded-lg border border-brand-border">
-        <div v-for="param in listParams" :key="param.name" class="grid gap-1 border-b border-brand-border p-4 last:border-b-0 sm:grid-cols-[150px_90px_1fr] sm:items-baseline sm:gap-4">
-          <code class="font-mono text-sm text-brand-accent">{{ param.name }}</code>
-          <span class="font-mono text-xs text-brand-muted">{{ param.type }}</span>
-          <span class="text-sm leading-6 text-brand-muted">{{ param.description }}</span>
+      <p class="release-kicker">Query contract</p>
+      <h2 class="mt-3 text-3xl font-semibold tracking-tight text-[#f6f1e7]">Listing query parameters</h2>
+      <div class="mt-6 border-t border-release-seam">
+        <div v-for="param in listParams" :key="param.name" class="grid gap-2 border-b border-release-seam py-4 sm:grid-cols-[150px_90px_1fr] sm:items-baseline sm:gap-4">
+          <code class="font-mono text-sm text-release-blaze">{{ param.name }}</code>
+          <span class="font-mono text-xs text-release-paper-muted">{{ param.type }}</span>
+          <span class="text-sm leading-6 text-release-paper-muted">{{ param.description }}</span>
         </div>
       </div>
       <div class="mt-6 grid gap-4 lg:grid-cols-3">
-        <pre class="overflow-x-auto rounded-lg border border-brand-border bg-black/40 p-4 font-mono text-xs leading-6 text-brand-fg/90"><code>{{ publicExample }}</code></pre>
-        <pre class="overflow-x-auto rounded-lg border border-brand-border bg-black/40 p-4 font-mono text-xs leading-6 text-brand-fg/90"><code>{{ discoveryExample }}</code></pre>
-        <pre class="overflow-x-auto rounded-lg border border-brand-border bg-black/40 p-4 font-mono text-xs leading-6 text-brand-fg/90"><code>{{ previewExample }}</code></pre>
+        <pre v-for="example in [publicExample, discoveryExample, previewExample]" :key="example" class="overflow-x-auto border border-release-seam bg-release-rail p-4 font-mono text-xs leading-6 text-[#f6f1e7]"><code>{{ example }}</code></pre>
       </div>
     </section>
 
     <section class="mt-14">
-      <h2 class="text-2xl font-semibold text-white">
-        Authenticated customer dashboard
-      </h2>
-      <div class="mt-6 divide-y divide-brand-border overflow-hidden rounded-lg border border-brand-border">
-        <div v-for="endpoint in dashboardEndpoints" :key="endpoint.path" class="grid gap-2 p-5 sm:grid-cols-[64px_280px_1fr] sm:items-start sm:gap-5">
-          <span class="inline-flex w-fit items-center rounded border px-2 py-0.5 font-mono text-xs font-semibold" :class="methodClass[endpoint.method]">
+      <p class="release-kicker">Authenticated surface</p>
+      <h2 class="mt-3 text-3xl font-semibold tracking-tight text-[#f6f1e7]">Customer dashboard</h2>
+      <div class="mt-6 border-t border-release-seam">
+        <div v-for="endpoint in dashboardEndpoints" :key="endpoint.path" class="grid gap-3 border-b border-release-seam py-5 sm:grid-cols-[64px_280px_1fr] sm:items-start sm:gap-5">
+          <span class="inline-flex w-fit items-center border px-2 py-0.5 font-mono text-xs font-semibold" :class="methodClass[endpoint.method]">
             {{ endpoint.method }}
           </span>
-          <code class="break-all font-mono text-sm text-white">{{ endpoint.path }}</code>
-          <p class="text-sm leading-6 text-brand-muted">
+          <code class="break-all font-mono text-sm text-[#f6f1e7]">{{ endpoint.path }}</code>
+          <p class="text-sm leading-6 text-release-paper-muted">
             {{ endpoint.description }}
           </p>
         </div>
       </div>
       <div class="mt-6 grid gap-4 lg:grid-cols-2">
         <div>
-          <p class="mb-2 text-xs font-semibold uppercase tracking-wider text-brand-muted">
-            List owned listings
-          </p>
-          <pre class="overflow-x-auto rounded-lg border border-brand-border bg-black/40 p-4 font-mono text-xs leading-6 text-brand-fg/90"><code>{{ dashboardExample }}</code></pre>
+          <p class="release-kicker mb-2">List owned listings</p>
+          <pre class="overflow-x-auto border border-release-seam bg-release-rail p-4 font-mono text-xs leading-6 text-[#f6f1e7]"><code>{{ dashboardExample }}</code></pre>
         </div>
         <div>
-          <p class="mb-2 text-xs font-semibold uppercase tracking-wider text-brand-muted">
-            Update editable fields
-          </p>
-          <pre class="overflow-x-auto rounded-lg border border-brand-border bg-black/40 p-4 font-mono text-xs leading-6 text-brand-fg/90"><code>{{ updateExample }}</code></pre>
+          <p class="release-kicker mb-2">Update editable fields</p>
+          <pre class="overflow-x-auto border border-release-seam bg-release-rail p-4 font-mono text-xs leading-6 text-[#f6f1e7]"><code>{{ updateExample }}</code></pre>
         </div>
       </div>
     </section>
 
-    <section class="mt-14 rounded-lg border border-brand-border bg-white/[0.02] p-6 md:p-8">
-      <h2 class="text-xl font-semibold text-white">
-        Response boundaries
-      </h2>
-      <ul class="mt-5 space-y-3 leading-7 text-brand-muted">
+    <section class="mt-14 border-l-2 border-release-blaze bg-release-rail p-6 md:p-8">
+      <p class="release-kicker">Response boundaries</p>
+      <ul class="mt-5 list-square space-y-3 pl-5 leading-7 text-release-paper-muted marker:text-release-blaze">
         <li>Public listing routes expose published listing fields, never owner or Stripe identifiers.</li>
         <li>The discovery feed is intentionally unpaginated and narrower than the public listing resource.</li>
         <li>Dashboard list responses are owner-scoped and unpaginated. The update route rejects protected fields such as tier, status, URL and slug.</li>
         <li>The billing-portal route returns a short-lived Stripe URL; it does not change the subscription by itself.</li>
       </ul>
     </section>
-  </main>
+  </ContentReadingShell>
 </template>

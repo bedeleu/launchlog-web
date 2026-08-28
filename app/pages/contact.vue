@@ -1,8 +1,5 @@
 <script setup lang="ts">
 import { CheckCircle2, Send } from '@lucide/vue'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import type { ContactTopic } from '~/composables/useContact'
 
 const config = useRuntimeConfig()
@@ -154,189 +151,129 @@ useHead({
 </script>
 
 <template>
-  <main class="mx-auto max-w-6xl px-6 py-14 md:py-20">
-    <section class="grid gap-10 md:grid-cols-[1fr_0.7fr] md:items-end">
-      <div>
-        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-brand-muted">
-          Contact
-        </p>
-        <h1 class="mt-5 max-w-2xl text-4xl font-bold tracking-normal text-white md:text-6xl">
-          Talk to a human.
-        </h1>
-        <p class="mt-6 max-w-xl text-lg leading-8 text-brand-muted">
-          Send a support or ownership request without leaving LaunchLog. We route it to the right person.
-        </p>
-      </div>
-      <aside v-if="legalName" class="rounded-lg border border-brand-border bg-white/[0.03] p-6">
-        <p class="text-sm font-semibold text-white">Service operator</p>
-        <p class="mt-3 leading-7 text-brand-muted">
-          {{ legalName }}
-        </p>
-      </aside>
-    </section>
+  <ContentReadingShell
+    wide
+    label="Support desk · Manual verification"
+    title="Talk to a human."
+    intro="Send a support, billing or ownership request without leaving LaunchLog. Every claim is reviewed before access changes."
+  >
+    <template #meta>
+      <ContentReadingMeta
+        :items="[
+        { label: 'Operator', value: legalName || 'LaunchLog' },
+        { label: 'Channel', value: 'Support request' },
+        { label: 'Ownership', value: 'Manual verification' },
+        ]"
+      />
+    </template>
 
-    <section class="mt-14 grid gap-8 lg:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.75fr)] lg:items-start">
-      <form
-        class="rounded-2xl border border-brand-border bg-[linear-gradient(145deg,rgba(255,255,255,0.045),rgba(255,255,255,0.018))] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.28)] sm:p-8"
-        novalidate
-        @submit.prevent="submitRequest"
-      >
-        <div class="flex items-start justify-between gap-4">
+    <section class="grid border-y border-release-seam lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <form class="py-8 lg:border-r lg:border-release-seam lg:pr-10" novalidate @submit.prevent="submitRequest">
+        <div class="flex flex-wrap items-baseline justify-between gap-3">
           <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-brand-accent">Send a request</p>
-            <h2 class="mt-2 text-2xl font-semibold text-white">How can we help?</h2>
+            <p class="release-kicker">Request file</p>
+            <h2 class="mt-3 text-3xl font-semibold tracking-tight text-[#f6f1e7]">How can we help?</h2>
           </div>
-          <span class="rounded-full border border-brand-border bg-black/20 px-3 py-1 font-mono text-[11px] text-brand-muted">Manual claim review</span>
+          <span class="font-mono text-[11px] uppercase tracking-[0.12em] text-release-paper-muted">Human approval required</span>
         </div>
 
-        <fieldset class="mt-7">
-          <legend class="text-sm font-medium text-white">Choose a topic</legend>
-          <div class="mt-3 grid gap-2 sm:grid-cols-2">
+        <fieldset class="mt-8">
+          <legend class="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-release-paper-muted">Request type</legend>
+          <div class="mt-3 grid border-t border-l border-release-seam sm:grid-cols-2">
             <button
               v-for="topic in topics"
               :key="topic.value"
               type="button"
-              class="rounded-lg border p-3 text-left transition-[border-color,background-color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/60"
-              :class="form.topic === topic.value
-                ? 'border-brand-accent/70 bg-brand-accent/[0.12] shadow-[inset_0_0_0_1px_rgba(99,102,241,0.14)]'
-                : 'border-brand-border bg-black/10 hover:border-white/20 hover:bg-white/[0.035]'"
+              class="min-h-24 border-r border-b border-release-seam p-4 text-left transition-colors focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-release-focus"
+              :class="form.topic === topic.value ? 'bg-release-paper text-release-ink' : 'bg-release-rail text-[#f6f1e7] hover:bg-[#171a15]'"
               :aria-pressed="form.topic === topic.value"
               @click="form.topic = topic.value"
             >
-              <span class="block text-sm font-semibold text-white">{{ topic.label }}</span>
-              <span class="mt-1 block text-xs leading-5 text-brand-muted">{{ topic.hint }}</span>
+              <span class="block text-sm font-semibold">{{ topic.label }}</span>
+              <span class="mt-1 block text-xs leading-5" :class="form.topic === topic.value ? 'text-release-ink/70' : 'text-release-paper-muted'">{{ topic.hint }}</span>
             </button>
           </div>
         </fieldset>
 
-        <div class="mt-7 grid gap-5 sm:grid-cols-2">
-          <div class="space-y-1.5">
-            <Label for="contact-name">Name</Label>
-            <Input id="contact-name" v-model="form.name" autocomplete="name" placeholder="Your name" :aria-invalid="!!fieldErrors.name" />
-            <p v-if="fieldErrors.name" class="text-xs text-brand-warning" role="alert">{{ fieldErrors.name }}</p>
+        <div class="mt-8 grid gap-5 sm:grid-cols-2">
+          <div>
+            <label for="contact-name" class="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-release-paper-muted">Name</label>
+            <input id="contact-name" v-model="form.name" class="release-field mt-2 h-12 px-3 text-sm" autocomplete="name" placeholder="Your name" :aria-invalid="!!fieldErrors.name">
+            <p v-if="fieldErrors.name" class="mt-2 text-xs text-release-blaze" role="alert">{{ fieldErrors.name }}</p>
           </div>
-          <div class="space-y-1.5">
-            <Label for="contact-email">Email</Label>
-            <Input id="contact-email" v-model="form.email" type="email" autocomplete="email" placeholder="you@company.com" :disabled="!!authenticatedEmail" :aria-invalid="!!fieldErrors.email" />
-            <p v-if="authenticatedEmail" class="text-xs text-brand-success">Using your verified account email.</p>
-            <p v-else-if="fieldErrors.email" class="text-xs text-brand-warning" role="alert">{{ fieldErrors.email }}</p>
+          <div>
+            <label for="contact-email" class="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-release-paper-muted">Email</label>
+            <input id="contact-email" v-model="form.email" class="release-field mt-2 h-12 px-3 text-sm" type="email" autocomplete="email" placeholder="you@company.com" :disabled="!!authenticatedEmail" :aria-invalid="!!fieldErrors.email">
+            <p v-if="authenticatedEmail" class="mt-2 text-xs text-release-signal">Verified account email</p>
+            <p v-else-if="fieldErrors.email" class="mt-2 text-xs text-release-blaze" role="alert">{{ fieldErrors.email }}</p>
           </div>
-          <div class="space-y-1.5 sm:col-span-2">
-            <Label for="contact-website">Website <span class="text-brand-muted">{{ form.topic === 'listing_claim' ? '(required)' : '(optional)' }}</span></Label>
-            <Input id="contact-website" v-model="form.website" type="url" inputmode="url" autocomplete="url" placeholder="https://yourproduct.com" :aria-invalid="!!fieldErrors.website" />
-            <p v-if="fieldErrors.website" class="text-xs text-brand-warning" role="alert">{{ fieldErrors.website }}</p>
+          <div class="sm:col-span-2">
+            <label for="contact-website" class="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-release-paper-muted">Website · {{ form.topic === 'listing_claim' ? 'Required' : 'Optional' }}</label>
+            <input id="contact-website" v-model="form.website" class="release-field mt-2 h-12 px-3 text-sm" type="url" inputmode="url" autocomplete="url" placeholder="https://yourproduct.com" :aria-invalid="!!fieldErrors.website">
+            <p v-if="fieldErrors.website" class="mt-2 text-xs text-release-blaze" role="alert">{{ fieldErrors.website }}</p>
           </div>
-          <div class="space-y-1.5 sm:col-span-2">
-            <Label for="contact-message">Message</Label>
-            <textarea
-              id="contact-message"
-              v-model="form.message"
-              rows="5"
-              class="min-h-32 w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm text-white outline-none transition-[border-color,box-shadow] placeholder:text-brand-muted focus-visible:ring-3 focus-visible:ring-ring/50"
-              placeholder="Tell us what happened and what you need."
-              :aria-invalid="!!fieldErrors.message"
-            />
-            <p v-if="fieldErrors.message" class="text-xs text-brand-warning" role="alert">{{ fieldErrors.message }}</p>
+          <div class="sm:col-span-2">
+            <label for="contact-message" class="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-release-paper-muted">Message</label>
+            <textarea id="contact-message" v-model="form.message" rows="6" class="release-field mt-2 min-h-36 resize-y px-3 py-3 text-sm leading-6" placeholder="Tell us what happened and what you need." :aria-invalid="!!fieldErrors.message" />
+            <p v-if="fieldErrors.message" class="mt-2 text-xs text-release-blaze" role="alert">{{ fieldErrors.message }}</p>
           </div>
         </div>
 
         <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <Button type="submit" size="lg" class="sm:min-w-44" :disabled="isSending || sent">
-            <AppSpinner v-if="isSending" class="mr-2" color="text-current" label="Sending request" />
-            <CheckCircle2 v-else-if="sent" class="mr-2 size-4" aria-hidden="true" />
-            <Send v-else class="mr-2 size-4" aria-hidden="true" />
+          <button type="submit" class="release-action sm:min-w-44" :disabled="isSending || sent">
+            <AppSpinner v-if="isSending" color="text-current" label="Sending request" />
+            <CheckCircle2 v-else-if="sent" class="size-4" aria-hidden="true" />
+            <Send v-else class="size-4" aria-hidden="true" />
             {{ sent ? 'Request sent' : isSending ? 'Sending…' : 'Send request' }}
-          </Button>
-          <p v-if="sent" class="text-sm text-brand-success" role="status">Thanks — your request is in our support queue.</p>
-          <p v-else-if="formError" class="text-sm text-brand-warning" role="alert">{{ formError }}</p>
-          <p v-else class="text-xs leading-5 text-brand-muted">No automated ownership transfers. A human reviews every claim.</p>
+          </button>
+          <div class="min-h-10 flex-1" aria-live="polite">
+            <p v-if="sent" class="text-sm leading-6 text-release-signal" role="status">Thanks — your request is in our support queue.</p>
+            <p v-else-if="formError" class="text-sm leading-6 text-release-blaze" role="alert">{{ formError }}</p>
+            <p v-else class="text-xs leading-5 text-release-paper-muted">No automated ownership transfers. A human reviews every claim.</p>
+          </div>
         </div>
       </form>
 
-      <div class="space-y-3">
-        <div class="rounded-xl border border-brand-border bg-white/[0.025] p-5">
-          <h2 class="text-base font-semibold text-white">What happens next</h2>
-          <ol class="mt-4 space-y-4 text-sm text-brand-muted">
-            <li class="flex gap-3"><span class="font-mono text-brand-accent">01</span><span>We match the website and existing listing.</span></li>
-            <li class="flex gap-3"><span class="font-mono text-brand-accent">02</span><span>For ownership requests, we ask for domain-level proof.</span></li>
-            <li class="flex gap-3"><span class="font-mono text-brand-accent">03</span><span>We update access without exposing another account.</span></li>
-          </ol>
-        </div>
-        <a
-          v-if="supportEmail"
-          :href="`mailto:${supportEmail}`"
-          class="block rounded-xl border border-brand-border p-5 transition-colors hover:border-brand-accent/40 hover:bg-white/[0.025]"
-        >
-          <span class="text-xs font-semibold uppercase tracking-[0.16em] text-brand-muted">Email alternative</span>
-          <span class="mt-2 block break-all font-mono text-sm text-brand-accent">{{ supportEmail }}</span>
+      <aside class="py-8 lg:pl-8">
+        <p class="release-kicker">Verification route</p>
+        <ol class="mt-5 border-t border-release-seam">
+          <li v-for="(step, index) in ['We match the website and existing listing.', 'We request domain-level proof when ownership is involved.', 'We update access without exposing another account.']" :key="step" class="grid grid-cols-[2rem_1fr] gap-3 border-b border-release-seam py-4 text-sm leading-6 text-release-paper-muted">
+            <span class="font-mono text-release-blaze">0{{ index + 1 }}</span><span>{{ step }}</span>
+          </li>
+        </ol>
+        <a v-if="supportEmail" :href="`mailto:${supportEmail}`" class="mt-7 block border-l-2 border-release-blaze bg-release-rail px-4 py-4">
+          <span class="release-kicker">Email alternative</span>
+          <span class="mt-2 block break-all font-mono text-xs text-[#f6f1e7]">{{ supportEmail }}</span>
+        </a>
+      </aside>
+    </section>
+
+    <section v-if="channels.length" class="mt-14" aria-label="Contact channels">
+      <p class="release-kicker">Published channels</p>
+      <div class="mt-5 grid border-t border-l border-release-seam sm:grid-cols-2">
+        <a v-for="channel in channels" :key="channel.email" :href="`mailto:${channel.email}`" class="group border-r border-b border-release-seam p-6 transition-colors hover:bg-release-rail focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-release-focus">
+          <span class="font-mono text-[11px] uppercase tracking-[0.12em] text-release-paper-muted">{{ channel.label }}</span>
+          <p class="mt-4 leading-7 text-[#f6f1e7]">{{ channel.body }}</p>
+          <p class="mt-4 break-all font-mono text-xs text-release-blaze group-hover:underline">{{ channel.email }}</p>
         </a>
       </div>
     </section>
 
-    <section v-if="channels.length" class="mt-14 grid gap-4 sm:grid-cols-2" aria-label="Contact channels">
-      <a
-        v-for="channel in channels"
-        :key="channel.email"
-        :href="`mailto:${channel.email}`"
-        class="group rounded-lg border border-brand-border bg-white/[0.03] p-6 transition-colors hover:border-brand-accent/50 hover:bg-white/[0.05]"
-      >
-        <div class="flex items-start justify-between gap-4">
-          <span class="inline-flex size-10 items-center justify-center rounded-md border border-brand-border bg-brand-accent/10 text-brand-accent">
-            <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" :d="channel.icon" />
-            </svg>
-          </span>
-          <svg class="size-4 text-brand-muted transition-transform group-hover:translate-x-0.5 group-hover:text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-          </svg>
-        </div>
-        <h2 class="mt-5 text-lg font-semibold text-white">
-          {{ channel.label }}
-        </h2>
-        <p class="mt-2 leading-7 text-brand-muted">
-          {{ channel.body }}
-        </p>
-        <p class="mt-4 font-mono text-sm text-brand-accent">
-          {{ channel.email }}
-        </p>
-      </a>
+    <section v-else class="release-panel mt-14 p-6 md:p-8">
+      <h2 class="text-xl font-semibold text-[#f6f1e7]">Contact details are not configured</h2>
+      <p class="mt-3 max-w-2xl leading-7 text-release-paper-muted">No public support, legal or copyright mailbox is currently published on this page.</p>
     </section>
 
-    <section v-else class="mt-14 rounded-lg border border-brand-border bg-white/[0.03] p-6 md:p-8">
-      <h2 class="text-xl font-semibold text-white">
-        Contact details are not configured
-      </h2>
-      <p class="mt-3 max-w-2xl leading-7 text-brand-muted">
-        No public support, legal or copyright mailbox is currently published on this page.
-        The resources below describe the available self-service paths.
-      </p>
-    </section>
-
-    <section class="mt-16 rounded-lg border border-brand-border p-6 md:p-8">
-      <div class="grid gap-8 md:grid-cols-[0.6fr_1fr] md:items-center">
-        <div>
-          <h2 class="text-2xl font-semibold text-white">
-            Before you email
-          </h2>
-          <p class="mt-3 leading-7 text-brand-muted">
-            A lot of questions have a faster answer. These usually get you there
-            quicker than the inbox.
-          </p>
-        </div>
-        <div class="grid gap-3 sm:grid-cols-2">
-          <NuxtLink
-            v-for="link in quickLinks"
-            :key="link.to"
-            :to="link.to"
-            class="flex items-center justify-between gap-3 rounded-md border border-brand-border px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-white/[0.04]"
-          >
-            {{ link.label }}
-            <svg class="size-4 shrink-0 text-brand-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
-          </NuxtLink>
-        </div>
+    <section class="mt-14 grid gap-7 border-y border-release-seam py-9 lg:grid-cols-[18rem_minmax(0,1fr)]">
+      <div>
+        <p class="release-kicker">Self-service index</p>
+        <h2 class="mt-4 text-2xl font-semibold tracking-tight text-[#f6f1e7]">Before you send a request.</h2>
       </div>
+      <nav class="grid border-t border-l border-release-seam sm:grid-cols-2" aria-label="Support resources">
+        <NuxtLink v-for="link in quickLinks" :key="link.to" :to="link.to" class="flex min-h-14 items-center justify-between gap-3 border-r border-b border-release-seam px-4 py-3 text-sm font-medium text-[#f6f1e7] hover:bg-release-rail focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-release-focus">
+          {{ link.label }}<span class="font-mono text-release-blaze" aria-hidden="true">→</span>
+        </NuxtLink>
+      </nav>
     </section>
-  </main>
+  </ContentReadingShell>
 </template>

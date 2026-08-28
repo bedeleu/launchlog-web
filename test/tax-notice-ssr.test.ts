@@ -19,6 +19,18 @@ if (!isBuilt && process.env.SSR_TESTS === 'required') {
  */
 const NOTICE = 'SSR probe: prices are in US dollars and are the total amount charged.'
 const PAGES = ['/pricing', '/help', '/terms'] as const
+const CONTENT_PAGES = [
+  '/about',
+  '/contact',
+  '/privacy',
+  '/terms',
+  '/cookies',
+  '/dmca',
+  '/help',
+  '/seo-guide',
+  '/api-docs',
+  '/status',
+] as const
 
 async function waitForServer(base: string, timeoutMs = 60_000): Promise<void> {
   const deadline = Date.now() + timeoutMs
@@ -182,5 +194,25 @@ describe.skipIf(!isBuilt)('tax notice is absent when the variable is empty', () 
     expect(html).not.toContain('border-white/')
     expect(html).not.toContain('linear-gradient')
     expect(html).not.toMatch(/violet|purple|indigo|mauve/i)
+  })
+
+  test.each(CONTENT_PAGES)('%s uses the shared Release Catalog reading shell', async (path) => {
+    const html = await (await fetch(`${base}${path}`)).text()
+    const markup = html.replace(/<script[\s\S]*?<\/script>/g, '')
+
+    expect(html).toContain('data-reading-shell')
+    expect(markup.match(/<h1(?:\s|>)/g)?.length).toBe(1)
+    expect(markup).toContain('border-release-seam')
+    expect(markup).not.toContain('linear-gradient')
+    expect(markup).not.toMatch(/violet|purple|indigo|mauve/i)
+  })
+
+  test('/contact exposes a stable accessible request state', async () => {
+    const html = await (await fetch(`${base}/contact`)).text()
+
+    expect(html).toContain('class="release-field')
+    expect(html).toContain('aria-live="polite"')
+    expect(html).toContain('Human approval required')
+    expect(html).not.toContain('rounded-2xl')
   })
 })

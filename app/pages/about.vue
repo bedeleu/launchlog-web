@@ -152,219 +152,109 @@ useHead({
 </script>
 
 <template>
-  <main class="mx-auto max-w-6xl px-6 py-14 md:py-20">
-    <section class="grid gap-10 md:grid-cols-[1fr_0.65fr] md:items-end">
-      <div>
-        <p class="text-brand-muted text-sm font-semibold uppercase tracking-[0.18em]">
-          About LaunchLog
+  <ContentReadingShell
+    wide
+    label="Institutional record · LaunchLog"
+    title="The log of what just shipped."
+    intro="LaunchLog gives new products a durable public record that people, search engines and compatible machine readers can understand."
+  >
+    <template #meta>
+      <ContentReadingMeta
+        :items="[
+        { label: 'Founder', value: SITE_IDENTITY.founder.name },
+        { label: 'Operator', value: 'AB Solutions' },
+        { label: 'Format', value: 'Curated directory' },
+        ]"
+      />
+    </template>
+
+    <section class="grid border-y border-release-seam lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div class="reading-prose py-9 lg:border-r lg:border-release-seam lg:pr-12">
+        <h2>Visibility through curation, not spam.</h2>
+        <p class="mt-5">
+          A useful launch record explains what shipped, who it helps and why it matters.
+          LaunchLog combines that visible story with canonical metadata, structured data
+          and consistent machine-readable output.
         </p>
-        <h1 class="mt-5 max-w-4xl text-4xl font-bold tracking-normal text-white md:text-6xl">
-          The log of what just shipped.
-        </h1>
-        <p class="text-brand-muted mt-6 max-w-3xl text-lg leading-8">
-          LaunchLog is a curated paid directory for indie makers, SaaS founders
-          and tech launches. It exists to give new products a clean, structured
-          public profile that can be understood by people, search engines and AI
-          answer engines.
+        <p class="mt-5">
+          The result is a real public source that remains useful after launch day instead
+          of another promotional row in a feed.
         </p>
       </div>
-
-      <aside class="border-l border-brand-border pl-6">
-        <p class="text-sm font-semibold text-white">
-          Built by Alexandru Bedeleu
+      <aside class="py-9 lg:pl-10">
+        <p class="release-kicker">Maintained by</p>
+        <h2 class="mt-4 text-2xl font-semibold tracking-tight text-[#f6f1e7]">Alexandru Bedeleu</h2>
+        <p class="mt-4 leading-7 text-release-paper-muted">
+          Full-stack developer and founder of AB Solutions, with 19+ years building
+          production web products, automation systems and discovery software.
         </p>
-        <p class="text-brand-muted mt-3 leading-7">
-          Alexandru is a full-stack developer and founder of AB Solutions, with
-          19+ years of experience building production web products, automation
-          systems and SEO-focused software.
-        </p>
-        <a
-          :href="SITE_IDENTITY.founder.profileUrl"
-          target="_blank"
-          rel="me noopener"
-          class="mt-4 inline-flex text-sm font-medium text-brand-accent transition-colors hover:text-white hover:underline"
-        >
-          Alexandru on LinkedIn
+        <a :href="SITE_IDENTITY.founder.profileUrl" target="_blank" rel="me noopener" class="mt-5 inline-flex font-mono text-xs uppercase tracking-[0.12em] text-release-blaze underline-offset-4 hover:underline">
+          LinkedIn profile ↗
         </a>
       </aside>
     </section>
 
-    <section class="mt-16 grid gap-4 md:grid-cols-3" aria-label="LaunchLog principles">
-      <article
-        v-for="principle in principles"
-        :key="principle.title"
-        class="rounded-lg border border-brand-border bg-white/[0.03] p-6"
-      >
-        <h2 class="text-xl font-semibold text-white">
-          {{ principle.title }}
-        </h2>
-        <p class="text-brand-muted mt-4 leading-7">
-          {{ principle.body }}
-        </p>
-      </article>
-    </section>
-
-    <section class="mt-16 grid gap-10 md:grid-cols-[0.7fr_1fr]">
-      <div>
-        <p class="text-brand-muted text-sm font-semibold uppercase tracking-[0.18em]">
-          What we do
-        </p>
-        <h2 class="mt-4 text-3xl font-bold tracking-normal text-white md:text-4xl">
-          Visibility through curation, not spam.
-        </h2>
-      </div>
-      <div class="space-y-6 text-brand-muted leading-8">
-        <p>
-          Many launch pages are either too thin for search or too promotional
-          for buyers. LaunchLog is built around a different idea: a launch page
-          should describe what shipped, who it helps, why it matters and how it
-          fits into the broader SaaS ecosystem.
-        </p>
-        <p>
-          That is why the platform focuses on human-readable descriptions,
-          structured data, canonical URLs, markdown-friendly summaries and
-          product context that gives search engines and compatible AI systems a
-          consistent public source to parse.
-        </p>
-      </div>
-    </section>
-
-    <section class="mt-16">
-      <div class="max-w-2xl">
-        <p class="text-brand-muted text-sm font-semibold uppercase tracking-[0.18em]">
-          How it works
-        </p>
-        <h2 class="mt-4 text-3xl font-bold tracking-normal text-white md:text-4xl">
-          From submitted product to public launch profile.
-        </h2>
-      </div>
-
-      <div class="mt-8 grid gap-4 md:grid-cols-3">
-        <article
-          v-for="step in steps"
-          :key="step.number"
-          class="rounded-lg border border-brand-border p-6"
-        >
-          <p class="font-mono text-sm text-brand-accent">
-            {{ step.number }}
-          </p>
-          <h3 class="mt-5 text-xl font-semibold text-white">
-            {{ step.title }}
-          </h3>
-          <p class="text-brand-muted mt-4 leading-7">
-            {{ step.body }}
-          </p>
+    <section class="mt-14" aria-label="LaunchLog principles">
+      <p class="release-kicker">Editorial position</p>
+      <div class="mt-5 grid border-t border-l border-release-seam md:grid-cols-3">
+        <article v-for="(principle, index) in principles" :key="principle.title" class="border-r border-b border-release-seam p-6 md:p-7">
+          <p class="font-mono text-[11px] text-release-paper-muted">0{{ index + 1 }}</p>
+          <h2 class="mt-5 text-xl font-semibold tracking-tight text-[#f6f1e7]">{{ principle.title }}</h2>
+          <p class="mt-4 leading-7 text-release-paper-muted">{{ principle.body }}</p>
         </article>
       </div>
     </section>
 
-    <section class="mt-16 grid gap-10 md:grid-cols-[0.7fr_1fr]">
+    <section class="mt-14 grid gap-8 lg:grid-cols-[18rem_minmax(0,1fr)]">
       <div>
-        <p class="text-brand-muted text-sm font-semibold uppercase tracking-[0.18em]">
-          What every listing includes
-        </p>
-        <h2 class="mt-4 text-3xl font-bold tracking-normal text-white md:text-4xl">
-          A real page, not a row in a table.
-        </h2>
+        <p class="release-kicker">Publication path</p>
+        <h2 class="mt-4 text-3xl font-semibold tracking-tight text-[#f6f1e7]">From URL to public record.</h2>
       </div>
-      <div class="grid gap-3 sm:grid-cols-2">
-        <div
-          v-for="item in listingIncludes"
-          :key="item"
-          class="rounded-lg border border-brand-border bg-white/[0.03] p-4 text-sm font-medium text-white"
-        >
-          {{ item }}
-        </div>
-      </div>
+      <ol class="border-t border-release-seam">
+        <li v-for="step in steps" :key="step.number" class="grid gap-3 border-b border-release-seam py-6 sm:grid-cols-[3rem_13rem_minmax(0,1fr)]">
+          <span class="font-mono text-xs text-release-blaze">{{ step.number }}</span>
+          <strong class="text-[#f6f1e7]">{{ step.title }}</strong>
+          <span class="leading-7 text-release-paper-muted">{{ step.body }}</span>
+        </li>
+      </ol>
     </section>
 
-    <section class="mt-16 rounded-lg border border-brand-border bg-white/[0.03] p-6 md:p-8">
-      <div class="grid gap-8 md:grid-cols-[0.55fr_1fr]">
-        <div>
-          <p class="text-brand-muted text-sm font-semibold uppercase tracking-[0.18em]">
-            Editorial standards
-          </p>
-          <h2 class="mt-4 text-3xl font-bold tracking-normal text-white">
-            Clear, useful and defensible.
-          </h2>
-        </div>
-        <ul class="space-y-4">
-          <li
-            v-for="standard in editorialStandards"
-            :key="standard"
-            class="flex gap-3 text-brand-muted"
-          >
-            <span class="mt-2 h-2 w-2 shrink-0 rounded-full bg-brand-success" aria-hidden="true" />
-            <span class="leading-7">{{ standard }}</span>
-          </li>
-        </ul>
+    <section class="mt-14 grid gap-8 lg:grid-cols-[18rem_minmax(0,1fr)]">
+      <div>
+        <p class="release-kicker">Publication contents</p>
+        <h2 class="mt-4 text-3xl font-semibold tracking-tight text-[#f6f1e7]">A page, not a row.</h2>
       </div>
+      <ul class="grid border-t border-l border-release-seam sm:grid-cols-2">
+        <li v-for="item in listingIncludes" :key="item" class="border-r border-b border-release-seam p-5 text-sm font-medium leading-6 text-[#f6f1e7]">{{ item }}</li>
+      </ul>
     </section>
 
-    <section class="mt-16 grid gap-6 md:grid-cols-2">
-      <div class="rounded-lg border border-brand-border p-6">
-        <h2 class="text-2xl font-semibold text-white">
-          For founders
-        </h2>
-        <p class="text-brand-muted mt-4 leading-7">
-          Submit a launch when you want a structured profile for your SaaS,
-          developer tool, AI product or indie project. LaunchLog is best suited
-          for products with a real homepage, a clear audience and a specific
-          problem they solve.
-        </p>
-        <NuxtLink
-          to="/submit"
-          class="mt-6 inline-flex rounded-md bg-brand-accent px-4 py-2 text-sm font-semibold text-white hover:bg-brand-accent/90"
-        >
-          Submit a launch
-        </NuxtLink>
+    <section class="mt-14 grid gap-8 border-y border-release-seam py-10 lg:grid-cols-[18rem_minmax(0,1fr)]">
+      <div>
+        <p class="release-kicker">Editorial standards</p>
+        <h2 class="mt-4 text-3xl font-semibold tracking-tight text-[#f6f1e7]">Clear, useful and defensible.</h2>
       </div>
-
-      <div class="rounded-lg border border-brand-border p-6">
-        <h2 class="text-2xl font-semibold text-white">
-          For readers and crawlers
-        </h2>
-        <p class="text-brand-muted mt-4 leading-7">
-          Browse LaunchLog to find recently shipped SaaS products and understand
-          what each product does without digging through vague landing pages.
-          Every published listing is shaped to be scannable, structured and easy
-          to reference.
-        </p>
-        <NuxtLink
-          to="/browse-all"
-          class="mt-6 inline-flex rounded-md border border-brand-border px-4 py-2 text-sm font-semibold text-white hover:bg-white/[0.04]"
-        >
-          Browse launches
-        </NuxtLink>
-      </div>
+      <ul class="space-y-4">
+        <li v-for="standard in editorialStandards" :key="standard" class="flex gap-4 leading-7 text-release-paper-muted">
+          <span class="mt-2.5 size-2 shrink-0 bg-release-signal" aria-hidden="true" />
+          <span>{{ standard }}</span>
+        </li>
+      </ul>
     </section>
 
-    <section class="mt-16 border-t border-brand-border pt-10">
-      <div class="grid gap-6 md:grid-cols-[1fr_auto] md:items-center">
-        <div>
-          <h2 class="text-3xl font-bold tracking-normal text-white">
-            Ready to list your SaaS launch?
-          </h2>
-          <p class="text-brand-muted mt-4 max-w-2xl leading-7">
-            Choose a listing tier and get a dedicated, structured product page
-            built for discovery across search and AI answer engines.
-          </p>
-        </div>
-        <div class="flex flex-wrap gap-3">
-          <NuxtLink
-            to="/pricing"
-            class="inline-flex rounded-md border border-brand-border px-4 py-2 text-sm font-semibold text-white hover:bg-white/[0.04]"
-          >
-            View pricing
-          </NuxtLink>
-          <NuxtLink
-            to="/submit"
-            class="inline-flex rounded-md bg-brand-accent px-4 py-2 text-sm font-semibold text-white hover:bg-brand-accent/90"
-          >
-            Get started
-          </NuxtLink>
-        </div>
-      </div>
+    <section class="mt-14 grid border-t border-l border-release-seam md:grid-cols-2">
+      <article class="border-r border-b border-release-seam p-7">
+        <p class="release-kicker">For founders</p>
+        <h2 class="mt-4 text-2xl font-semibold tracking-tight text-[#f6f1e7]">Prepare a private release.</h2>
+        <p class="mt-4 max-w-xl leading-7 text-release-paper-muted">Paste a real product homepage. LaunchLog captures the evidence and lets you review everything before publication.</p>
+        <NuxtLink to="/submit" class="release-action mt-6">Preview a launch</NuxtLink>
+      </article>
+      <article class="border-r border-b border-release-seam p-7">
+        <p class="release-kicker">For readers</p>
+        <h2 class="mt-4 text-2xl font-semibold tracking-tight text-[#f6f1e7]">Browse the permanent catalog.</h2>
+        <p class="mt-4 max-w-xl leading-7 text-release-paper-muted">Find recently shipped products through authored records with visible facts and verifiable destinations.</p>
+        <NuxtLink to="/browse-all" class="release-action-secondary mt-6">Browse releases</NuxtLink>
+      </article>
     </section>
-  </main>
+  </ContentReadingShell>
 </template>

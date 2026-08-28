@@ -42,52 +42,39 @@ useHead({
 </script>
 
 <template>
-  <main class="mx-auto max-w-4xl px-6 py-14 md:py-20">
-    <header class="max-w-2xl">
-      <p class="text-sm font-semibold uppercase tracking-[0.18em] text-brand-muted">
-        Status
-      </p>
-      <h1 class="mt-5 text-4xl font-bold tracking-normal text-white md:text-5xl">
-        Service updates
-      </h1>
-      <p class="mt-5 text-lg leading-8 text-brand-muted">
-        This page does not infer live health from the website response. Use the configured
-        channel below for operational and incident information.
-      </p>
-    </header>
-
-    <section v-if="statusPageUrl" class="mt-10 rounded-lg border border-brand-border bg-white/[0.03] p-6 md:p-8">
-      <p class="text-xs font-semibold uppercase tracking-wider text-brand-muted">
-        Configured status page
-      </p>
+  <ContentReadingShell
+    label="Operations record · Status"
+    title="Service updates"
+    intro="This page does not infer live health from the website response. Use the configured channel below for operational and incident information."
+  >
+    <section v-if="statusPageUrl" class="release-panel p-6 md:p-8">
+      <p class="release-kicker">Configured status page</p>
+      <p class="mt-4 max-w-xl leading-7 text-release-paper-muted">Incident history and current service information are published on the dedicated status service.</p>
       <a
         :href="statusPageUrl"
         target="_blank"
         rel="noopener noreferrer"
-        class="mt-4 inline-flex items-center rounded-md bg-brand-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent"
+        class="release-action mt-6"
       >
-        Open service status
-        <span class="ml-2" aria-hidden="true">↗</span>
+        Open service status <span aria-hidden="true">↗</span>
       </a>
     </section>
 
-    <section v-else-if="supportEmail" class="mt-10 rounded-lg border border-brand-border bg-white/[0.03] p-6 md:p-8">
-      <h2 class="text-xl font-semibold text-white">
-        Support channel
-      </h2>
-      <p class="mt-3 leading-7 text-brand-muted">
+    <section v-else-if="supportEmail" class="release-panel p-6 md:p-8">
+      <p class="release-kicker">Fallback route</p>
+      <h2 class="mt-4 text-2xl font-semibold tracking-tight text-[#f6f1e7]">Support channel</h2>
+      <p class="mt-3 leading-7 text-release-paper-muted">
         To report or ask about a service issue, contact
-        <a :href="`mailto:${supportEmail}`" class="font-medium text-brand-accent hover:underline">{{ supportEmail }}</a>.
+        <a :href="`mailto:${supportEmail}`" class="font-medium text-release-blaze underline-offset-4 hover:underline">{{ supportEmail }}</a>.
       </p>
     </section>
 
-    <section v-else class="mt-10 rounded-lg border border-brand-border bg-white/[0.03] p-6 md:p-8">
-      <h2 class="text-xl font-semibold text-white">
-        No public status channel is configured
-      </h2>
-      <p class="mt-3 leading-7 text-brand-muted">
+    <section v-else class="release-panel p-6 md:p-8">
+      <p class="release-kicker">Unavailable</p>
+      <h2 class="mt-4 text-2xl font-semibold tracking-tight text-[#f6f1e7]">No public status channel is configured</h2>
+      <p class="mt-3 leading-7 text-release-paper-muted">
         LaunchLog has not configured a public status-page URL or support mailbox.
       </p>
     </section>
-  </main>
+  </ContentReadingShell>
 </template>

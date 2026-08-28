@@ -208,6 +208,99 @@
 }
 
 @layer components {
+  .release-panel {
+    border: 1px solid var(--release-seam);
+    background: var(--release-rail);
+  }
+
+  .release-kicker {
+    color: var(--release-blaze);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 650;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .release-field {
+    width: 100%;
+    border: 1px solid var(--release-seam);
+    border-radius: 0;
+    background: var(--release-rail);
+    color: #f6f1e7;
+    transition: border-color 150ms ease, background-color 150ms ease;
+  }
+
+  .release-field::placeholder {
+    color: color-mix(in srgb, var(--release-paper-muted) 62%, transparent);
+  }
+
+  .release-field:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--release-paper) 35%, transparent);
+  }
+
+  .release-field:focus-visible {
+    border-color: var(--release-blaze);
+    outline: 2px solid var(--release-focus);
+    outline-offset: 2px;
+  }
+
+  .release-field:disabled {
+    cursor: not-allowed;
+    opacity: 0.62;
+  }
+
+  .release-field[aria-invalid="true"] {
+    border-color: var(--release-blaze);
+  }
+
+  .release-action,
+  .release-action-secondary {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0;
+    padding: 0.7rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+  }
+
+  .release-action {
+    border: 1px solid var(--release-paper);
+    background: var(--release-paper);
+    color: var(--release-ink);
+  }
+
+  .release-action:hover:not(:disabled) {
+    background: #fffaf0;
+  }
+
+  .release-action-secondary {
+    border: 1px solid var(--release-seam);
+    background: transparent;
+    color: #f6f1e7;
+  }
+
+  .release-action-secondary:hover:not(:disabled) {
+    border-color: var(--release-blaze);
+    color: var(--release-blaze);
+  }
+
+  .release-action:focus-visible,
+  .release-action-secondary:focus-visible {
+    outline: 2px solid var(--release-focus);
+    outline-offset: 3px;
+  }
+
+  .release-action:disabled,
+  .release-action-secondary:disabled {
+    cursor: not-allowed;
+    opacity: 0.48;
+  }
+
   .reading-prose {
     color: var(--release-paper-muted);
     font-size: 1.0625rem;

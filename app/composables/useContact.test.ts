@@ -79,6 +79,33 @@ describe('contact request', () => {
     expect(authEvents).toEqual(['ready', 'token'])
   })
 
+  test('coalesces duplicate submissions while the first request is pending', async () => {
+    let releaseRequest: (() => void) | undefined
+    globals.$fetch = (url: string, options?: Record<string, unknown>) => {
+      calls.push({ url, options })
+      return new Promise<void>((resolve) => {
+        releaseRequest = resolve
+      })
+    }
+    const contact = useContact()
+    const payload: ContactRequestPayload = {
+      topic: 'support',
+      name: 'Alex Maker',
+      email: 'alex@example.com',
+      website: '',
+      message: 'Please help with my listing.',
+    }
+
+    const first = contact.sendContactRequest(payload)
+    const duplicate = contact.sendContactRequest(payload)
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(calls).toHaveLength(1)
+    releaseRequest?.()
+    await Promise.all([first, duplicate])
+  })
+
   test('sends only fields the person can see when browser autofill adds metadata', async () => {
     const browserPayload = {
       topic: 'listing_claim' as const,
