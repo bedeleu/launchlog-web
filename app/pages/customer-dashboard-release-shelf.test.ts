@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 const source = readFileSync(fileURLToPath(new URL('./dashboard.vue', import.meta.url)), 'utf8')
+const proofArtifactSource = readFileSync(fileURLToPath(new URL('../components/Listing/ListingReceiptArtifact.vue', import.meta.url)), 'utf8')
 
 describe('customer release shelf', () => {
   test('uses the established Release Catalog shell and proof ledger', () => {
@@ -25,6 +26,12 @@ describe('customer release shelf', () => {
     expect(source).not.toMatch(/indigo|violet|purple|bg-gradient|backdrop-blur/)
     expect(source).not.toContain('rounded-xl')
     expect(source).not.toContain('rounded-full')
+  })
+
+  test('keeps every proof address readable inside the narrow dashboard ledger', () => {
+    expect(proofArtifactSource).not.toContain('sm:flex-row')
+    expect(proofArtifactSource).not.toContain('sm:text-right')
+    expect(proofArtifactSource).toContain('w-full max-w-full break-all')
   })
 
   test('renders stable loading, empty, load-error, save-error, and billing-error states', () => {

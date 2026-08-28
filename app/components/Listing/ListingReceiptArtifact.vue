@@ -18,7 +18,7 @@ const printedUrl = computed(() => props.destination.url.replace(/^https?:\/\//, 
 
 <template>
   <div
-    class="flex flex-col gap-2 py-4 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6"
+    class="flex flex-col gap-2 py-4"
     :data-proof="destination.key"
   >
     <div class="min-w-0">
@@ -31,7 +31,7 @@ const printedUrl = computed(() => props.destination.url.replace(/^https?:\/\//, 
     </div>
     <a
       :href="destination.url"
-      class="min-w-0 shrink-0 break-all font-mono text-xs text-release-blaze underline-offset-4 transition-colors hover:text-[#ff7958] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus focus-visible:ring-offset-2 focus-visible:ring-offset-release-ink sm:max-w-[22rem] sm:text-right"
+      class="w-full max-w-full break-all font-mono text-xs leading-5 text-release-blaze underline-offset-4 transition-colors hover:text-[#ff7958] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus focus-visible:ring-offset-2 focus-visible:ring-offset-release-ink"
     >
       {{ printedUrl }}
     </a>
