@@ -101,70 +101,73 @@ function truncateDescription(value: string): string {
 </script>
 
 <template>
-  <main class="mx-auto max-w-3xl px-6 py-12 md:py-16">
-    <NuxtLink to="/blog" class="text-brand-muted text-sm hover:text-white">
-      Back to blog
-    </NuxtLink>
+  <ContentReadingShell
+    v-if="post"
+    label="Journal dispatch"
+    :title="post.title"
+    :intro="post.excerpt"
+  >
+    <template #meta>
+      <ContentReadingMeta
+        :items="[
+          {
+            label: 'Published',
+            value: new Date(post.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+            datetime: post.date,
+          },
+          { label: 'By', value: post.authorName || 'LaunchLog' },
+          ...(post.categories.length ? [{ label: 'Filed under', value: post.categories.join(', ') }] : []),
+        ]"
+      />
+    </template>
 
-    <article v-if="post" class="mt-8">
-      <header>
-        <time class="text-brand-muted text-sm" :datetime="post.date">
-          {{ new Date(post.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) }}
-        </time>
-        <h1 class="mt-4 text-4xl font-bold tracking-normal text-white md:text-6xl">
-          {{ post.title }}
-        </h1>
-        <p class="text-brand-muted mt-5 text-lg leading-8">
-          {{ post.excerpt }}
-        </p>
-      </header>
+    <article>
+      <NuxtLink
+        to="/blog"
+        class="inline-flex font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-release-blaze hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus"
+      >
+        ← Journal index
+      </NuxtLink>
 
       <img
         v-if="post.featuredImage"
         :src="post.featuredImage"
         :alt="post.featuredImageAlt || post.title"
-        class="mt-10 aspect-[16/9] w-full rounded-lg object-cover"
+        class="mt-8 aspect-[16/9] w-full border border-release-seam object-cover"
       >
 
-      <div class="blog-content mt-10" v-html="post.content" />
+      <div class="blog-content reading-prose mt-10" v-html="post.content" />
 
-      <aside class="border-brand-border mt-14 rounded-xl border bg-white/[0.025] p-6">
-        <p class="text-brand-fg font-semibold">
-          Get your product listed on LaunchLog
+      <aside class="mt-14 border-y border-release-seam py-7">
+        <p class="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-release-blaze">
+          Publish a release record
         </p>
-        <p class="text-brand-muted mt-2 text-sm leading-6">
+        <p class="mt-3 max-w-2xl text-sm leading-6 text-release-paper-muted">
           LaunchLog publishes curated product profiles with schema.org structured data, sitemap
           discovery and machine-readable output alongside the visible page.
         </p>
-        <div class="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold">
-          <NuxtLink to="/submit" class="text-brand-accent hover:underline">
+        <div class="mt-5 flex flex-wrap gap-x-6 gap-y-3 font-mono text-[11px] font-semibold uppercase tracking-[0.1em]">
+          <NuxtLink to="/submit" class="text-release-blaze hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus">
             Submit your product
           </NuxtLink>
-          <NuxtLink to="/pricing" class="text-brand-accent hover:underline">
+          <NuxtLink to="/pricing" class="text-release-paper-muted hover:text-[#f6f1e7] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus">
             See pricing
           </NuxtLink>
-          <NuxtLink to="/browse-all" class="text-brand-accent hover:underline">
+          <NuxtLink to="/browse-all" class="text-release-paper-muted hover:text-[#f6f1e7] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus">
             Browse all listings
           </NuxtLink>
-          <NuxtLink to="/featured" class="text-brand-accent hover:underline">
+          <NuxtLink to="/featured" class="text-release-paper-muted hover:text-[#f6f1e7] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus">
             Featured launches
           </NuxtLink>
         </div>
       </aside>
     </article>
-  </main>
+  </ContentReadingShell>
 </template>
 
 <style scoped>
 .blog-content :deep(*) {
   letter-spacing: 0;
-}
-
-.blog-content :deep(p),
-.blog-content :deep(li) {
-  color: rgb(209 213 219);
-  font-size: 1.0625rem;
-  line-height: 1.85;
 }
 
 .blog-content :deep(p + p),
@@ -177,41 +180,13 @@ function truncateDescription(value: string): string {
 .blog-content :deep(h2),
 .blog-content :deep(h3),
 .blog-content :deep(h4) {
-  color: white;
-  font-weight: 700;
-  line-height: 1.25;
   margin-top: 2rem;
 }
 
-.blog-content :deep(h2) {
-  font-size: 1.875rem;
-}
-
-.blog-content :deep(h3) {
-  font-size: 1.5rem;
-}
-
-.blog-content :deep(a) {
-  color: #818cf8;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
 .blog-content :deep(img) {
-  border-radius: 0.5rem;
+  border: 1px solid var(--release-seam);
+  height: auto;
   margin-top: 1.5rem;
-}
-
-.blog-content :deep(ul),
-.blog-content :deep(ol) {
-  padding-left: 1.5rem;
-}
-
-.blog-content :deep(ul) {
-  list-style: disc;
-}
-
-.blog-content :deep(ol) {
-  list-style: decimal;
+  max-width: 100%;
 }
 </style>

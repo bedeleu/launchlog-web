@@ -44,6 +44,7 @@ const HOSTILE_POST = {
 // smallest corpus that exercises every pagination boundary, including the one WordPress rejects.
 const CORPUS_SIZE = 30
 const PER_PAGE = 24
+const LONG_TITLE = 'A deliberately long catalog dispatch title that must wrap without clipping, overflowing, or hiding its destination'
 
 const buildCorpus = (size: number) => [
   VALID_POST,
@@ -51,7 +52,7 @@ const buildCorpus = (size: number) => [
     ...VALID_POST,
     id: 200 + index,
     slug: `archived-article-${index + 1}`,
-    title: { rendered: `Archived Article ${index + 1}` },
+    title: { rendered: index === 0 ? LONG_TITLE : `Archived Article ${index + 1}` },
   })),
 ]
 
@@ -311,6 +312,18 @@ describe.skipIf(!isBuilt)('/blog SSR', () => {
 
       expect(articleSlugsIn(html)).toHaveLength(PER_PAGE)
       expect(pageLinksIn(html)).toContain(2)
+    })
+
+    test('long titles and missing images stay complete inside the authored dispatch card', async () => {
+      upstreamMode = 'posts'
+
+      const html = await fetch(`${BASE}/blog`).then(response => response.text())
+
+      expect(html).toContain(LONG_TITLE)
+      expect(html).toContain('data-blog-dispatch')
+      expect(html).toContain('data-image-state="missing"')
+      expect(html).toContain('Text dispatch')
+      expect(html).not.toContain('src=""')
     })
 
     test('page 2 renders the remaining posts and links back', async () => {

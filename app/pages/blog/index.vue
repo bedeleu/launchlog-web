@@ -143,64 +143,32 @@ useHead({
 </script>
 
 <template>
-  <main class="mx-auto max-w-6xl px-6 py-14 md:py-20">
-    <header class="max-w-3xl">
-      <p class="text-brand-muted text-sm font-semibold uppercase tracking-[0.18em]">
-        LaunchLog Blog
-      </p>
-      <h1 class="mt-5 text-4xl font-bold tracking-normal text-white md:text-6xl">
-        SaaS launch visibility, written for search and AI discovery.
-      </h1>
-      <p class="text-brand-muted mt-5 text-lg leading-8">
-        Practical notes on indie launches, product directories, schema.org, llms.txt,
-        Google, Bing and answer-engine visibility.
-      </p>
-    </header>
+  <ContentReadingShell
+    :label="`Journal${meta.current_page > 1 ? ` · Page ${meta.current_page}` : ''}`"
+    title="Notes on shipping, discovery, and the public web."
+    intro="Practical dispatches on product launches, directories, structured data, search visibility, and machine-readable publishing."
+    wide
+  >
+    <template #meta>
+      <ContentReadingMeta
+        :items="[
+          { label: 'Archive', value: `${meta.total} articles` },
+          { label: 'Page', value: `${meta.current_page} of ${meta.last_page}` },
+        ]"
+      />
+    </template>
 
     <template v-if="blogPosts.length">
-      <p
-        v-if="meta.last_page > 1"
-        class="text-brand-muted mt-10 text-sm"
-      >
-        Page {{ meta.current_page }} of {{ meta.last_page }} — {{ meta.total }} articles
-      </p>
-
       <section
-        class="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3"
+        class="grid gap-x-6 gap-y-10 md:grid-cols-2"
         aria-label="LaunchLog blog posts"
       >
-        <article
-          v-for="post in blogPosts"
+        <ContentBlogDispatchCard
+          v-for="(post, index) in blogPosts"
           :key="post.id"
-          class="overflow-hidden rounded-lg border border-brand-border bg-white/[0.03]"
-        >
-          <NuxtLink
-            :to="`/blog/${post.slug}`"
-            class="flex h-full flex-col focus:outline-none focus:ring-2 focus:ring-brand-accent"
-          >
-            <img
-              v-if="post.featuredImage"
-              :src="post.featuredImage"
-              :alt="post.featuredImageAlt || post.title"
-              class="aspect-[16/9] w-full object-cover"
-              loading="lazy"
-            >
-            <div class="flex flex-1 flex-col p-6">
-              <time class="text-brand-muted text-sm" :datetime="post.date">
-                {{ new Date(post.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) }}
-              </time>
-              <h2 class="mt-3 text-2xl font-semibold leading-tight text-white">
-                {{ post.title }}
-              </h2>
-              <p class="text-brand-muted mt-4 line-clamp-3 leading-7">
-                {{ post.excerpt }}
-              </p>
-              <span class="mt-6 inline-flex text-sm font-semibold text-brand-accent">
-                Read article
-              </span>
-            </div>
-          </NuxtLink>
-        </article>
+          :post="post"
+          :sequence="itemOffset + index + 1"
+        />
       </section>
 
       <!--
@@ -211,7 +179,7 @@ useHead({
       -->
       <nav
         v-if="meta.last_page > 1"
-        class="mt-12 flex flex-wrap items-center justify-center gap-2"
+        class="mt-14 flex flex-wrap items-center justify-center gap-2 border-t border-release-seam pt-8"
         aria-label="Blog archive pagination"
       >
         <NuxtLink
@@ -219,14 +187,14 @@ useHead({
           :to="pagePath(meta.current_page - 1)"
           rel="prev"
           aria-current-value="false"
-          class="inline-flex h-11 items-center justify-center rounded-md border border-brand-border px-4 text-sm font-medium text-brand-muted transition-colors hover:border-white/20 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2 focus-visible:ring-offset-brand-bg"
+          class="inline-flex h-11 items-center justify-center border border-release-seam px-4 font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-release-paper-muted hover:border-release-paper-muted hover:text-[#f6f1e7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-release-focus"
         >
           Previous
         </NuxtLink>
         <span
           v-else
           aria-disabled="true"
-          class="inline-flex h-11 cursor-not-allowed items-center justify-center rounded-md border border-brand-border px-4 text-sm font-medium text-brand-muted/40"
+          class="inline-flex h-11 cursor-not-allowed items-center justify-center border border-release-seam px-4 font-mono text-[11px] uppercase tracking-[0.1em] text-release-paper-muted opacity-40"
         >
           Previous
         </span>
@@ -234,7 +202,7 @@ useHead({
         <template v-for="(page, index) in pageNumbers" :key="page">
           <span
             v-if="index > 0 && pageNumbers[index - 1] !== page - 1"
-            class="text-brand-muted px-1 text-sm"
+            class="px-1 text-sm text-release-paper-muted"
             aria-hidden="true"
           >
             …
@@ -242,7 +210,7 @@ useHead({
           <span
             v-if="page === meta.current_page"
             aria-current="page"
-            class="inline-flex size-11 items-center justify-center rounded-md border border-brand-accent bg-brand-accent text-sm font-semibold text-white"
+            class="inline-flex size-11 items-center justify-center border border-release-blaze bg-release-blaze font-mono text-xs font-semibold text-release-ink"
           >
             {{ page }}
           </span>
@@ -251,7 +219,7 @@ useHead({
             :to="pagePath(page)"
             :aria-label="`Go to page ${page}`"
             aria-current-value="false"
-            class="inline-flex size-11 items-center justify-center rounded-md border border-brand-border text-sm font-medium text-brand-muted transition-colors hover:border-white/20 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2 focus-visible:ring-offset-brand-bg"
+            class="inline-flex size-11 items-center justify-center border border-release-seam font-mono text-xs text-release-paper-muted hover:border-release-paper-muted hover:text-[#f6f1e7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-release-focus"
           >
             {{ page }}
           </NuxtLink>
@@ -262,14 +230,14 @@ useHead({
           :to="pagePath(meta.current_page + 1)"
           rel="next"
           aria-current-value="false"
-          class="inline-flex h-11 items-center justify-center rounded-md border border-brand-border px-4 text-sm font-medium text-brand-muted transition-colors hover:border-white/20 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2 focus-visible:ring-offset-brand-bg"
+          class="inline-flex h-11 items-center justify-center border border-release-seam px-4 font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-release-paper-muted hover:border-release-paper-muted hover:text-[#f6f1e7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-release-focus"
         >
           Next
         </NuxtLink>
         <span
           v-else
           aria-disabled="true"
-          class="inline-flex h-11 cursor-not-allowed items-center justify-center rounded-md border border-brand-border px-4 text-sm font-medium text-brand-muted/40"
+          class="inline-flex h-11 cursor-not-allowed items-center justify-center border border-release-seam px-4 font-mono text-[11px] uppercase tracking-[0.1em] text-release-paper-muted opacity-40"
         >
           Next
         </span>
@@ -277,8 +245,8 @@ useHead({
     </template>
 
     <!-- Only a resolved-but-empty archive is "nothing published"; a failure is handled above. -->
-    <p v-else-if="!error" class="text-brand-muted mt-12">
+    <p v-else-if="!error" class="border-l-2 border-release-blaze bg-release-rail px-5 py-4 text-release-paper-muted">
       No articles published yet.
     </p>
-  </main>
+  </ContentReadingShell>
 </template>
