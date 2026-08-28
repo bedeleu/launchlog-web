@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { Check, ChevronDown, ExternalLink, FileText, ImageOff } from '@lucide/vue'
+import { Check, ExternalLink, FileText, ImageOff } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
+import { ReleaseSelect } from '@/components/ui/select'
 import type { AdminCategory, AdminListing } from '~/composables/useAdminListings'
 import { buildAdminListingUpdate, isAdminListingDirty } from '~/utils/admin-listing-editor'
 
@@ -31,6 +32,10 @@ const inputClass = 'w-full border border-release-seam bg-release-ink px-3.5 py-2
 const statusLabel = computed(() => (props.initial?.status ?? 'draft').replaceAll('_', ' '))
 const sourceLabel = computed(() => (props.initial?.source ?? 'admin').replaceAll('_', ' '))
 const isDirty = computed(() => isAdminListingDirty(props.initial, form))
+const categoryOptions = computed(() => [
+  { value: '', label: 'Uncategorized' },
+  ...props.categories.map(category => ({ value: category.id, label: category.name })),
+])
 
 function onSubmit() {
   if (props.submitting || !isDirty.value) return
@@ -81,15 +86,12 @@ function onSubmit() {
         <div class="grid gap-5 sm:grid-cols-2">
           <label class="grid gap-2 text-sm">
             <span class="font-medium text-release-paper">Category</span>
-            <span class="relative">
-              <select v-model="form.primary_category_id" :class="`${inputClass} appearance-none pr-9`">
-                <option value="">Uncategorized</option>
-                <option v-for="category in categories" :key="category.id" :value="category.id">
-                  {{ category.name }}
-                </option>
-              </select>
-              <ChevronDown class="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-release-paper-muted" aria-hidden="true" />
-            </span>
+            <ReleaseSelect
+              v-model="form.primary_category_id"
+              label="Category"
+              :options="categoryOptions"
+              placeholder="Uncategorized"
+            />
             <span class="text-xs leading-5 text-release-paper-muted">The grounded draft selects from the existing taxonomy; override only when needed.</span>
           </label>
 

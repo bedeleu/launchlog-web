@@ -215,7 +215,7 @@ useHead({
         >
           <IntakePreviewForm stacked />
           <ReleaseStateMarker
-            state="success"
+            state="active"
             label="Human approval"
             detail="Nothing publishes until you review it."
           />

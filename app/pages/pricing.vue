@@ -227,7 +227,7 @@ useFaqSchema(faqs.map(f => ({ q: f.question, a: f.answer })))
             <p class="font-mono text-[0.62rem] font-semibold tracking-[0.16em] text-release-warning uppercase">Tax notice</p>
             <p class="mt-2 text-sm leading-6 text-release-paper-muted">{{ taxNotice }}</p>
           </div>
-          <ReleaseStateMarker state="success" label="Private preview" detail="Nothing publishes until you approve it." />
+          <ReleaseStateMarker state="active" label="Private preview" detail="Nothing publishes until you approve it." />
           <template #footer>
             <NuxtLink to="/" class="inline-flex min-h-12 w-full items-center justify-between border border-release-paper bg-release-paper px-4 font-mono text-xs font-semibold tracking-[0.08em] text-release-ink uppercase transition-colors hover:border-release-warning hover:bg-release-warning focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus">
               Generate preview

@@ -6,7 +6,9 @@ const read = (path: string) => readFileSync(fileURLToPath(new URL(path, import.m
 
 const createPage = read('./admin/listings/new.vue')
 const editPage = read('./admin/listings/[id].vue')
+const listingsPage = read('./admin/listings/index.vue')
 const form = read('../components/Admin/ListingForm.vue')
+const releaseSelect = read('../components/ui/select/ReleaseSelect.vue')
 
 describe('Release Catalog admin listing flow', () => {
   test('keeps creation URL-first through the shared onboarding', () => {
@@ -31,9 +33,16 @@ describe('Release Catalog admin listing flow', () => {
   })
 
   test('authors selection controls instead of leaking browser or Unicode defaults', () => {
-    expect(form).toContain('<ChevronDown')
+    expect(form).toContain('<ReleaseSelect')
     expect(form).toContain('class="peer sr-only"')
     expect(form).toContain('<Check v-if=')
+    expect(form).not.toContain('<select')
+    expect(listingsPage).not.toContain('<select')
+    expect(releaseSelect).toContain('release-select-overlay')
+    expect(releaseSelect).toContain('role="listbox"')
+    expect(releaseSelect).toContain('role="option"')
+    expect(releaseSelect).toContain('bg-release-warning text-release-ink')
+    expect(releaseSelect).toContain('<ChevronDown')
     expect(form).not.toContain('>⌄</span>')
     expect(form).not.toContain('accent-release')
   })

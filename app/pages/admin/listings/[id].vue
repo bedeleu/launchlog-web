@@ -206,7 +206,7 @@ onMounted(load)
             @submit="onSubmit"
           >
             <template #actions>
-              <Button v-if="listing.status !== 'published'" type="button" variant="outline" class="rounded-none border-release-seam bg-release-ink font-mono text-xs text-release-paper hover:border-release-signal hover:bg-release-rail hover:text-release-signal" :disabled="submitting || !!actionBusy" @click="act('publish')">
+              <Button v-if="listing.status !== 'published'" type="button" variant="outline" class="rounded-none border-release-seam bg-release-ink font-mono text-xs text-release-paper hover:border-release-warning hover:bg-release-rail hover:text-release-warning" :disabled="submitting || !!actionBusy" @click="act('publish')">
                 <AppSpinner v-if="actionBusy === 'publish'" class="mr-1.5" size="sm" color="text-current" label="Publishing listing" />
                 {{ actionBusy === 'publish' ? 'Publishing…' : 'Publish' }}
               </Button>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ChevronDown } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
+import { ReleaseSelect } from '@/components/ui/select'
 import type { AdminListing, AdminListingFilters, AdminListingPaginationMeta, FounderScreenshotStatus, ListingStatus } from '~/composables/useAdminListings'
 import { toErrorLike } from '~/utils/error-like'
 
@@ -30,6 +30,32 @@ const screenshotStatus = ref<FounderScreenshotStatus | null>(null)
 const screenshotBusy = ref(false)
 const screenshotMessage = ref<string | null>(null)
 let loadRequestId = 0
+
+const statusOptions = [
+  { value: '', label: 'All' },
+  { value: 'published', label: 'Published' },
+  { value: 'pending_review', label: 'Pending review' },
+  { value: 'draft', label: 'Draft' },
+  { value: 'rejected', label: 'Rejected' },
+  { value: 'archived', label: 'Archived' },
+]
+const tierOptions = [
+  { value: '', label: 'All' },
+  { value: 'basic', label: 'Standard' },
+  { value: 'featured', label: 'Featured' },
+]
+const sourceOptions = [
+  { value: '', label: 'All' },
+  { value: 'founding', label: 'Founding' },
+  { value: 'customer', label: 'Customer' },
+  { value: 'admin', label: 'Admin' },
+  { value: 'seed', label: 'Seed' },
+]
+
+function applyFilter(key: 'status' | 'tier' | 'source', value: string) {
+  filters[key] = value
+  load(1)
+}
 
 const statusClass: Record<ListingStatus, string> = {
   published: 'border-release-blaze/40 bg-release-blaze/10 text-release-blaze',
@@ -190,41 +216,33 @@ onMounted(async () => {
     <div class="mt-6 flex flex-wrap items-end gap-3">
       <label class="flex flex-col gap-1 text-xs text-release-paper-muted">
         Status
-        <span class="relative">
-          <select v-model="filters.status" class="release-field h-10 min-w-36 appearance-none px-3 pr-9 text-sm" @change="load(1)">
-            <option value="">All</option>
-            <option value="published">Published</option>
-            <option value="pending_review">Pending review</option>
-            <option value="draft">Draft</option>
-            <option value="rejected">Rejected</option>
-            <option value="archived">Archived</option>
-          </select>
-          <ChevronDown class="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2" aria-hidden="true" />
-        </span>
+        <ReleaseSelect
+          :model-value="filters.status"
+          label="Filter by status"
+          :options="statusOptions"
+          class="min-w-36"
+          @update:model-value="applyFilter('status', $event)"
+        />
       </label>
       <label class="flex flex-col gap-1 text-xs text-release-paper-muted">
         Tier
-        <span class="relative">
-          <select v-model="filters.tier" class="release-field h-10 min-w-32 appearance-none px-3 pr-9 text-sm" @change="load(1)">
-            <option value="">All</option>
-            <option value="basic">Standard</option>
-            <option value="featured">Featured</option>
-          </select>
-          <ChevronDown class="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2" aria-hidden="true" />
-        </span>
+        <ReleaseSelect
+          :model-value="filters.tier"
+          label="Filter by tier"
+          :options="tierOptions"
+          class="min-w-32"
+          @update:model-value="applyFilter('tier', $event)"
+        />
       </label>
       <label class="flex flex-col gap-1 text-xs text-release-paper-muted">
         Source
-        <span class="relative">
-          <select v-model="filters.source" class="release-field h-10 min-w-32 appearance-none px-3 pr-9 text-sm" @change="load(1)">
-            <option value="">All</option>
-            <option value="founding">Founding</option>
-            <option value="customer">Customer</option>
-            <option value="admin">Admin</option>
-            <option value="seed">Seed</option>
-          </select>
-          <ChevronDown class="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2" aria-hidden="true" />
-        </span>
+        <ReleaseSelect
+          :model-value="filters.source"
+          label="Filter by source"
+          :options="sourceOptions"
+          class="min-w-32"
+          @update:model-value="applyFilter('source', $event)"
+        />
       </label>
       <label class="flex flex-1 flex-col gap-1 text-xs text-release-paper-muted">
         Search
