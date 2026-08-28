@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Search, X } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import type { ListingPage } from '~/composables/useListings'
 import { parseCanonicalPageParam } from '~/utils/pagination'
 
@@ -175,27 +176,24 @@ useBreadcrumbs([
 </script>
 
 <template>
-  <main class="mx-auto max-w-6xl px-6 py-12 lg:py-16">
-    <header class="max-w-2xl">
-      <h1 class="text-4xl font-bold tracking-tight text-brand-fg lg:text-5xl">
-        Browse all
-      </h1>
-      <p class="mt-3 text-lg text-brand-muted">
-        Every product on LaunchLog — the log of what just shipped.
-      </p>
-    </header>
-
-    <!-- Filters -->
-    <div class="mt-8 space-y-4">
+  <ReleaseShell
+    eyebrow="Catalog · all releases"
+    title="Browse all"
+    description="Every product on LaunchLog — the log of what just shipped."
+  >
+    <!-- The reading filters sit above the sheet on their own register, so the
+         catalog below them starts on a clean rule. -->
+    <div class="space-y-4 border-b border-release-seam pb-6">
       <form class="flex max-w-md items-center gap-2" @submit.prevent="submitSearch">
         <div class="relative flex-1">
-          <Search class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-brand-muted" />
-          <input
+          <Search class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-release-paper-muted" />
+          <Input
             v-model="search"
             type="search"
+            aria-label="Search products"
             placeholder="Search products…"
-            class="h-11 w-full rounded-md border border-brand-border bg-white/[0.02] pl-9 pr-3 text-sm text-brand-fg outline-none transition-colors placeholder:text-brand-muted focus:border-brand-accent/50"
-          >
+            class="h-11 pl-9"
+          />
         </div>
         <Button type="submit" variant="outline" size="lg">
           Search
@@ -203,48 +201,53 @@ useBreadcrumbs([
       </form>
 
       <div class="flex flex-wrap items-center gap-2">
-        <button
+        <!-- Category chips are the catalog's own register type: the selected
+             chip inverts to paper rather than lighting up in an accent the
+             directory reserves for action. -->
+        <Button
           type="button"
-          class="rounded-full border px-3 py-1 text-sm transition-colors"
-          :class="!activeCategory
-            ? 'border-emerald-400/45 bg-emerald-400/10 text-emerald-300'
-            : 'border-brand-border text-brand-muted hover:border-white/20 hover:text-brand-fg'"
+          size="sm"
+          :variant="!activeCategory ? 'default' : 'outline'"
+          class="font-mono text-[0.68rem] tracking-[0.14em] uppercase"
           @click="setCategory('')"
         >
           All
-        </button>
-        <button
+        </Button>
+        <Button
           v-for="cat in categories"
           :key="cat.slug"
           type="button"
-          class="rounded-full border px-3 py-1 text-sm transition-colors"
-          :class="activeCategory === cat.slug
-            ? 'border-emerald-400/45 bg-emerald-400/10 text-emerald-300'
-            : 'border-brand-border text-brand-muted hover:border-white/20 hover:text-brand-fg'"
+          size="sm"
+          :variant="activeCategory === cat.slug ? 'default' : 'outline'"
+          class="font-mono text-[0.68rem] tracking-[0.14em] uppercase"
           @click="setCategory(cat.slug)"
         >
           {{ cat.name }}
-        </button>
+        </Button>
 
-        <!-- Clear filters sits inline with the pills so toggling a filter never
+        <!-- Clear filters sits inline with the chips so toggling a filter never
              pushes a new row in and grows the layout. -->
-        <button
+        <Button
           v-if="hasFilters"
           type="button"
-          class="ml-1 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-sm text-emerald-300 transition-colors hover:text-brand-fg"
+          size="sm"
+          variant="link"
+          class="font-mono text-[0.68rem] tracking-[0.14em] uppercase"
           @click="clearFilters"
         >
           <X class="size-3.5" /> Clear filters
-        </button>
+        </Button>
       </div>
     </div>
 
-    <!-- Grid -->
-    <div v-if="pageError" class="mt-16 rounded-2xl border border-red-400/20 bg-red-400/[0.05] py-16 text-center">
-      <p class="text-lg font-medium text-brand-fg">
+    <div
+      v-if="pageError"
+      class="mt-8 border border-release-destructive/40 bg-release-destructive/10 px-6 py-14 text-center"
+    >
+      <p class="text-lg font-medium text-[#f6f1e7]">
         Listings are temporarily unavailable
       </p>
-      <p class="mx-auto mt-2 max-w-sm text-brand-muted">
+      <p class="mx-auto mt-2 max-w-sm text-release-paper-muted">
         The directory could not be loaded. Please try again.
       </p>
       <Button class="mt-6" variant="outline" @click="() => refreshPage()">
@@ -253,7 +256,9 @@ useBreadcrumbs([
     </div>
 
     <template v-else-if="listings.length">
-      <div class="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-brand-muted">
+      <!-- The sheet's own register: a slot-aware page returns a variable record
+           count, so the range and the page position are stated, not implied. -->
+      <div class="mt-7 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-b border-release-seam pb-3 font-mono text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-release-paper-muted">
         <span>
           Showing {{ meta.from }}–{{ meta.to }} of {{ meta.total }} products
         </span>
@@ -266,76 +271,36 @@ useBreadcrumbs([
            page that happens to hold only Basic listings renders as the ordinary
            three-column grid anyway. -->
       <ListingGrid
-        class="mt-5"
+        class="mt-7"
         :listings="listings"
         mode="mixed"
         heading-level="h2"
       />
 
-      <nav
-        v-if="meta.last_page > 1"
-        class="mt-10 flex flex-wrap items-center justify-center gap-2"
-        aria-label="Browse pagination"
-      >
-        <Button v-if="meta.current_page <= 1" variant="outline" disabled>
-          Previous
-        </Button>
-        <Button v-else as-child variant="outline">
-          <NuxtLink :to="browsePageLocation(meta.current_page - 1)" rel="prev">
-            Previous
-          </NuxtLink>
-        </Button>
-        <template v-for="(page, index) in pageNumbers" :key="page">
-          <span
-            v-if="index > 0 && pageNumbers[index - 1] !== page - 1"
-            class="px-1 text-sm text-brand-muted"
-            aria-hidden="true"
-          >
-            …
-          </span>
-          <span
-            v-if="page === meta.current_page"
-            class="flex size-10 items-center justify-center rounded-md border text-sm font-medium transition-colors"
-            :class="'border-emerald-400 bg-emerald-400 text-slate-950'"
-            aria-current="page"
-          >
-            {{ page }}
-          </span>
-          <NuxtLink
-            v-else
-            :to="browsePageLocation(page)"
-            class="flex size-10 items-center justify-center rounded-md border border-brand-border text-sm font-medium text-brand-muted transition-colors hover:border-white/20 hover:text-brand-fg"
-          >
-            {{ page }}
-          </NuxtLink>
-        </template>
-        <Button v-if="meta.current_page >= meta.last_page" variant="outline" disabled>
-          Next
-        </Button>
-        <Button v-else as-child variant="outline">
-          <NuxtLink :to="browsePageLocation(meta.current_page + 1)" rel="next">
-            Next
-          </NuxtLink>
-        </Button>
-      </nav>
+      <ListingPagination
+        :current-page="meta.current_page"
+        :last-page="meta.last_page"
+        :pages="pageNumbers"
+        :to="browsePageLocation"
+        label="Browse pagination"
+      />
     </template>
 
-    <!-- Empty state -->
-    <div v-else class="mt-16 rounded-2xl border border-brand-border bg-white/[0.02] py-20 text-center">
-      <p class="text-lg font-medium text-brand-fg">
+    <div v-else class="mt-8 border border-release-seam bg-release-rail px-6 py-16 text-center">
+      <p class="text-lg font-medium text-[#f6f1e7]">
         No listings match
       </p>
-      <p class="mx-auto mt-2 max-w-sm text-brand-muted">
+      <p class="mx-auto mt-2 max-w-sm text-release-paper-muted">
         Try a different category or search term.
       </p>
-      <button
+      <Button
         v-if="hasFilters"
-        type="button"
-        class="mt-6 inline-flex items-center gap-1.5 text-sm font-medium text-emerald-300 transition-colors hover:text-brand-fg"
+        class="mt-6"
+        variant="outline"
         @click="clearFilters"
       >
         <X class="size-4" /> Clear filters
-      </button>
+      </Button>
     </div>
-  </main>
+  </ReleaseShell>
 </template>

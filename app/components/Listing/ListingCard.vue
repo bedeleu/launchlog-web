@@ -138,6 +138,16 @@ const headingClass = computed(() => {
   return 'truncate tracking-[-0.02em]'
 })
 
+/**
+ * The obi splits into two columns only once the card is actually wide enough to
+ * hold both halves — the same breakpoint at which its layout splits. Splitting
+ * earlier stranded a three-line register beside a single-line descriptor at 768.
+ */
+const obiSplitClass = computed(() =>
+  isSpotlight.value
+    ? 'md:flex-row md:items-baseline md:justify-between md:gap-x-4'
+    : 'lg:flex-row lg:items-baseline lg:justify-between lg:gap-x-4')
+
 const taglineClass = computed(() => {
   if (isDirectorySpotlight.value) return 'line-clamp-4 text-sm leading-6'
   // Homepage spotlights have enough width for the larger editorial treatment.
@@ -228,7 +238,8 @@ const taglineClass = computed(() => {
          390px flex-wrap dropped the descriptor onto an accidental second row. -->
     <div
       v-if="isPriorityPlacement && hasRegisterLine"
-      class="flex flex-col gap-y-1 border-t border-release-paper/40 bg-release-paper px-5 py-3 font-mono text-xs leading-5 text-release-ink/80 sm:flex-row sm:items-baseline sm:justify-between sm:gap-x-4 md:px-6"
+      class="flex flex-col gap-y-1 border-t border-release-paper/40 bg-release-paper px-5 py-3 font-mono text-xs leading-5 text-release-ink/80 md:px-6"
+      :class="obiSplitClass"
     >
       <p class="min-w-0 break-words">
         <span class="whitespace-nowrap font-semibold uppercase tracking-[0.3em] text-release-ink">{{ listing.tier }}</span>

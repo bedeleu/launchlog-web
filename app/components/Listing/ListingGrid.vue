@@ -85,12 +85,12 @@ const compactedContext = computed(() => new Set(
            each card's own register carries the tier truth there instead. -->
       <p
         v-if="segment.register"
-        class="mb-4 hidden border-b border-white/10 pb-2.5 font-mono text-xs font-medium uppercase tracking-[0.22em] text-brand-fg lg:block"
+        class="mb-4 hidden border-b border-release-seam pb-2.5 font-mono text-xs font-medium uppercase tracking-[0.22em] text-release-paper lg:block"
       >
         Featured launches
       </p>
 
-      <div v-else-if="index > 0" class="mb-6 mt-6 border-t border-white/10" />
+      <div v-else-if="index > 0" class="mb-6 mt-6 border-t border-release-seam" />
 
       <div class="grid auto-rows-auto grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         <component

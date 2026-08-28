@@ -101,6 +101,16 @@ describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
           })
         }
 
+        // page=2 simulates a middle page of a real multi-page archive so the
+        // suite can prove the previous/next contract and the self-canonical.
+        // Matched on the parsed parameter: 'per_page=24' contains 'page=2'.
+        if (url.searchParams.get('page') === '2') {
+          return Response.json({
+            data: LISTINGS,
+            meta: { ...DIRECTORY_META, current_page: 2, last_page: 3, from: 29, to: 56, total: 84 },
+          })
+        }
+
         // page=5 simulates a deep page whose plan holds no Featured records, so
         // the suite can prove the register renders only when Featured exists.
         if (request.url.includes('page=5')) {
@@ -272,6 +282,79 @@ describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
       expect(url).toContain('view=directory')
       expect(url).toContain('sort=priority')
       expect(url).not.toContain('per_page')
+    }
+  })
+
+  test('the archive states its record range and page position', async () => {
+    const html = await fetch(`${BASE}/browse-all`).then(response => response.text())
+
+    // The count row is the reader's only proof that a slot-aware page returned a
+    // variable record count; the restyle changes its material, never its facts.
+    expect(html).toContain('Showing 1\u201328 of 28 products')
+    expect(html).toContain('Page 1 of 1')
+  })
+
+  test('a numbered page links backwards and forwards without losing the archive', async () => {
+    const html = await fetch(`${BASE}/browse-all?page=2`).then(response => response.text())
+
+    expect(html).toContain('Showing 29\u201356 of 84 products')
+    expect(html).toContain('Page 2 of 3')
+    // Page 1 drops the query so the archive has exactly one page-1 URL.
+    expect(html).toContain('href="/browse-all"')
+    expect(html).toContain('href="/browse-all?page=3"')
+    expect(html).toContain('rel="prev"')
+    expect(html).toContain('rel="next"')
+    // Self-canonical: a numbered page is its own indexable URL.
+    expect(html).toContain('https://launchlog.ai/browse-all?page=2')
+  })
+
+  test('every record on a numbered page stays reachable through a real archive link', async () => {
+    const html = await fetch(`${BASE}/browse-all?page=2`).then(response => response.text())
+
+    expect(html.match(/href="\/listing\//g) ?? []).toHaveLength(LISTINGS.length)
+    expect(html).not.toContain('<NuxtLink')
+  })
+
+  test('a non-canonical page parameter collapses to the base archive and is not indexed', async () => {
+    const html = await fetch(`${BASE}/browse-all?page=01`).then(response => response.text())
+
+    expect(html).toContain('noindex, follow')
+    expect(html).toContain('https://launchlog.ai/browse-all"')
+    // No paginated canonical, and no rel=prev/next off a URL that is not part
+    // of the canonical sequence.
+    expect(html).not.toContain('https://launchlog.ai/browse-all?page=')
+  })
+
+  test('a filtered archive stays crawlable but is not indexed', async () => {
+    const html = await fetch(`${BASE}/browse-all?category=saas`).then(response => response.text())
+
+    expect(html).toContain('noindex, follow')
+    expect(html).toContain('https://launchlog.ai/browse-all"')
+    expect(html.match(/href="\/listing\//g) ?? []).toHaveLength(LISTINGS.length)
+  })
+
+  test('the archive chrome carries no retired pill, accent or surface language', async () => {
+    for (const path of ['/browse-all', '/tech-products', '/featured']) {
+      const html = await fetch(`${BASE}${path}`).then(response => response.text())
+
+      expect(html).not.toContain('rounded-full')
+      expect(html).not.toContain('rounded-2xl')
+      expect(html).not.toContain('emerald-')
+      expect(html).not.toContain('bg-white/[')
+      expect(html).not.toContain('border-white/')
+      expect(html).not.toContain('bg-primary')
+      expect(html).not.toContain('linear-gradient')
+      expect(html).not.toMatch(/violet|purple|indigo|mauve/i)
+    }
+  })
+
+  test('the archive is composed from Release Catalog materials', async () => {
+    for (const path of ['/browse-all', '/tech-products', '/featured']) {
+      const html = await fetch(`${BASE}${path}`).then(response => response.text())
+
+      expect(html).toContain('border-release-seam')
+      expect(html).toContain('bg-release-ink')
+      expect(html).toContain('text-release-blaze')
     }
   })
 

@@ -96,3 +96,14 @@ describe('missing capture fallback', () => {
     expect(fallback).toContain('Website capture unavailable')
   })
 })
+
+describe('obi responsive split', () => {
+  test('splits into two columns only where the card is actually wide enough', () => {
+    // The directory Featured card becomes double-width at lg; the homepage
+    // spotlight at md. Splitting at sm stranded a three-line register beside a
+    // one-line descriptor on a single-column card at 768.
+    expect(source).toContain('md:flex-row md:items-baseline md:justify-between md:gap-x-4')
+    expect(source).toContain('lg:flex-row lg:items-baseline lg:justify-between lg:gap-x-4')
+    expect(source).not.toContain('sm:flex-row sm:items-baseline sm:justify-between sm:gap-x-4')
+  })
+})
