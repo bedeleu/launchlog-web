@@ -15,6 +15,10 @@ interface ReceiptLinks {
   llms_url: string
 }
 
+interface ReceiptWithChecks extends ReceiptLinks {
+  checks: Record<'published' | 'schema' | 'markdown' | 'llms', boolean>
+}
+
 export function receiptArtifactUrl(receipt: ReceiptLinks, row: typeof receiptRows[number]): string {
   if (row.key === 'schema') return receipt.schema_url ?? `${receipt.public_url}/schema`
   if (row.key === 'markdown' && receipt.markdown_url === receipt.public_url) {
@@ -46,6 +50,28 @@ export interface ListingProofDestination {
   url: string
 }
 
+const proofDescriptions: Record<ListingProofDestination['key'], string> = {
+  published: 'The canonical HTML page people and crawlers can open.',
+  schema: 'The same release facts as a standalone schema.org graph.',
+  markdown: 'The same release facts as a direct Markdown representation.',
+  llms: 'The site-wide machine-readable feed that includes this release.',
+}
+
+export function receiptProofDestinations(receipt: ReceiptWithChecks): ListingProofDestination[] {
+  return receiptRows.map(row => ({
+    key: row.key,
+    label: row.key === 'published'
+      ? 'Public page'
+      : row.key === 'markdown'
+        ? 'Markdown representation'
+        : row.key === 'llms'
+          ? 'Discovery feed'
+          : row.label,
+    description: proofDescriptions[row.key],
+    url: receiptArtifactUrl(receipt, row),
+  }))
+}
+
 export function listingProofDestinations(siteUrl: string, slug: string): ListingProofDestination[] {
   const publicUrl = `${siteUrl}/listing/${slug}`
 
@@ -53,25 +79,25 @@ export function listingProofDestinations(siteUrl: string, slug: string): Listing
     {
       key: 'published',
       label: 'Public page',
-      description: 'This record, served as HTML at its own canonical address.',
+      description: proofDescriptions.published,
       url: publicUrl,
     },
     {
       key: 'schema',
       label: 'Structured data',
-      description: 'The same facts as a schema.org graph document.',
+      description: proofDescriptions.schema,
       url: `${publicUrl}/schema`,
     },
     {
       key: 'markdown',
       label: 'Markdown representation',
-      description: 'The same facts as Markdown, also returned on the page URL with Accept: text/markdown.',
+      description: proofDescriptions.markdown,
       url: `${publicUrl}/markdown`,
     },
     {
       key: 'llms',
       label: 'Discovery feed',
-      description: 'The site-wide machine-readable feed this release is listed in.',
+      description: proofDescriptions.llms,
       url: `${siteUrl}/llms-full.txt`,
     },
   ]

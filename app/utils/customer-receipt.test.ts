@@ -72,3 +72,28 @@ test('names each artifact by what it is, not by an AI framing', () => {
     'Discovery feed',
   ])
 })
+
+test('builds the customer shelf ledger from the receipt URLs returned by the API', () => {
+  const receiptProofDestinations = (customerReceipt as unknown as {
+    receiptProofDestinations: (receipt: Record<string, unknown>) => Array<{ key: string, label: string, url: string }>
+  }).receiptProofDestinations
+
+  expect(receiptProofDestinations).toBeFunction()
+
+  const destinations = receiptProofDestinations({
+    public_url: 'https://launchlog.ai/listing/acme',
+    schema_url: 'https://launchlog.ai/listing/acme/schema',
+    markdown_url: 'https://launchlog.ai/listing/acme/markdown',
+    sitemap_url: 'https://launchlog.ai/sitemap.xml',
+    llms_url: 'https://launchlog.ai/llms-full.txt',
+    checks: { published: true, schema: true, markdown: true, llms: true },
+  })
+
+  expect(destinations.map(item => item.url)).toEqual([
+    'https://launchlog.ai/listing/acme',
+    'https://launchlog.ai/listing/acme/schema',
+    'https://launchlog.ai/listing/acme/markdown',
+    'https://launchlog.ai/llms-full.txt',
+  ])
+  expect(new Set(destinations.map(item => item.url)).size).toBe(4)
+})
