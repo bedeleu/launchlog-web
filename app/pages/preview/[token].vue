@@ -18,6 +18,7 @@ import {
 import { buildPreviewTextEdit, resolvePreviewCheckout } from '~/utils/preview-checkout'
 import { resolvePreviewPublishingMode } from '~/utils/preview-publishing'
 import { previewEditFromSuggestion } from '~/utils/ai-enrichment-review'
+import { resolvePreviewAuthAccess } from '~/utils/preview-auth-access'
 
 const route = useRoute()
 const router = useRouter()
@@ -79,6 +80,7 @@ const account = reactive({
   email: initialCheckout.email,
 })
 const authReady = ref(false)
+const authAccessState = ref<'checking' | 'ready' | 'unavailable'>('checking')
 const isAdminAccount = ref(false)
 const authenticatedEmail = computed(() => authReady.value ? user.value?.email?.trim() || null : null)
 const isAuthenticatedBuyer = computed(() => authenticatedEmail.value !== null)
@@ -217,6 +219,43 @@ const handlePageShow = () => {
   void reconcileStripeBack()
 }
 
+let authAccessAttempt = 0
+const verifyPublishingAccess = async () => {
+  const attempt = ++authAccessAttempt
+  authAccessState.value = 'checking'
+  authReady.value = false
+  isAdminAccount.value = false
+
+  const access = await resolvePreviewAuthAccess({
+    waitForAuthReady,
+    hasUser: () => user.value !== null,
+    isAdmin: resolveIsAdmin,
+  })
+
+  if (attempt !== authAccessAttempt) return
+
+  if (access.kind === 'unavailable') {
+    authAccessState.value = 'unavailable'
+    return
+  }
+
+  isAdminAccount.value = access.isAdmin
+  authReady.value = true
+  authAccessState.value = 'ready'
+  if (user.value?.email && !checkoutReserved.value) account.email = user.value.email
+
+  // SSR cannot inspect the browser's Firebase session. Refresh a conflict
+  // once auth is restored so an owner gets Manage rather than a claim form.
+  if (domainConflict.value) {
+    try {
+      applyPreview(await getPreview(token))
+    }
+    catch {
+      // The generic ownership-request route remains safe and usable.
+    }
+  }
+}
+
 onMounted(() => {
   window.addEventListener('pageshow', handlePageShow)
   void reconcileStripeBack()
@@ -228,30 +267,7 @@ onMounted(() => {
     }, 45_000)
   }
 
-  void (async () => {
-    try {
-      await waitForAuthReady()
-      isAdminAccount.value = user.value ? await resolveIsAdmin() : false
-    }
-    catch {
-      isAdminAccount.value = false
-    }
-    finally {
-      authReady.value = true
-      if (user.value?.email && !checkoutReserved.value) account.email = user.value.email
-    }
-
-    // SSR cannot inspect the browser's Firebase session. Refresh a conflict
-    // once auth is restored so an owner gets Manage rather than a claim form.
-    if (domainConflict.value) {
-      try {
-        applyPreview(await getPreview(token))
-      }
-      catch {
-        // The generic ownership-request route remains safe and usable.
-      }
-    }
-  })()
+  void verifyPublishingAccess()
 })
 
 onBeforeUnmount(() => {
@@ -557,6 +573,25 @@ watch(
             :dashboard-path="existingListing.dashboard_path"
             :claim-path="claimPath"
           />
+
+          <section
+            v-else-if="authAccessState === 'unavailable'"
+            class="border border-release-warning/45 bg-release-warning/[0.05] p-5"
+            role="alert"
+          >
+            <p class="font-mono text-[0.65rem] font-semibold tracking-[0.18em] text-release-warning uppercase">
+              Access check paused
+            </p>
+            <h2 class="mt-3 text-lg font-semibold text-release-paper">
+              We couldn't verify your LaunchLog session
+            </h2>
+            <p class="mt-2 text-sm leading-6 text-release-paper-muted">
+              Your preview is safe and nothing was charged or published. Check your connection, then retry the account check.
+            </p>
+            <Button type="button" variant="outline" class="mt-4" @click="verifyPublishingAccess">
+              Retry access check
+            </Button>
+          </section>
 
           <template v-else>
           <!-- 01 — Select package -->
