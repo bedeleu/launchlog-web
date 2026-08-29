@@ -40,6 +40,9 @@ jobs:
         continue-on-error: true
         run: bun audit --audit-level=high
 
+      - name: Validate public claims
+        run: bun run validate:claims
+
       - name: Lint
         run: bun run lint
 
@@ -59,7 +62,7 @@ jobs:
       - name: SSR tests
         env:
           SSR_TESTS: required
-        run: bun test test/blog-ssr.test.ts test/private-routes-ssr.test.ts test/tax-notice-ssr.test.ts test/preview-ssr.test.ts test/listing-proof-ssr.test.ts test/plausible-ssr.test.ts
+        run: bun test test/blog-ssr.test.ts test/private-routes-ssr.test.ts test/tax-notice-ssr.test.ts test/preview-ssr.test.ts test/listing-proof-ssr.test.ts test/plausible-ssr.test.ts test/commercial-ssr.test.ts
 
       - name: Directory SSR tests
         env:
