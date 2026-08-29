@@ -38,8 +38,28 @@ function canonicalOf(html: string): string | null {
   return html.match(/<link[^>]+rel="canonical"[^>]*>/)?.[0].match(/href="([^"]+)"/)?.[1] ?? null
 }
 
+function ogUrlOf(html: string): string | null {
+  return html.match(/<meta[^>]+property="og:url"[^>]*>/)?.[0]
+    .match(/content="([^"]*)"/)?.[1] ?? null
+}
+
+function referrerMetaOf(html: string): string | null {
+  return html.match(/<meta[^>]+name="referrer"[^>]*>/)?.[0]
+    .match(/content="([^"]*)"/)?.[1] ?? null
+}
+
+function headOf(html: string): string {
+  return html.match(/<head[\s\S]*?<\/head>/)?.[0] ?? ''
+}
+
 function robotsMetaOf(html: string): string | null {
   return html.match(/<meta[^>]+name="robots"[^>]*>/)?.[0].match(/content="([^"]*)"/)?.[1] ?? null
+}
+
+function expectPrivateHeaders(response: Response): void {
+  expect(response.headers.get('x-robots-tag')).toBe('noindex, nofollow')
+  expect(response.headers.get('cache-control')).toBe('private, no-store')
+  expect(response.headers.get('referrer-policy')).toBe('no-referrer')
 }
 
 function isDeindexed(response: Response, html: string): boolean {
@@ -161,16 +181,28 @@ describe.skipIf(!isBuilt)('excluded routes are immune to path casing', () => {
     }
   })
 
-  // Preview tokens are case-sensitive credentials in the path. Hardening the casing of *route*
-  // segments must not touch them.
-  test('a preview token keeps its exact casing and still renders', async () => {
-    const token = 'MiXeD-Case-Token'
-    const response = await fetch(`${BASE}/preview/${token}`)
-    const html = await response.text()
+  test('private funnel routes emit no discovery URL or referrer', async () => {
+    const cases = [
+      { path: '/preview/MiXeD-Case-Token', secrets: ['MiXeD-Case-Token'] },
+      {
+        path: '/checkout/success?preview=PrivateToken&session_id=cs_test_redacted',
+        secrets: ['PrivateToken', 'cs_test_redacted'],
+      },
+    ]
 
-    expect(response.status).toBe(200)
-    expect(isDeindexed(response, html)).toBe(true)
-    expect(canonicalOf(html) ?? '').toContain(`/preview/${token}`)
+    for (const item of cases) {
+      const response = await fetch(`${BASE}${item.path}`)
+      const html = await response.text()
+      const head = headOf(html)
+
+      expect(response.status).toBe(200)
+      expectPrivateHeaders(response)
+      expect(robotsMetaOf(html)).toBe('noindex, nofollow')
+      expect(referrerMetaOf(html)).toBe('no-referrer')
+      expect(canonicalOf(html)).toBeNull()
+      expect(ogUrlOf(html)).toBeNull()
+      for (const secret of item.secrets) expect(head).not.toContain(secret)
+    }
   })
 
   test('a mis-cased preview prefix is canonicalised without touching the token', async () => {
@@ -196,13 +228,14 @@ describe.skipIf(!isBuilt)('excluded routes are immune to path casing', () => {
     }
   })
 
-  test('a public route still works and stays indexable at its canonical casing', async () => {
+  test('a public route keeps canonical and strict-origin referrer metadata', async () => {
     const response = await fetch(`${BASE}/about`)
     const html = await response.text()
 
     expect(response.status).toBe(200)
-    expect(isDeindexed(response, html)).toBe(false)
     expect(canonicalOf(html)).toBe('https://launchlog.ai/about')
+    expect(referrerMetaOf(html)).toBe('strict-origin-when-cross-origin')
+    expect(robotsMetaOf(html) ?? '').not.toContain('noindex')
   })
 
   test('the public header links directly to Contact', async () => {
