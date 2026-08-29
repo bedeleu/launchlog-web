@@ -1,18 +1,13 @@
 <script setup lang="ts">
-import type { PlanTier } from '~/composables/usePlans'
+import { findPublicPlan, type PlanTier } from '#shared/constants/public-plans'
 
 useSeoMeta({ title: 'Submit your product | LaunchLog' })
 
 const route = useRoute()
 const intake = useIntakeStore()
 
-const isPlanTier = (value: unknown): value is PlanTier =>
-  value === 'basic' || value === 'featured'
-
-// Carry the plan picked on /pricing into the preview. Anything unknown or
-// missing falls back to Featured, the default placement (D-058). Set before
-// the form can generate a preview, so the choice reaches the new draft.
-const requestedTier: PlanTier = isPlanTier(route.query.tier) ? route.query.tier : 'featured'
+const tier = typeof route.query.tier === 'string' ? route.query.tier : null
+const requestedTier: PlanTier = findPublicPlan(tier).tier
 intake.setPreferredTier(requestedTier)
 
 const { findPlan } = usePlans()

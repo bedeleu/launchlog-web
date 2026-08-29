@@ -30,10 +30,12 @@ const CLAIM_PATTERNS: ClaimPattern[] = [
   { pattern: /from submitted product to indexed launch profile/gi, message: 'Indexing cannot be guaranteed' },
   { pattern: /\bpermanent(?:ly)?[^\n]{0,40}(?:listing|product page)\b/gi, message: 'Listings remain live only while the subscription is active' },
   { pattern: /around 90% of web journeys/gi, message: 'Unattributed changing statistic' },
+  { pattern: /\bbasic\s+(?:plan|package|listing)\b/gi, message: 'Standard is the customer-facing plan name' },
 ]
 
-const SCAN_EXTENSIONS = new Set(['.ts', '.vue'])
+const SCAN_EXTENSIONS = new Set(['.md', '.ts', '.vue'])
 const SCAN_PATHS = [
+  'PRODUCT.md',
   'nuxt.config.ts',
   'app/app.vue',
   'app/pages',

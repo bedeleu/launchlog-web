@@ -5,16 +5,20 @@ const config = useRuntimeConfig()
 const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
 const ogImageUrl = `${siteUrl}/og-image.jpg`
 const taxNotice = config.public.taxNotice.trim()
+const { plans } = usePlans()
+const pricingTitle = `LaunchLog Pricing — ${plans
+  .map(plan => `${plan.name} ${plan.priceLabel}`)
+  .join(', ')}/year`
 
 useSeoMeta({
   title: 'Pricing | LaunchLog',
   description: 'Simple annual pricing for LaunchLog product pages, directory placement and machine-readable discovery surfaces.',
-  ogTitle: 'LaunchLog Pricing — Standard $24.99, Featured $99/year',
+  ogTitle: pricingTitle,
   ogDescription: 'Annual LaunchLog listing packages. Pay only when you publish. Every plan includes a structured public product page.',
   ogUrl: `${siteUrl}/pricing`,
   ogImage: ogImageUrl,
   twitterCard: 'summary_large_image',
-  twitterTitle: 'LaunchLog Pricing — Standard $24.99, Featured $99/year',
+  twitterTitle: pricingTitle,
   twitterDescription: 'Annual LaunchLog listing packages. Pay only when you publish. Every plan includes a structured public product page.',
   twitterImage: ogImageUrl,
 })
@@ -23,8 +27,6 @@ useBreadcrumbs([
   { name: 'Home', path: '/' },
   { name: 'Pricing', path: '/pricing' },
 ])
-
-const { plans } = usePlans()
 
 const planMeta = {
   basic: {

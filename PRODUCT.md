@@ -20,17 +20,17 @@ returns only when there is a genuinely different deliverable to sell.
 ## Product Purpose
 
 LaunchLog.ai is a curated paid directory for indie makers, SaaS founders, and tech launches —
-"The log of what just shipped." Every listing is human-reviewed, gets a dedicated page, and is
-built to be found by both search engines and AI systems. Success = visitors finding products they
-try, and founders measurably discovered because they listed.
+"The log of what just shipped." Paid customer listings publish after successful checkout, get a
+dedicated page, and remain subject to later moderation. Success = visitors finding products they
+try and founders seeing accurate, measurable discovery facts rather than promised outcomes.
 
 ## Positioning
 
 The invisible tech edge no neighboring directory truthfully offers as a package: schema.org
 JSON-LD `@graph` on every listing page, dynamic `/llms.txt` and `/llms-full.txt`, and
-content-negotiated markdown for `/listing/{slug}` via `Accept: text/markdown`. Human-reviewed
-descriptions, not scraped dumps. Featured priority placement is disclosed honestly in the card's ledger
-register, never hidden.
+content-negotiated markdown for `/listing/{slug}` via `Accept: text/markdown`. Titles,
+descriptions, and screenshots are captured as editable enrichment from public website evidence.
+Featured priority placement is disclosed honestly in the card's ledger register, never hidden.
 
 ## Operating Context
 
@@ -44,8 +44,8 @@ DECISIONS-LOG.md (D-001…D-064) and bind this repo's work.
 
 ## Capabilities and Constraints
 
-- Listing CRUD, moderation, Firebase custom-claims auth, Stripe subscriptions, screenshot/meta
-  enrichment, AI descriptions, spam gate, IndexNow, sitemap — all live in the API.
+- Listing CRUD, exceptional retroactive moderation, Firebase custom-claims auth, Stripe
+  subscriptions, screenshot/meta enrichment, IndexNow, and sitemap — all live in the API.
 - Directory contract (D-064, two-plan revision locked 2026-08-17): Featured = 2 visual slots
   (2×1 at `lg`), Standard = 1 (1×1); page capacity 30 slots; at most 3 Featured per page,
   Featured ahead of Standard, overflow carrying onto following numeric pages inside the same
