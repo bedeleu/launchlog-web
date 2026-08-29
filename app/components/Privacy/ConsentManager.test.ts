@@ -7,9 +7,9 @@ const footer = readFileSync(fileURLToPath(new URL('../Footer.vue', import.meta.u
 const layout = readFileSync(fileURLToPath(new URL('../../layouts/default.vue', import.meta.url)), 'utf8')
 
 describe('privacy choices UI contract', () => {
-  test('offers equally prominent accept and reject actions before analytics loads', () => {
-    expect(manager).toContain('Accept analytics')
-    expect(manager).toContain('Reject analytics')
+  test('offers equally prominent accept and reject actions before optional tooling loads', () => {
+    expect(manager).toContain('Accept optional')
+    expect(manager).toContain('Reject optional')
     expect(manager).toContain('Manage choices')
     expect(manager.match(/consent-choice/g)?.length).toBeGreaterThanOrEqual(2)
     expect(manager).not.toMatch(/checked(?:=|\s)/)
@@ -26,6 +26,9 @@ describe('privacy choices UI contract', () => {
     expect(manager).toContain('SwitchRoot')
     expect(manager).toContain(':aria-label="copy.analyticsLabel"')
     expect(manager).toContain("analyticsLabel: 'Analytics'")
+    expect(manager).toContain(':aria-label="copy.advertisingLabel"')
+    expect(manager).toContain("advertisingLabel: 'Meta advertising measurement'")
+    expect(manager).toContain(':disabled="globalPrivacyControl"')
     expect(manager).toContain('release-panel')
     expect(manager).toContain('focus-visible:outline-release-focus')
     expect(manager).toContain('restorePreferencesFocus')

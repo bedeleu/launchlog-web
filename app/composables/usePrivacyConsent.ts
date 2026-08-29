@@ -1,9 +1,11 @@
 import type { PrivacyConsent } from '~/utils/privacy-consent'
 import {
+  LEGACY_PRIVACY_CONSENT_STORAGE_KEY,
   PRIVACY_CONSENT_STORAGE_KEY,
   createPrivacyConsent,
   parsePrivacyConsent,
   persistPrivacyConsent,
+  readPrivacyConsent,
 } from '~/utils/privacy-consent'
 
 declare global {
@@ -18,20 +20,34 @@ export const usePrivacyConsent = () => {
   const consent = useState<PrivacyConsent | null | undefined>('privacy-consent', () => undefined)
   const preferencesOpen = useState<boolean>('privacy-preferences-open', () => false)
   const globalPrivacyControl = useState<boolean>('privacy-gpc', () => false)
-  const sessionDenyOverride = useState<boolean>('privacy-session-deny', () => false)
+  const sessionConsentOverride = useState<PrivacyConsent | null>('privacy-session-consent-override', () => null)
 
   const refreshFromStorage = (): void => {
     if (!import.meta.client) return
     globalPrivacyControl.value = navigator.globalPrivacyControl === true
-    if (sessionDenyOverride.value) {
-      if (consent.value?.analytics !== false) consent.value = createPrivacyConsent(false)
+
+    if (sessionConsentOverride.value !== null) {
+      consent.value = sessionConsentOverride.value
       return
     }
+
     try {
-      const raw = window.localStorage.getItem(PRIVACY_CONSENT_STORAGE_KEY)
-      consent.value = parsePrivacyConsent(raw)
-      if (raw !== null && consent.value === null) {
+      const currentRaw = window.localStorage.getItem(PRIVACY_CONSENT_STORAGE_KEY)
+      const legacyRaw = window.localStorage.getItem(LEGACY_PRIVACY_CONSENT_STORAGE_KEY)
+      const stored = readPrivacyConsent(window.localStorage)
+      consent.value = stored
+
+      if (stored !== null && parsePrivacyConsent(currentRaw) === null) {
+        const persisted = persistPrivacyConsent(window.localStorage, stored)
+        if (!persisted) sessionConsentOverride.value = stored
+        return
+      }
+
+      if (currentRaw !== null && stored === null) {
         window.localStorage.removeItem(PRIVACY_CONSENT_STORAGE_KEY)
+      }
+      if (legacyRaw !== null && stored === null) {
+        window.localStorage.removeItem(LEGACY_PRIVACY_CONSENT_STORAGE_KEY)
       }
     }
     catch {
@@ -44,13 +60,16 @@ export const usePrivacyConsent = () => {
     refreshFromStorage()
   }
 
-  const save = (analytics: boolean): void => {
-    const next = createPrivacyConsent(analytics)
+  const save = (analytics: boolean, advertising: boolean): void => {
+    const next = createPrivacyConsent(
+      analytics,
+      advertising && !globalPrivacyControl.value,
+    )
     consent.value = next
 
     if (import.meta.client) {
       const persisted = persistPrivacyConsent(window.localStorage, next)
-      sessionDenyOverride.value = !analytics && !persisted
+      sessionConsentOverride.value = persisted ? null : next
     }
 
     preferencesOpen.value = false
@@ -75,13 +94,19 @@ export const usePrivacyConsent = () => {
   }
 
   const syncFromStorage = (event: StorageEvent): void => {
-    if (sessionDenyOverride.value) return
+    if (
+      event.key !== null
+      && event.key !== PRIVACY_CONSENT_STORAGE_KEY
+      && event.key !== LEGACY_PRIVACY_CONSENT_STORAGE_KEY
+    ) return
+
+    sessionConsentOverride.value = null
     if (event.key === null) {
       consent.value = null
       return
     }
-    if (event.key !== PRIVACY_CONSENT_STORAGE_KEY) return
-    consent.value = parsePrivacyConsent(event.newValue)
+
+    refreshFromStorage()
   }
 
   return {
@@ -91,10 +116,13 @@ export const usePrivacyConsent = () => {
     initialized: computed(() => consent.value !== undefined),
     hasDecision: computed(() => consent.value !== undefined && consent.value !== null),
     analyticsAllowed: computed(() => consent.value?.analytics === true),
+    advertisingAllowed: computed(() =>
+      consent.value?.advertising === true && !globalPrivacyControl.value,
+    ),
     initialize,
     refreshFromStorage,
-    acceptAnalytics: () => save(true),
-    rejectAnalytics: () => save(false),
+    acceptOptional: () => save(true, true),
+    rejectOptional: () => save(false, false),
     save,
     openPreferences,
     restorePreferencesFocus,

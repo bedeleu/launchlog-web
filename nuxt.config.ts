@@ -44,6 +44,13 @@ export default defineNuxtConfig({
     },
   },
   runtimeConfig: {
+    // Empty defaults keep server-only Meta credentials out of the build. Railway
+    // supplies these at runtime through the matching NUXT_META_* variables.
+    metaConversionsEnabled: false,
+    metaPixelId: '',
+    metaConversionsAccessToken: '',
+    metaGraphApiVersion: '',
+    metaTestEventCode: '',
     public: {
       // Host only (no /api prefix). Callers must include /api/v1/... themselves — see
       // server/middleware/markdown-negotiation.ts for the canonical pattern.
@@ -71,6 +78,8 @@ export default defineNuxtConfig({
       plausibleEnabled: process.env.NUXT_PUBLIC_PLAUSIBLE_ENABLED === 'true',
       plausibleDomain: process.env.NUXT_PUBLIC_PLAUSIBLE_DOMAIN || '',
       plausibleEndpoint: process.env.NUXT_PUBLIC_PLAUSIBLE_ENDPOINT || '',
+      metaPixelEnabled: process.env.NUXT_PUBLIC_META_PIXEL_ENABLED === 'true',
+      metaPixelId: process.env.NUXT_PUBLIC_META_PIXEL_ID || '',
       wordpressBlogUrl: process.env.NUXT_PUBLIC_WORDPRESS_BLOG_URL || 'https://blog.launchlog.ai',
     },
   },

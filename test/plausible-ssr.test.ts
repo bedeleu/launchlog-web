@@ -57,6 +57,8 @@ describe.skipIf(!isBuilt)('Plausible consent boundary (SSR)', () => {
         NUXT_PUBLIC_PLAUSIBLE_ENABLED: 'true',
         NUXT_PUBLIC_PLAUSIBLE_DOMAIN: 'launchlog.ai',
         NUXT_PUBLIC_PLAUSIBLE_ENDPOINT: ENDPOINT,
+        NUXT_PUBLIC_META_PIXEL_ENABLED: 'true',
+        NUXT_PUBLIC_META_PIXEL_ID: '123456789012345',
       },
       stdout: 'ignore', stderr: 'ignore',
     })
@@ -78,5 +80,25 @@ describe.skipIf(!isBuilt)('Plausible consent boundary (SSR)', () => {
     expect(scriptTags.some(tag => tag.includes(`src="${ENDPOINT}"`))).toBe(false)
     expect(html).not.toContain('data-launchlog-analytics')
     expect(html).not.toContain('window.plausible=')
+    expect(scriptTags.some(tag => tag.includes('connect.facebook.net'))).toBe(false)
+    expect(html).not.toContain('launchlog-meta-pixel')
+    expect(html).not.toContain('window.fbq=')
+  })
+
+  test('keeps the server conversion endpoint closed when its private capability is disabled', async () => {
+    const response = await fetch(`http://127.0.0.1:${SERVER_PORT}/api/meta-events`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Origin: 'https://launchlog.ai',
+      },
+      body: JSON.stringify({
+        event: 'Preview Created',
+        eventId: '123e4567-e89b-42d3-a456-426614174000',
+        advertisingConsent: true,
+      }),
+    })
+
+    expect(response.status).toBe(503)
   })
 })

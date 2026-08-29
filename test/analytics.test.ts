@@ -11,7 +11,7 @@ describe('track (Plausible funnel)', () => {
 
   test('forwards only the exact event name and a query-free public URL after consent', () => {
     const spy = mock((_e: string, _options: { url: string }) => {})
-    const accepted = serializePrivacyConsent(createPrivacyConsent(true, new Date(Date.now() - 1_000).toISOString()))
+    const accepted = serializePrivacyConsent(createPrivacyConsent(true, false, new Date(Date.now() - 1_000).toISOString()))
     ;(globalThis as { window?: unknown }).window = {
       plausible: spy,
       location: { origin: 'https://launchlog.ai' },
@@ -41,7 +41,7 @@ describe('track (Plausible funnel)', () => {
   })
 
   test('never lets an analytics failure break the funnel', () => {
-    const accepted = serializePrivacyConsent(createPrivacyConsent(true, new Date(Date.now() - 1_000).toISOString()))
+    const accepted = serializePrivacyConsent(createPrivacyConsent(true, false, new Date(Date.now() - 1_000).toISOString()))
     ;(globalThis as { window?: unknown }).window = {
       plausible: () => { throw new Error('analytics unavailable') },
       location: { origin: 'https://launchlog.ai' },
@@ -49,5 +49,63 @@ describe('track (Plausible funnel)', () => {
     }
 
     expect(() => track('Listing Published')).not.toThrow()
+  })
+
+  test('sends one consented Meta event to the browser and server with the same event id', () => {
+    const browserSpy = mock((_event: string, _eventId: string) => true)
+    const fetchSpy = mock(async (_input: string, _init: RequestInit) => ({ ok: true }))
+    const accepted = serializePrivacyConsent(createPrivacyConsent(false, true, new Date(Date.now() - 1_000).toISOString()))
+    ;(globalThis as { window?: unknown }).window = {
+      document: { cookie: '_fbp=fb.1.1724926530000.1234567890; _fbc=fb.1.1724926530000.AQz-safe_click-id' },
+      fetch: fetchSpy,
+      launchlogMetaEvent: browserSpy,
+      location: { origin: 'https://launchlog.ai' },
+      localStorage: {
+        getItem: (key: string) => key === PRIVACY_CONSENT_STORAGE_KEY ? accepted : null,
+      },
+      navigator: { globalPrivacyControl: false },
+      crypto: { randomUUID: () => '123e4567-e89b-42d3-a456-426614174000' },
+    }
+
+    track('Checkout Started')
+
+    expect(browserSpy).toHaveBeenCalledWith('Checkout Started', '123e4567-e89b-42d3-a456-426614174000')
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    expect(fetchSpy.mock.calls[0]?.[0]).toBe('/api/meta-events')
+    expect(fetchSpy.mock.calls[0]?.[1]).toMatchObject({
+      method: 'POST',
+      credentials: 'omit',
+      keepalive: true,
+      referrerPolicy: 'no-referrer',
+      body: JSON.stringify({
+        event: 'Checkout Started',
+        eventId: '123e4567-e89b-42d3-a456-426614174000',
+        advertisingConsent: true,
+        fbp: 'fb.1.1724926530000.1234567890',
+        fbc: 'fb.1.1724926530000.AQz-safe_click-id',
+      }),
+    })
+  })
+
+  test('does not send Meta events when GPC is active even if an old stored choice allowed ads', () => {
+    const browserSpy = mock((_event: string, _eventId: string) => true)
+    const fetchSpy = mock(async (_input: string, _init: RequestInit) => ({ ok: true }))
+    const accepted = serializePrivacyConsent(createPrivacyConsent(false, true, new Date(Date.now() - 1_000).toISOString()))
+    ;(globalThis as { window?: unknown }).window = {
+      document: { cookie: '' },
+      fetch: fetchSpy,
+      launchlogMetaEvent: browserSpy,
+      location: { origin: 'https://launchlog.ai' },
+      localStorage: {
+        getItem: (key: string) => key === PRIVACY_CONSENT_STORAGE_KEY ? accepted : null,
+      },
+      navigator: { globalPrivacyControl: true },
+      crypto: { randomUUID: () => '123e4567-e89b-42d3-a456-426614174000' },
+    }
+
+    track('Preview Created')
+
+    expect(browserSpy).not.toHaveBeenCalled()
+    expect(fetchSpy).not.toHaveBeenCalled()
   })
 })

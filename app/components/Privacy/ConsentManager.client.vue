@@ -18,7 +18,7 @@ const {
   initialized,
   initialize,
   refreshFromStorage,
-  rejectAnalytics,
+  rejectOptional,
   save,
   openPreferences,
   restorePreferencesFocus,
@@ -28,16 +28,16 @@ const copy = {
   choices: 'Privacy choices',
   control: 'Privacy control',
   heading: 'Your visit, your choice',
-  summary: 'Essential storage keeps sign-in and private previews working. Optional self-hosted analytics runs only if you accept it.',
-  gpc: 'Global Privacy Control detected. LaunchLog does not sell or share data for behavioural advertising.',
+  summary: 'Essential storage keeps sign-in and private previews working. Optional analytics and Meta advertising measurement run only if you accept them.',
+  gpc: 'Global Privacy Control detected. Meta advertising measurement stays off on this browser.',
   read: 'Read our',
   privacy: 'Privacy Policy',
   cookies: 'Cookie Policy',
-  accept: 'Accept analytics',
-  reject: 'Reject analytics',
+  accept: 'Accept optional',
+  reject: 'Reject optional',
   manage: 'Manage choices',
   center: 'Privacy center',
-  dialogSummary: 'Optional analytics is off by default. Change this choice at any time.',
+  dialogSummary: 'Optional analytics and advertising measurement are off by default. Choose each purpose separately and change them at any time.',
   close: 'Close privacy choices',
   essential: 'Essential storage',
   essentialBody: 'Keeps sign-in, private-preview recovery and your privacy choice working.',
@@ -45,20 +45,21 @@ const copy = {
   analytics: 'Self-hosted analytics',
   analyticsBody: 'Sends approved public pageviews and funnel events to Plausible. Private URLs, tokens, Stripe Session IDs and Reddit click IDs are blocked.',
   analyticsLabel: 'Analytics',
-  advertising: 'Advertising measurement',
-  advertisingBody: 'No Reddit Pixel, advertising cookie or Reddit Conversions API is active.',
-  notUsed: 'Not used',
+  advertising: 'Meta advertising measurement',
+  advertisingBody: 'Loads Meta Pixel on approved public pages and sends consented funnel events through Meta Conversions API. Private preview tokens and Stripe Session IDs are never sent.',
+  advertisingLabel: 'Meta advertising measurement',
   save: 'Save choices',
   rejectOptional: 'Reject optional',
 }
 
 const draftAnalytics = ref(false)
+const draftAdvertising = ref(false)
 const decisionAnnouncement = ref('')
 const showBanner = computed(() => initialized.value && consent.value === null)
 
-const chooseFromBanner = async (analytics: boolean) => {
-  save(analytics)
-  decisionAnnouncement.value = analytics ? copy.accept : copy.reject
+const chooseFromBanner = async (accepted: boolean) => {
+  save(accepted, accepted)
+  decisionAnnouncement.value = accepted ? copy.accept : copy.reject
   await nextTick()
   document.querySelector<HTMLElement>('#main-content')?.focus({ preventScroll: true })
 }
@@ -66,6 +67,7 @@ const chooseFromBanner = async (analytics: boolean) => {
 watch(preferencesOpen, async (open, wasOpen) => {
   if (open) {
     draftAnalytics.value = consent.value?.analytics === true
+    draftAdvertising.value = consent.value?.advertising === true && !globalPrivacyControl.value
     return
   }
 
@@ -194,15 +196,22 @@ onBeforeUnmount(() => {
                 {{ copy.advertisingBody }}
               </p>
             </div>
-            <span class="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-release-paper-muted">{{ copy.notUsed }}</span>
+            <SwitchRoot
+              v-model="draftAdvertising"
+              :aria-label="copy.advertisingLabel"
+              :disabled="globalPrivacyControl"
+              class="relative h-7 w-12 shrink-0 border border-release-seam bg-release-rail transition-colors data-[state=checked]:border-release-signal data-[state=checked]:bg-release-signal disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-release-focus"
+            >
+              <SwitchThumb class="block size-5 translate-x-0.5 bg-release-paper transition-transform data-[state=checked]:translate-x-[1.35rem] data-[state=checked]:bg-release-ink" />
+            </SwitchRoot>
           </div>
         </div>
 
         <div class="grid gap-3 p-5 sm:grid-cols-2 sm:p-7">
-          <button type="button" class="release-action w-full" @click="save(draftAnalytics)">
+          <button type="button" class="release-action w-full" @click="save(draftAnalytics, draftAdvertising)">
             {{ copy.save }}
           </button>
-          <button type="button" class="release-action-secondary w-full" @click="rejectAnalytics">
+          <button type="button" class="release-action-secondary w-full" @click="rejectOptional">
             {{ copy.rejectOptional }}
           </button>
         </div>
