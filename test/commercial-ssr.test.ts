@@ -97,8 +97,8 @@ describe.skipIf(!isBuilt)('commercial product truth', () => {
       const response = await fetch(`${BASE}/submit${suffix}`)
       const html = await response.text()
       expect(response.status).toBe(200)
-      expect(html).toMatch(/Starting with <span[^>]*>Standard<\/span>/)
-      expect(html).not.toMatch(/Starting with <span[^>]*>Featured<\/span>/)
+      expect(html).toContain('Starting placement · Standard')
+      expect(html).not.toContain('Starting placement · Featured')
     }
   })
 
