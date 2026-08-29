@@ -6,18 +6,16 @@ const read = (path: string) => readFileSync(fileURLToPath(new URL(path, import.m
 const footer = read('../app/components/Footer.vue')
 const contact = read('../app/pages/contact.vue')
 const copyrightNotice = read('../app/pages/dmca.vue')
-const salIcon = read('../public/images/legal/anpc-sal.svg')
 const terms = read('../app/pages/terms.vue')
 const privacy = read('../app/pages/privacy.vue')
 const cookies = read('../app/pages/cookies.vue')
 
 describe('Romanian consumer-information surface', () => {
-  test('publishes the current official ANPC SAL route and self-hosted pictogram', () => {
+  test('publishes the current official ANPC SAL route without a national badge', () => {
     expect(footer).toContain('https://reclamatiisal.anpc.ro')
-    expect(footer).toContain('/images/legal/anpc-sal.svg')
+    expect(footer).toContain('Alternative dispute resolution')
+    expect(footer).not.toContain('/images/legal/anpc-sal.svg')
     expect(footer).not.toContain('ec.europa.eu/consumers/odr')
-    expect(salIcon).toContain('Official ANPC online SAL pictogram')
-    expect(salIcon).toContain('width="250" height="50"')
   })
 
   test('places a just-in-time privacy notice beside the contact submission', () => {

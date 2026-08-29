@@ -101,7 +101,7 @@ const footerCopy = computed(() => isRomanian.value
   ? {
       description: 'Registrul a ceea ce tocmai a fost lansat — structurat pentru oameni, motoare de căutare și descoperire prin AI.',
       social: 'Profilurile sociale LaunchLog',
-      salLabel: 'Deschideți platforma oficială ANPC pentru soluționarea alternativă a litigiilor',
+      salLabel: 'Soluționare alternativă a litigiilor',
       operated: 'Operat de',
       privacy: 'Opțiuni de confidențialitate',
       status: 'Starea serviciului',
@@ -109,7 +109,7 @@ const footerCopy = computed(() => isRomanian.value
   : {
       description: 'The log of what just shipped — structured for people, search engines, and AI discovery.',
       social: 'LaunchLog social profiles',
-      salLabel: 'Open the official ANPC Alternative Dispute Resolution platform',
+      salLabel: 'Alternative dispute resolution',
       operated: 'Operated by',
       privacy: 'Privacy choices',
       status: 'Service status',
@@ -182,16 +182,9 @@ const footerCopy = computed(() => isRomanian.value
           href="https://reclamatiisal.anpc.ro"
           target="_blank"
           rel="noopener noreferrer"
-          class="inline-flex w-fit bg-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus"
-          :aria-label="footerCopy.salLabel"
+          class="inline-flex min-h-6 w-fit items-center font-mono text-[11px] uppercase tracking-[0.1em] text-release-paper-muted hover:text-[#f6f1e7] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus"
         >
-          <img
-            src="/images/legal/anpc-sal.svg"
-            alt="ANPC — Soluționarea Alternativă a Litigiilor"
-            width="250"
-            height="50"
-            class="h-[50px] w-[250px]"
-          >
+          {{ footerCopy.salLabel }}
         </a>
         <div class="flex flex-wrap items-center gap-x-5 gap-y-2">
           <button
