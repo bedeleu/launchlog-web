@@ -107,14 +107,6 @@ const onSubmit = handleSubmit(async (values) => {
       </Button>
     </div>
 
-    <p v-if="!existingListing" class="mt-3 text-xs leading-5 text-release-paper-muted">
-      By requesting a preview, you ask LaunchLog to fetch and process public website evidence under the
-      <NuxtLink to="/terms" class="text-release-blaze underline underline-offset-4">Terms of Service</NuxtLink>
-      and
-      <NuxtLink to="/privacy" class="text-release-blaze underline underline-offset-4">Privacy Policy</NuxtLink>.
-      This does not start a paid subscription or consent to optional analytics.
-    </p>
-
     <FieldMessage
       v-if="!existingListing"
       class="mt-2"

@@ -24,63 +24,33 @@ const {
   restorePreferencesFocus,
   syncFromStorage,
 } = usePrivacyConsent()
-const route = useRoute()
-const isRomanian = computed(() => route.path === '/ro' || route.path.startsWith('/ro/'))
-const copy = computed(() => isRomanian.value
-  ? {
-      choices: 'Opțiuni de confidențialitate',
-      control: 'Controlul confidențialității',
-      heading: 'Vizita dumneavoastră, alegerea dumneavoastră',
-      summary: 'Stocarea esențială din browser menține autentificarea și previzualizările private. Analiza agregată opțională este trimisă către endpointul Plausible găzduit de noi numai dacă o acceptați. Nu folosim instrumente de urmărire publicitară.',
-      gpc: 'Global Privacy Control detectat. LaunchLog nu vinde și nu divulgă date pentru publicitate comportamentală; analiza agregată opțională rămâne guvernată separat de alegerea de mai jos.',
-      read: 'Citiți',
-      privacy: 'Politica de confidențialitate',
-      cookies: 'Politica privind cookie-urile',
-      accept: 'Accept analiza',
-      reject: 'Refuz analiza',
-      manage: 'Gestionați opțiunile',
-      center: 'Centrul de confidențialitate',
-      dialogSummary: 'Analiza opțională este oprită implicit. Puteți schimba oricând alegerea; refuzul nu afectează serviciul.',
-      close: 'Închideți opțiunile de confidențialitate',
-      essential: 'Stocare esențială',
-      essentialBody: 'Reține preferințele de confidențialitate, continuitatea adresei pentru autentificare și starea revenirii la previzualizarea privată. Este necesară funcțiilor pe care le solicitați.',
-      always: 'Permanent activă',
-      analytics: 'Analiză găzduită de noi',
-      analyticsBody: 'Trimite numai vizualizări publice și evenimente de funnel aprobate direct către API-ul Events Plausible găzduit de noi. Nu setează cookie-uri de analiză; URL-urile private, tokenurile, identificatorii sesiunilor Stripe și identificatorii Reddit sunt blocați.',
-      analyticsLabel: 'Analiză',
-      advertising: 'Măsurare publicitară',
-      advertisingBody: 'Nu este activ niciun Reddit Pixel, cookie publicitar sau API nativ de conversii publicitare.',
-      notUsed: 'Neutilizată',
-      save: 'Salvați opțiunile',
-      rejectOptional: 'Refuzați opționalul',
-    }
-  : {
-      choices: 'Privacy choices',
-      control: 'Privacy control',
-      heading: 'Your visit, your choice',
-      summary: 'Essential browser storage keeps sign-in and private previews working. Optional aggregate analytics is sent to our self-hosted Plausible endpoint only if you accept it. We do not use advertising trackers.',
-      gpc: 'Global Privacy Control detected. LaunchLog does not sell or share data for behavioural advertising; optional aggregate analytics remains governed separately by the choice below.',
-      read: 'Read our',
-      privacy: 'Privacy Policy',
-      cookies: 'Cookie Policy',
-      accept: 'Accept analytics',
-      reject: 'Reject analytics',
-      manage: 'Manage choices',
-      center: 'Privacy center',
-      dialogSummary: 'Optional analytics is off by default. Change this choice at any time; rejecting it does not affect the service.',
-      close: 'Close privacy choices',
-      essential: 'Essential storage',
-      essentialBody: 'Remembers privacy preferences, sign-in email continuity and private-preview return state. Required for features you request.',
-      always: 'Always on',
-      analytics: 'Self-hosted analytics',
-      analyticsBody: 'Sends approved aggregate pageviews and funnel events directly to our self-hosted Plausible Events API. It sets no analytics cookies; private URLs, tokens, Stripe Session IDs and Reddit click IDs are blocked.',
-      analyticsLabel: 'Analytics',
-      advertising: 'Advertising measurement',
-      advertisingBody: 'No Reddit Pixel, advertising cookie or native ad conversion API is active.',
-      notUsed: 'Not used',
-      save: 'Save choices',
-      rejectOptional: 'Reject optional',
-    })
+const copy = {
+  choices: 'Privacy choices',
+  control: 'Privacy control',
+  heading: 'Your visit, your choice',
+  summary: 'Essential storage keeps sign-in and private previews working. Optional self-hosted analytics runs only if you accept it.',
+  gpc: 'Global Privacy Control detected. LaunchLog does not sell or share data for behavioural advertising.',
+  read: 'Read our',
+  privacy: 'Privacy Policy',
+  cookies: 'Cookie Policy',
+  accept: 'Accept analytics',
+  reject: 'Reject analytics',
+  manage: 'Manage choices',
+  center: 'Privacy center',
+  dialogSummary: 'Optional analytics is off by default. Change this choice at any time.',
+  close: 'Close privacy choices',
+  essential: 'Essential storage',
+  essentialBody: 'Keeps sign-in, private-preview recovery and your privacy choice working.',
+  always: 'Always on',
+  analytics: 'Self-hosted analytics',
+  analyticsBody: 'Sends approved public pageviews and funnel events to Plausible. Private URLs, tokens, Stripe Session IDs and Reddit click IDs are blocked.',
+  analyticsLabel: 'Analytics',
+  advertising: 'Advertising measurement',
+  advertisingBody: 'No Reddit Pixel, advertising cookie or Reddit Conversions API is active.',
+  notUsed: 'Not used',
+  save: 'Save choices',
+  rejectOptional: 'Reject optional',
+}
 
 const draftAnalytics = ref(false)
 const decisionAnnouncement = ref('')
@@ -88,7 +58,7 @@ const showBanner = computed(() => initialized.value && consent.value === null)
 
 const chooseFromBanner = async (analytics: boolean) => {
   save(analytics)
-  decisionAnnouncement.value = analytics ? copy.value.accept : copy.value.reject
+  decisionAnnouncement.value = analytics ? copy.accept : copy.reject
   await nextTick()
   document.querySelector<HTMLElement>('#main-content')?.focus({ preventScroll: true })
 }
@@ -120,7 +90,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div data-privacy-consent-root :lang="isRomanian ? 'ro' : 'en'">
+  <div data-privacy-consent-root lang="en">
     <section
     v-if="showBanner"
     :aria-label="copy.choices"
@@ -139,8 +109,8 @@ onBeforeUnmount(() => {
           {{ copy.gpc }}
         </p>
         <p class="mt-3 text-xs leading-5 text-release-paper-muted">
-          {{ copy.read }} <NuxtLink :to="isRomanian ? '/ro/privacy' : '/privacy'" class="text-release-blaze underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus">{{ copy.privacy }}</NuxtLink>
-          {{ isRomanian ? 'și' : 'and' }} <NuxtLink :to="isRomanian ? '/ro/cookies' : '/cookies'" class="text-release-blaze underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus">{{ copy.cookies }}</NuxtLink>.
+          {{ copy.read }} <NuxtLink to="/privacy" class="text-release-blaze underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus">{{ copy.privacy }}</NuxtLink>
+          and <NuxtLink to="/cookies" class="text-release-blaze underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus">{{ copy.cookies }}</NuxtLink>.
         </p>
       </div>
 

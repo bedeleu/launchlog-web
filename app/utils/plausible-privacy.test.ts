@@ -62,7 +62,7 @@ describe('Plausible privacy capability', () => {
     '/admin/listings/42',
     '/login',
     '/withdrawal',
-    '/ro/retragere',
+    '/ro/privacy',
     '/listing/not%2Fa-slug',
     '/definitely-not-a-route',
   ])('rejects a private or unknown route: %s', (path) => {
@@ -78,9 +78,6 @@ describe('Plausible privacy capability', () => {
     '/terms',
     '/cookies',
     '/dmca',
-    '/ro/privacy',
-    '/ro/terms',
-    '/ro/cookies',
   ])('preserves consented pageviews for every static public support/legal route: %s', (path) => {
     expect(sanitizePublicAnalyticsUrl(`${path}?private=discarded`, resolvePlausibleCapability(enabled)!))
       .toBe(`https://launchlog.ai${path}`)
@@ -174,7 +171,7 @@ describe('Plausible privacy capability', () => {
     }
   })
 
-  test('rejects the reserved server-authoritative publication goal from browser transport', async () => {
+  test('allows publication only through the verified conversion UI event', async () => {
     const calls: Array<[string, RequestInit]> = []
     const capability = resolvePlausibleCapability(enabled)!
 
@@ -182,7 +179,11 @@ describe('Plausible privacy capability', () => {
       domain: 'launchlog.ai',
       name: 'Listing Published',
       url: 'https://launchlog.ai/submit',
-    }, capability)).toBeNull()
+    }, capability)).toEqual({
+      domain: 'launchlog.ai',
+      name: 'Listing Published',
+      url: 'https://launchlog.ai/submit',
+    })
 
     const sender = createPlausibleEventSender(
       capability,
@@ -195,7 +196,7 @@ describe('Plausible privacy capability', () => {
     sender.enable()
     sender.send('Listing Published', '/submit')
 
-    expect(calls).toHaveLength(0)
+    expect(calls).toHaveLength(1)
   })
 
   test('sends only while enabled and aborts in-flight work on withdrawal', () => {

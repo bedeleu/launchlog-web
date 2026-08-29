@@ -12,8 +12,6 @@ const defaultTitle = 'LaunchLog — The log of what just shipped'
 const defaultDescription = 'LaunchLog is a curated directory for indie makers, SaaS founders and tech launches, built for discoverability in Google, Bing and AI answer engines.'
 const defaultKeywords = 'LaunchLog, SaaS directory, startup launch directory, indie maker directory, AI search visibility, llms.txt, schema.org, product launch'
 const ogImageUrl = computed(() => `${siteUrl.value}/og-image.jpg`)
-const isRomanianRoute = computed(() => route.path === '/ro' || route.path.startsWith('/ro/'))
-const documentLanguage = computed(() => isRomanianRoute.value ? 'ro' : 'en')
 const normalizedPath = computed(() => {
   if (route.path === '/') return '/'
 
@@ -45,11 +43,6 @@ const noindexPrefixes = [
   '/api-docs',
   '/privacy',
   '/terms',
-  '/withdrawal',
-  '/ro/privacy',
-  '/ro/terms',
-  '/ro/cookies',
-  '/ro/retragere',
   '/status',
 ]
 
@@ -71,7 +64,7 @@ useSeoMeta({
   ogType: 'website',
   ogUrl: canonicalUrl,
   ogSiteName: siteName,
-  ogLocale: computed(() => isRomanianRoute.value ? 'ro_RO' : 'en_US'),
+  ogLocale: 'en_US',
   ogImage: ogImageUrl,
   ogImageAlt: 'LaunchLog — The log of what just shipped',
   twitterCard: 'summary_large_image',
@@ -88,7 +81,7 @@ useSeoMeta({
 
 useHead({
   htmlAttrs: {
-    lang: documentLanguage,
+    lang: 'en',
   },
   link: [
     {
@@ -124,8 +117,8 @@ useHead({
   meta: [
     // Moved off the useSeoMeta shorthand, which unhead 3 removed. Same rendered tag.
     { name: 'keywords', content: defaultKeywords },
-    { name: 'language', content: computed(() => isRomanianRoute.value ? 'Romanian' : 'English') },
-    { name: 'content-language', content: documentLanguage },
+    { name: 'language', content: 'English' },
+    { name: 'content-language', content: 'en' },
     { name: 'theme-color', content: '#080907' },
     { name: 'referrer', content: 'strict-origin-when-cross-origin' },
     { name: 'format-detection', content: 'telephone=no' },
@@ -141,7 +134,7 @@ useHead({
 </script>
 
 <template>
-  <Html :lang="documentLanguage" class="dark">
+  <Html lang="en" class="dark">
     <Body>
       <NuxtRouteAnnouncer />
       <NuxtLayout>

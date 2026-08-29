@@ -1,3 +1,4 @@
+import { track } from '../utils/analytics'
 export type PreviewStatus = 'generating' | 'ready' | 'failed' | 'converted' | 'expired'
 
 export interface ExistingListingConflict {
@@ -8,7 +9,6 @@ export interface ExistingListingConflict {
 }
 
 export interface Preview {
-  created_new_preview?: boolean
   token: string
   status: PreviewStatus
   source_url: string
@@ -82,6 +82,7 @@ export const usePreviews = () => {
       body: { url },
       headers: await authHeaders(),
     })
+    track('Preview Created')
     return data
   }
 

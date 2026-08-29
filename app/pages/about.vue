@@ -113,7 +113,7 @@ useHead({
             jobTitle: 'Founder and full-stack developer',
             worksFor: {
               '@type': 'Organization',
-              name: SITE_IDENTITY.operatorName,
+              name: 'AB Solutions',
             },
             knowsAbout: [
               'full-stack development',
@@ -162,7 +162,7 @@ useHead({
       <ContentReadingMeta
         :items="[
         { label: 'Founder', value: SITE_IDENTITY.founder.name },
-        { label: 'Operator', value: SITE_IDENTITY.operatorName },
+        { label: 'Operator', value: 'AB Solutions' },
         { label: 'Format', value: 'Curated directory' },
         ]"
       />
@@ -185,7 +185,7 @@ useHead({
         <p class="release-kicker">Maintained by</p>
         <h2 class="mt-4 text-2xl font-semibold tracking-tight text-[#f6f1e7]">Alexandru Bedeleu</h2>
         <p class="mt-4 leading-7 text-release-paper-muted">
-          Full-stack developer and founder of {{ SITE_IDENTITY.operatorName }}, with 19+ years building
+          Full-stack developer and founder of AB Solutions, with 19+ years building
           production web products, automation systems and discovery software.
         </p>
         <a :href="SITE_IDENTITY.founder.profileUrl" target="_blank" rel="me noopener" class="mt-5 inline-flex font-mono text-xs uppercase tracking-[0.12em] text-release-blaze underline-offset-4 hover:underline">

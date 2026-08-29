@@ -5,17 +5,11 @@ export const useAuth = () => {
   // (which sets it via onAuthStateChanged on the client only).
   const user = useState<AuthUser>('auth.user', () => null)
 
-  if (import.meta.client) {
-    readMagicLinkEmail(window.localStorage)
-  }
-
   const loginWithGoogle = async () => {
     if (!import.meta.client) return null
     const { signInWithPopup } = await import('firebase/auth')
     const { $firebase } = useNuxtApp()
-    const credential = await signInWithPopup($firebase.auth, $firebase.googleProvider)
-    clearMagicLinkEmail(window.localStorage)
-    return credential
+    return signInWithPopup($firebase.auth, $firebase.googleProvider)
   }
 
   const sendMagicLink = async (email: string, redirect: unknown = '/dashboard'): Promise<void> => {
@@ -24,7 +18,7 @@ export const useAuth = () => {
     const { $firebase } = useNuxtApp()
     const url = authMagicLinkUrl(window.location.origin, redirect)
     await sendSignInLinkToEmail($firebase.auth, email, { url, handleCodeInApp: true })
-    rememberMagicLinkEmail(window.localStorage, email)
+    window.localStorage.setItem('launchlog:magic-link-email', email)
   }
 
   const completeMagicLink = async (confirmedEmail?: string) => {
@@ -33,7 +27,7 @@ export const useAuth = () => {
     const { $firebase } = useNuxtApp()
     if (!isSignInWithEmailLink($firebase.auth, window.location.href)) return null
 
-    const storedEmail = readMagicLinkEmail(window.localStorage)
+    const storedEmail = window.localStorage.getItem('launchlog:magic-link-email')
     const email = resolveMagicLinkEmail(storedEmail, confirmedEmail)
     if (!email) return { status: 'email_required' as const }
 
@@ -43,13 +37,13 @@ export const useAuth = () => {
     }
     catch (error: unknown) {
       if (!confirmedEmail && storedEmail) {
-        clearMagicLinkEmail(window.localStorage)
+        window.localStorage.removeItem('launchlog:magic-link-email')
         return { status: 'email_required' as const }
       }
       throw error
     }
 
-    clearMagicLinkEmail(window.localStorage)
+    window.localStorage.removeItem('launchlog:magic-link-email')
     return { status: 'signed_in' as const, user: credential.user }
   }
 
@@ -57,12 +51,7 @@ export const useAuth = () => {
     if (!import.meta.client) return
     const { signOut } = await import('firebase/auth')
     const { $firebase } = useNuxtApp()
-    try {
-      await signOut($firebase.auth)
-    }
-    finally {
-      clearMagicLinkEmail(window.localStorage)
-    }
+    await signOut($firebase.auth)
   }
 
   // Resolves once Firebase has restored persisted auth state, so guards/admin

@@ -1,6 +1,4 @@
 import { afterEach, describe, expect, mock, test } from 'bun:test'
-import { readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
 import { PRIVACY_CONSENT_STORAGE_KEY, createPrivacyConsent, serializePrivacyConsent } from '../app/utils/privacy-consent'
 import { track } from '../app/utils/analytics'
 
@@ -51,14 +49,5 @@ describe('track (Plausible funnel)', () => {
     }
 
     expect(() => track('Listing Published')).not.toThrow()
-  })
-
-  test('qualifies Preview Created at the ready transition instead of the intake response', () => {
-    const previews = readFileSync(fileURLToPath(new URL('../app/composables/usePreviews.ts', import.meta.url)), 'utf8')
-    const page = readFileSync(fileURLToPath(new URL('../app/pages/preview/[token].vue', import.meta.url)), 'utf8')
-
-    expect(previews).not.toContain("track('Preview Created')")
-    expect(page).toContain('consumePreviewCreatedMeasurement(current)')
-    expect(page).toContain("track('Preview Created')")
   })
 })

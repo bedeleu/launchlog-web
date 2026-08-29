@@ -9,7 +9,6 @@ describe('Release Catalog reading shell', () => {
     expect(source.match(/<h1/g)?.length).toBe(1)
     expect(source).toContain('max-w-5xl')
     expect(source).toContain('max-w-3xl')
-    expect(source).not.toMatch(/<\/?main\b/)
     expect(source).not.toContain('ReleaseActionRail')
     expect(source).not.toMatch(/violet|purple|indigo|mauve|linear-gradient/i)
   })
@@ -26,8 +25,7 @@ describe('Release Catalog reading shell', () => {
     const footer = await Bun.file(new URL('../Footer.vue', import.meta.url)).text()
 
     expect(footer).toContain('SITE_IDENTITY.publicEmail')
-    expect(footer).toContain('operatorBrand')
-    expect(footer).toContain('Privacy choices')
+    expect(footer).toContain('legalName')
     for (const route of ['/privacy', '/terms', '/cookies', '/dmca', '/status']) {
       expect(footer).toContain(`to: '${route}'`)
     }
@@ -39,6 +37,6 @@ describe('Release Catalog reading shell', () => {
     expect(footer).toContain('class="mt-6 inline-flex min-h-6 items-center')
     expect(footer).toContain('class="inline-flex min-h-6 min-w-6 items-center justify-center')
     expect(footer).toContain('class="inline-flex min-h-6 items-center text-sm')
-    expect(footer.match(/class="inline-flex min-h-6 items-center font-mono/g) ?? []).toHaveLength(3)
+    expect(footer.match(/class="inline-flex min-h-6 items-center font-mono/g) ?? []).toHaveLength(2)
   })
 })

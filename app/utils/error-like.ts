@@ -5,8 +5,6 @@ export interface ErrorLike {
   data?: {
     message?: string
     error?: string
-    code?: string
-    error_code?: string
   }
   message?: string
 }

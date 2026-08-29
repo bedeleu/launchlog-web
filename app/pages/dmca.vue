@@ -2,80 +2,75 @@
 const config = useRuntimeConfig()
 const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
 const pageUrl = `${siteUrl}/dmca`
-const updatedIso = '2026-08-29'
-const updated = 'August 29, 2026'
-const operatorBrand = config.public.operatorBrand.trim() || 'AB Solutions'
+const updated = 'August 2, 2026'
 const legalName = config.public.legalName.trim()
-const legalEmail = config.public.legalEmail.trim()
-const reportEmail = config.public.dmcaEmail.trim() || legalEmail
+const dmcaEmail = config.public.dmcaEmail.trim()
 const description
-  = 'How to report copyright infringement or other allegedly illegal content on LaunchLog, how notices are reviewed and how affected users can respond.'
+  = 'LaunchLog copyright-notice guidance, including the information required for a notice or counter-notice and the configured delivery channel.'
 
 const sections = [
   {
-    id: 'scope',
-    title: 'Scope and contact point',
+    id: 'overview',
+    title: 'Overview',
     blocks: [
-      { type: 'p', text: `${operatorBrand} provides this notice route for reports concerning content hosted on launchlog.ai.${legalName ? ` The formal service provider is ${legalName}.` : ''}` },
-      { type: 'p', text: reportEmail ? `Send copyright and illegal-content notices in Romanian or English to ${reportEmail}.` : 'The production legal and copyright mailbox must be published on the Contact page before paid production use.' },
-      { type: 'p', text: 'LaunchLog can act only on material it hosts or controls. For content available solely on a linked third-party website, contact that website or the appropriate authority directly.' },
+      { type: 'p', text: 'LaunchLog respects the intellectual property of others and expects its users to do the same. If you believe content hosted on launchlog.ai infringes your copyright, you may submit a complete notice for evaluation under applicable copyright law.' },
+      ...(legalName ? [{ type: 'p', text: `The configured Service operator is ${legalName}.` }] : []),
+      { type: 'p', text: 'Because listings link to third-party websites we do not control, takedown requests directed at LaunchLog can only address content hosted on launchlog.ai itself.' },
     ],
   },
   {
     id: 'notice',
-    title: 'Submit a sufficiently precise notice',
+    title: 'Filing a takedown notice',
     blocks: [
-      { type: 'p', text: 'A notice should allow us to identify the content and understand the allegation without guessing. Include:' },
+      { type: 'p', text: dmcaEmail ? `To report allegedly infringing content, send a written notice to ${dmcaEmail} that includes all of the following:` : 'A public copyright-notice mailbox is not currently configured. Check the Contact page for the current copyright channel. A complete written notice should include all of the following:' },
       { type: 'list', items: [
-        'The exact LaunchLog listing or page URL and a clear description of the material concerned.',
-        'Why you believe the content is illegal, including the applicable legal basis and relevant facts.',
-        'For copyright reports, identification of the protected work and why the reported use is not authorised by the owner, an agent or the law.',
-        'Your name and email address, unless applicable law permits an anonymous report.',
-        'A statement confirming that you submit the notice in good faith and believe the information is accurate and complete.',
-        'Supporting documents or links that can be reviewed safely, without passwords, payment-card details or private access tokens.',
+        'Identification of the copyrighted work you claim has been infringed.',
+        'The specific URL(s) on launchlog.ai of the material you want removed, so we can locate it.',
+        'Your name, address, telephone number and email address.',
+        'A statement that you have a good-faith belief the use is not authorised by the copyright owner, its agent or the law.',
+        'A statement, under penalty of perjury, that the information in your notice is accurate and that you are the copyright owner or authorised to act on its behalf.',
+        'Your physical or electronic signature.',
       ] },
-      { type: 'p', text: 'A notice that is vague, unsupported or unrelated to content hosted by LaunchLog may require clarification before a decision can be made.' },
     ],
   },
   {
-    id: 'review',
-    title: 'Review and decision',
+    id: 'process',
+    title: 'What happens next',
     blocks: [
-      { type: 'p', text: 'We review notices objectively, diligently and proportionately. A report does not trigger automatic removal. We may request clarification, preserve relevant evidence, restrict or remove content, or decide that no action is justified.' },
-      { type: 'p', text: 'Where applicable law requires it, we acknowledge receipt electronically, notify the affected user and provide a clear statement of reasons for a moderation decision, including the facts relied on, the rule or legal basis and the available review route.' },
-      { type: 'p', text: 'We may refer credible threats, fraud, child-safety issues or other serious illegal content to the competent authority where required or permitted by law.' },
+      { type: 'p', text: 'When we receive a complete notice, we will review it and may remove or disable access to the reported content. Where appropriate, we will notify the affected user and provide them a copy of the notice so they can respond.' },
     ],
   },
   {
-    id: 'response',
-    title: 'Response or review request',
+    id: 'counter',
+    title: 'Counter-notice',
     blocks: [
-      { type: 'p', text: reportEmail ? `If your content was restricted or removed and you believe the decision was mistaken, reply to the decision notice or write to ${reportEmail}.` : 'If your content was restricted or removed and you believe the decision was mistaken, use the published Legal & privacy channel on the Contact page.' },
+      { type: 'p', text: dmcaEmail ? `If your content was removed and you believe this was a mistake or misidentification, you may send a counter-notice to ${dmcaEmail} including:` : 'If your content was removed and you believe this was a mistake or misidentification, use the copyright channel on the Contact page when one is configured. A counter-notice should include:' },
       { type: 'list', items: [
-        'Identify the affected LaunchLog URL and the decision you challenge.',
-        'Explain the mistake, authorisation, exception or other legal basis on which you rely.',
-        'Provide accurate contact information and relevant supporting evidence.',
+        'Identification of the removed content and the URL where it appeared.',
+        'A statement, under penalty of perjury, that you have a good-faith belief the content was removed as a result of mistake or misidentification.',
+        'Your name, address, telephone number and email, and your consent to the jurisdiction of the appropriate courts.',
+        'Your physical or electronic signature.',
       ] },
-      { type: 'p', text: 'We reassess the available information and restore content when restriction is no longer justified. This internal route does not limit any right to contact a court, regulator, consumer body or other competent authority.' },
+      { type: 'p', text: 'We may restore the content if the original complainant does not pursue a court order within the period required by law.' },
     ],
   },
   {
-    id: 'misuse',
-    title: 'Misuse and record keeping',
+    id: 'repeat',
+    title: 'Repeat infringers and misuse',
     blocks: [
-      { type: 'p', text: 'Knowingly false, abusive or bad-faith notices may be rejected and may expose the sender to liability under applicable law. We retain notices, evidence, decisions and correspondence only for the periods described in the Privacy Policy and as needed to handle disputes or meet legal obligations.' },
+      { type: 'p', text: 'We may terminate, without notice, the accounts of users who are repeat infringers. Please note that submitting a false or bad-faith notice or counter-notice may expose you to liability for damages. If you are unsure whether material is infringing, consult a lawyer before filing.' },
     ],
   },
 ]
 
 useSeoMeta({
-  title: 'Copyright & Illegal Content Notice — LaunchLog',
+  title: 'DMCA & Copyright — LaunchLog',
   description,
-  ogTitle: 'Copyright & Illegal Content Notice — LaunchLog',
+  ogTitle: 'DMCA & Copyright — LaunchLog',
   ogDescription: description,
   ogUrl: pageUrl,
   ogType: 'website',
-  twitterTitle: 'Copyright & Illegal Content Notice — LaunchLog',
+  twitterTitle: 'DMCA & Copyright — LaunchLog',
   twitterDescription: description,
 })
 
@@ -83,17 +78,17 @@ useHead({
   link: [{ rel: 'canonical', href: pageUrl }],
   script: [
     {
-      key: 'launchlog-copyright-illegal-content-schema',
+      key: 'launchlog-dmca-schema',
       type: 'application/ld+json',
       innerHTML: JSON.stringify({
         '@context': 'https://schema.org',
         '@type': 'WebPage',
         '@id': `${pageUrl}#webpage`,
         url: pageUrl,
-        name: 'Copyright & Illegal Content Notice — LaunchLog',
+        name: 'DMCA & Copyright — LaunchLog',
         description,
         inLanguage: 'en-US',
-        dateModified: updatedIso,
+        dateModified: '2026-08-02',
         isPartOf: { '@id': `${siteUrl}/#website` },
       }),
     },
@@ -104,10 +99,10 @@ useHead({
 <template>
   <LegalDoc
     eyebrow="Legal"
-    title="Copyright & Illegal Content Notice"
-    intro="A precise route for reporting content hosted by LaunchLog, understanding how a report is reviewed and requesting reconsideration of a moderation decision."
+    title="DMCA & Copyright"
+    intro="We respect intellectual property. If something on LaunchLog infringes your copyright, here is exactly how to file a takedown notice and how the counter-notice process works."
     :updated="updated"
     :sections="sections"
-    :contact-email="reportEmail"
+    :contact-email="dmcaEmail"
   />
 </template>

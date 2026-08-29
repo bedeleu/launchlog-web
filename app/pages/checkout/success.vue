@@ -71,6 +71,7 @@ const poll = async (id: number, deadline: number) => {
     if (result.status === 'converted' && result.listing_slug) {
       listingSlug.value = result.listing_slug
       state.value = 'converted'
+      track('Listing Published')
       cleanup()
       return
     }

@@ -40,7 +40,7 @@ watch(user, async () => {
 </script>
 
 <template>
-  <header lang="en" class="sticky top-0 z-50 border-b border-release-seam bg-release-ink">
+  <header class="sticky top-0 z-50 border-b border-release-seam bg-release-ink">
     <div class="grid h-1 grid-cols-[clamp(7rem,18vw,18rem)_1fr]" aria-hidden="true">
       <span class="bg-release-blaze" />
       <span class="bg-release-rail" />

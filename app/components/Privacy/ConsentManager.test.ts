@@ -19,7 +19,7 @@ describe('privacy choices UI contract', () => {
   })
 
   test('uses an accessible, project-styled preferences dialog', () => {
-    expect(manager).toContain('<div data-privacy-consent-root :lang=')
+    expect(manager).toContain('<div data-privacy-consent-root lang="en">')
     for (const primitive of ['DialogRoot', 'DialogPortal', 'DialogOverlay', 'DialogContent', 'DialogTitle', 'DialogDescription']) {
       expect(manager).toContain(primitive)
     }
@@ -34,7 +34,7 @@ describe('privacy choices UI contract', () => {
     expect(manager).toContain('aria-live="polite"')
   })
 
-  test('keeps withdrawal available from the global footer', () => {
+  test('keeps privacy choices available from the global footer', () => {
     expect(footer).toContain('Privacy choices')
     expect(footer).toContain('openPreferences')
     expect(layout).toContain('<PrivacyConsentManager />')

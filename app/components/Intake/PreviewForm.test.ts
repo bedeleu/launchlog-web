@@ -94,15 +94,6 @@ describe('PreviewForm existing-listing state', () => {
     expect(html).not.toContain('sm:w-48')
   })
 
-  test('discloses preview processing before submission without implying payment or analytics consent', async () => {
-    const html = await renderForm(null)
-
-    expect(html).toContain('By requesting a preview')
-    expect(html).toContain('Terms of Service')
-    expect(html).toContain('Privacy Policy')
-    expect(html).toContain('does not start a paid subscription or consent to optional analytics')
-  })
-
   test('keeps duplicate feedback flat and payment-terminal', async () => {
     const html = await renderForm({
       action: 'claim',

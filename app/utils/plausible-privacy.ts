@@ -19,6 +19,7 @@ export const BROWSER_FUNNEL_EVENTS = [
   'Preview Created',
   'Checkout Started',
   'Payment Canceled',
+  'Listing Published',
 ] as const satisfies readonly FunnelEvent[]
 
 const UTM_KEYS = [
@@ -49,9 +50,6 @@ const STATIC_PUBLIC_PATHS = new Set([
   '/help',
   '/pricing',
   '/privacy',
-  '/ro/cookies',
-  '/ro/privacy',
-  '/ro/terms',
   '/seo-guide',
   '/status',
   '/submit',

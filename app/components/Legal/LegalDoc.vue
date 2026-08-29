@@ -5,7 +5,6 @@ interface Block {
   type: string
   text?: string
   items?: string[]
-  href?: string
 }
 
 interface Section {
@@ -14,43 +13,28 @@ interface Section {
   blocks: Block[]
 }
 
-withDefaults(defineProps<{
+defineProps<{
   eyebrow: string
   title: string
   intro: string
   updated: string
   sections: Section[]
   contactEmail?: string
-  locale?: 'en' | 'ro'
-  alternatePath?: string
-  alternateLabel?: string
-}>(), {
-  locale: 'en',
-  contactEmail: '',
-  alternatePath: '',
-  alternateLabel: '',
-})
+}>()
 </script>
 
 <template>
   <ContentReadingShell :label="eyebrow" :title="title" :intro="intro" wide>
     <template #meta>
-      <ContentReadingMeta :items="[{ label: locale === 'ro' ? 'Ultima actualizare' : 'Last updated', value: updated }]" />
+      <ContentReadingMeta :items="[{ label: 'Last updated', value: updated }]" />
     </template>
 
     <div class="grid gap-10 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-16">
       <aside class="lg:sticky lg:top-24 lg:self-start">
-        <NuxtLink
-          v-if="alternatePath && alternateLabel"
-          :to="alternatePath"
-          class="mb-6 inline-flex min-h-10 items-center border border-release-seam px-3 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-release-blaze hover:border-release-blaze focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-release-focus"
-        >
-          {{ alternateLabel }}
-        </NuxtLink>
         <p class="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-release-paper-muted">
-          {{ locale === 'ro' ? 'Pe această pagină' : 'On this page' }}
+          On this page
         </p>
-        <nav class="mt-4 border-l border-release-seam" :aria-label="locale === 'ro' ? 'Pe această pagină' : 'On this page'">
+        <nav class="mt-4 border-l border-release-seam" aria-label="On this page">
           <a
             v-for="section in sections"
             :key="section.id"
@@ -80,9 +64,6 @@ withDefaults(defineProps<{
                   {{ item }}
                 </li>
               </ul>
-              <p v-else-if="block.type === 'link' && block.href">
-                <NuxtLink :to="block.href">{{ block.text }}</NuxtLink>
-              </p>
               <p v-else>
                 {{ block.text }}
               </p>
@@ -92,28 +73,15 @@ withDefaults(defineProps<{
 
         <div class="mt-14 border-l-2 border-release-blaze bg-release-rail px-5 py-4">
           <p class="text-sm leading-7 text-release-paper-muted">
-            <template v-if="locale === 'ro'">
-              <template v-if="contactEmail">
-                Întrebări despre această politică? Scrieți la
-                <a :href="`mailto:${contactEmail}`">{{ contactEmail }}</a>
-                sau folosiți
-              </template>
-              <template v-else>
-                Nu este configurată încă o adresă publică pentru această politică. Consultați
-              </template>
-              <NuxtLink to="/contact">pagina de contact</NuxtLink>.
+            <template v-if="contactEmail">
+              Questions about this policy? Email
+              <a :href="`mailto:${contactEmail}`">{{ contactEmail }}</a>
+              or use the
             </template>
             <template v-else>
-              <template v-if="contactEmail">
-                Questions about this policy? Email
-                <a :href="`mailto:${contactEmail}`">{{ contactEmail }}</a>
-                or use the
-              </template>
-              <template v-else>
-                No public policy mailbox is currently configured. Check the
-              </template>
-              <NuxtLink to="/contact">contact page</NuxtLink>.
+              No public policy mailbox is currently configured. Check the
             </template>
+            <NuxtLink to="/contact">contact page</NuxtLink>.
           </p>
         </div>
       </article>

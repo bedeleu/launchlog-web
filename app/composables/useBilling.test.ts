@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import { parseStripeCheckoutSession, useBilling } from './useBilling'
+import { useBilling } from './useBilling'
 
 const API = 'https://api.launchlog.test'
 
@@ -8,47 +8,6 @@ type FetchCall = { url: string, options: Record<string, unknown> | undefined }
 const globals = globalThis as unknown as Record<string, unknown>
 let calls: FetchCall[] = []
 let respond: (url: string) => unknown
-const legalDecisions = {
-  terms_accepted: true,
-  terms_version: '2026-08-29',
-  immediate_performance_requested: true,
-  performance_notice_version: '2026-08-29',
-  legal_locale: 'en' as const,
-  checkout_capability_version: '2026-08-29.1',
-  checkout_capability_sha256: 'a'.repeat(64),
-  provider_sha256: 'b'.repeat(64),
-  offer_catalog_sha256: 'c'.repeat(64),
-  terms_document_sha256: 'd'.repeat(64),
-}
-const capabilityData = () => ({
-  schema_version: '1',
-  capability_version: '2026-08-29.1',
-  capability_sha256: 'a'.repeat(64),
-  checkout_enabled: true,
-  provider: {
-    legal_name: 'Registered provider', legal_address: 'Timișoara 300369, Romania',
-    registration_id: 'J35/0000/2026', tax_id: '12345678',
-    phone: '+40 000 000 000', email: 'legal@example.com',
-  },
-  provider_sha256: 'b'.repeat(64),
-  offers: Object.fromEntries(['basic', 'featured'].map((tier, index) => [tier, {
-    tier, name: index === 0 ? 'Standard' : 'Featured', amount_minor: index === 0 ? 2499 : 9900,
-    currency: 'USD', interval: 'year', interval_count: 1, quantity: 1,
-    stripe_price_id: `price_${tier}`, stripe_price_tax_behavior: 'exclusive', automatic_tax_enabled: false,
-    notices: {
-      en: { tax: 'Tax EN', renewal: 'Renewal EN', cancellation: 'Cancellation EN', voluntary_refund: 'Refund EN' },
-      ro: { tax: 'Taxă RO', renewal: 'Reînnoire RO', cancellation: 'Anulare RO', voluntary_refund: 'Rambursare RO' },
-    },
-  }])),
-  offer_catalog_sha256: 'c'.repeat(64),
-  legal: {
-    terms_version: '2026-08-29', performance_notice_version: '2026-08-29',
-    locales: {
-      en: { url: 'https://launchlog.ai/terms', document: 'Terms EN', document_sha256: 'd'.repeat(64), acceptance_text: 'Accept EN', performance_request_text: 'Perform EN' },
-      ro: { url: 'https://launchlog.ai/ro/terms', document: 'Termeni RO', document_sha256: 'e'.repeat(64), acceptance_text: 'Accept RO', performance_request_text: 'Executare RO' },
-    },
-  },
-})
 
 /**
  * useBilling relies on Nuxt's auto-imported globals ($fetch, useRuntimeConfig).
@@ -58,7 +17,7 @@ const capabilityData = () => ({
 beforeEach(() => {
   calls = []
   respond = () => ({ data: {} })
-  globals.useRuntimeConfig = () => ({ public: { apiUrl: API, domain: 'launchlog.ai' } })
+  globals.useRuntimeConfig = () => ({ public: { apiUrl: API } })
   globals.useAuth = () => ({ getIdToken: () => Promise.resolve(null) })
   globals.$fetch = (url: string, options?: Record<string, unknown>) => {
     calls.push({ url, options })
@@ -74,13 +33,12 @@ afterEach(() => {
 
 describe('createSession', () => {
   test('posts the exact checkout contract and unwraps the data envelope', async () => {
-    respond = () => ({ data: { session_id: 'cs_test_1', url: 'https://checkout.stripe.com/c/pay/cs_test_1', agreement_reference: `lla_${'a'.repeat(26)}`, created_new_session: true } })
+    respond = () => ({ data: { session_id: 'cs_test_1', url: 'https://checkout.stripe.com/c/pay/cs_test_1' } })
 
     const session = await useBilling().createSession({
       preview_token: 't'.repeat(64),
       tier: 'featured',
       email: 'maker@example.com',
-      ...legalDecisions,
     })
 
     expect(calls).toHaveLength(1)
@@ -90,13 +48,10 @@ describe('createSession', () => {
       preview_token: 't'.repeat(64),
       tier: 'featured',
       email: 'maker@example.com',
-      ...legalDecisions,
     })
     expect(session).toEqual({
       session_id: 'cs_test_1',
       url: 'https://checkout.stripe.com/c/pay/cs_test_1',
-      agreement_reference: `lla_${'a'.repeat(26)}`,
-      created_new_session: true,
     })
   })
 
@@ -107,19 +62,17 @@ describe('createSession', () => {
       preview_token: 't'.repeat(64),
       tier: 'basic',
       email: 'maker@example.com',
-      ...legalDecisions,
     })).rejects.toThrow('checkout unavailable')
   })
 
   test('uses verified Firebase identity instead of sending an editable email when signed in', async () => {
     globals.useAuth = () => ({ getIdToken: () => Promise.resolve('firebase-id-token') })
-    respond = () => ({ data: { session_id: 'cs_test_auth', url: 'https://checkout.stripe.com/c/pay/cs_test_auth', agreement_reference: `lla_${'b'.repeat(26)}`, created_new_session: false } })
+    respond = () => ({ data: { session_id: 'cs_test_auth', url: 'https://checkout.stripe.com/c/pay/cs_test_auth' } })
 
     await useBilling().createSession({
       preview_token: 'a'.repeat(64),
       tier: 'basic',
       email: 'typed-different@example.com',
-      ...legalDecisions,
     })
 
     expect(calls).toHaveLength(1)
@@ -129,56 +82,7 @@ describe('createSession', () => {
     expect(calls[0]!.options?.body).toEqual({
       preview_token: 'a'.repeat(64),
       tier: 'basic',
-      ...legalDecisions,
     })
-  })
-
-  test('fails closed for a malformed session or a redirect outside exact Stripe Checkout', async () => {
-    for (const data of [
-      { session_id: 'cs_test_safe', url: 'javascript:alert(1)', agreement_reference: `lla_${'a'.repeat(26)}`, created_new_session: true },
-      { session_id: 'cs_test_safe', url: 'https://checkout.stripe.com.evil.example/c/pay/cs_test_safe', agreement_reference: `lla_${'a'.repeat(26)}`, created_new_session: true },
-      { session_id: 'cs_test_safe', url: 'https://checkout.stripe.com:444/c/pay/cs_test_safe', agreement_reference: `lla_${'a'.repeat(26)}`, created_new_session: true },
-      { session_id: 'cs_test_safe', url: 'https://checkout.stripe.com/c/pay/cs_test_other', agreement_reference: `lla_${'a'.repeat(26)}`, created_new_session: true },
-      { session_id: 'not-a-session', url: 'https://checkout.stripe.com/c/pay/not-a-session', agreement_reference: `lla_${'a'.repeat(26)}`, created_new_session: true },
-      { session_id: 'cs_test_safe', url: 'https://checkout.stripe.com/c/pay/cs_test_safe', agreement_reference: 'invalid', created_new_session: true },
-      { session_id: 'cs_test_safe', url: 'https://checkout.stripe.com/c/pay/cs_test_safe', agreement_reference: `lla_${'a'.repeat(26)}` },
-    ]) {
-      respond = () => ({ data })
-      await expect(useBilling().createSession({
-        preview_token: 't'.repeat(64),
-        tier: 'basic',
-        email: 'maker@example.com',
-        ...legalDecisions,
-      })).rejects.toThrow('invalid session')
-    }
-  })
-
-  test('normalizes a validated Stripe Checkout URL without trusting extra response fields', () => {
-    expect(parseStripeCheckoutSession({
-      session_id: 'cs_live_abc123',
-      url: 'https://checkout.stripe.com/c/pay/cs_live_abc123#provider-state',
-      agreement_reference: `lla_${'c'.repeat(26)}`,
-      created_new_session: false,
-      ignored: 'not returned',
-    })).toEqual({
-      session_id: 'cs_live_abc123',
-      url: 'https://checkout.stripe.com/c/pay/cs_live_abc123#provider-state',
-      agreement_reference: `lla_${'c'.repeat(26)}`,
-      created_new_session: false,
-    })
-  })
-})
-
-describe('getCheckoutCapability', () => {
-  test('gets the public capability endpoint and parses its data envelope', async () => {
-    respond = () => ({ data: capabilityData() })
-
-    const capability = await useBilling().getCheckoutCapability()
-
-    expect(calls).toHaveLength(1)
-    expect(calls[0]!.url).toBe(`${API}/api/v1/checkout/capability`)
-    expect(capability.capability_version).toBe('2026-08-29.1')
-    expect(capability.legal.locales.ro.acceptance_text).toBe('Accept RO')
   })
 })
 

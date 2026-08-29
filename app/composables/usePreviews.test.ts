@@ -7,12 +7,10 @@ const globals = globalThis as unknown as Record<string, unknown>
 type FetchCall = { url: string, options?: Record<string, unknown> }
 let calls: FetchCall[]
 let authEvents: string[]
-let response: unknown
 
 beforeEach(() => {
   calls = []
   authEvents = []
-  response = { data: { token: 'p'.repeat(64) } }
   globals.useRuntimeConfig = () => ({ public: { apiUrl: API } })
   globals.useAuth = () => ({
     waitForAuthReady: async () => {
@@ -25,7 +23,7 @@ beforeEach(() => {
   })
   globals.$fetch = (url: string, options?: Record<string, unknown>) => {
     calls.push({ url, options })
-    return Promise.resolve(response)
+    return Promise.resolve({ data: { token: 'p'.repeat(64) } })
   }
 })
 
@@ -33,7 +31,6 @@ afterEach(() => {
   delete globals.useRuntimeConfig
   delete globals.useAuth
   delete globals.$fetch
-  delete (globalThis as { window?: unknown }).window
 })
 
 describe('preview identity and existing-listing routing', () => {
@@ -74,14 +71,6 @@ describe('preview identity and existing-listing routing', () => {
 
     expect(calls[0]?.options?.headers).toBeUndefined()
     expect(authEvents).toEqual(['ready', 'token'])
-  })
-
-  test('returns the server-authoritative transition without emitting a lead before ready', async () => {
-    response = { data: { token: 'p'.repeat(64), created_new_preview: true } }
-    const preview = await usePreviews().createPreview('https://maker.example')
-
-    expect(preview.created_new_preview).toBe(true)
-    expect((globalThis as { window?: { plausible?: unknown } }).window?.plausible).toBeUndefined()
   })
 
   test('cancels the exact preview checkout with the current verified identity', async () => {

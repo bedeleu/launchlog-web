@@ -23,7 +23,7 @@ describe('Stripe Back reconciliation', () => {
       clearReturnState,
     })
 
-    expect(result).toEqual({ state: 'done', preview, cancelled: true })
+    expect(result).toEqual({ state: 'done', preview })
     expect(refresh).toHaveBeenCalledTimes(1)
     expect(cancel).toHaveBeenCalledTimes(1)
     expect(clearReturnState).toHaveBeenCalledTimes(1)
@@ -44,7 +44,7 @@ describe('Stripe Back reconciliation', () => {
       clearReturnState,
     })
 
-    expect(result).toEqual({ state: 'done', preview, cancelled: true })
+    expect(result).toEqual({ state: 'done', preview })
     expect(cancel).toHaveBeenCalledTimes(1)
   })
 
@@ -62,7 +62,7 @@ describe('Stripe Back reconciliation', () => {
       clearReturnState,
     })
 
-    expect(result).toEqual({ state: 'done', preview, cancelled: false })
+    expect(result).toEqual({ state: 'done', preview })
     expect(cancel).toHaveBeenCalledTimes(0)
     expect(clearReturnState).toHaveBeenCalledTimes(1)
   })

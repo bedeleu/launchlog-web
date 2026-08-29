@@ -12,12 +12,13 @@ if (!isBuilt && process.env.SSR_TESTS === 'required') {
 }
 
 /**
- * The tax notice is accountant-owned and locale-specific. A build-time check cannot prove that the
- * correct locale reaches rendered output, so these assertions exercise the real Nitro artifact.
+ * The tax notice is one accountant-owned sentence that must read identically on every surface that
+ * mentions price. A build-time check cannot prove that: the value arrives through runtime config,
+ * so only a rendered response shows whether all three pages agree — and whether an unset variable
+ * publishes nothing rather than a guessed tax treatment.
  */
-const NOTICE_EN = 'SSR probe: English tax treatment approved by the accountant.'
-const NOTICE_RO = 'Probă SSR: tratamentul fiscal în limba română aprobat de contabil.'
-const EN_PAGES = ['/pricing', '/help', '/terms'] as const
+const NOTICE = 'SSR probe: prices are in US dollars and are the total amount charged.'
+const PAGES = ['/pricing', '/help', '/terms'] as const
 const CONTENT_PAGES = [
   '/about',
   '/contact',
@@ -49,15 +50,14 @@ async function waitForServer(base: string, timeoutMs = 60_000): Promise<void> {
   throw new Error('Nitro server did not become ready in time')
 }
 
-function spawnServer(port: number, taxNoticeEn: string, taxNoticeRo: string): ReturnType<typeof Bun.spawn> {
+function spawnServer(port: number, taxNotice: string): ReturnType<typeof Bun.spawn> {
   return Bun.spawn({
     cmd: ['node', serverEntry],
     env: {
       ...process.env,
       PORT: String(port),
       NITRO_PORT: String(port),
-      NUXT_PUBLIC_TAX_NOTICE_EN: taxNoticeEn,
-      NUXT_PUBLIC_TAX_NOTICE_RO: taxNoticeRo,
+      NUXT_PUBLIC_TAX_NOTICE: taxNotice,
     },
     stdout: 'pipe',
     stderr: 'pipe',
@@ -80,7 +80,7 @@ describe.skipIf(!isBuilt)('tax notice is published identically when configured',
   let server: ReturnType<typeof Bun.spawn> | undefined
 
   beforeAll(async () => {
-    server = spawnServer(port, NOTICE_EN, NOTICE_RO)
+    server = spawnServer(port, NOTICE)
     await waitForServer(base)
   })
 
@@ -88,30 +88,22 @@ describe.skipIf(!isBuilt)('tax notice is published identically when configured',
     server?.kill()
   })
 
-  test.each(EN_PAGES)('%s renders the exact English notice', async (path) => {
-    const text = await renderedText(base, path)
-    expect(text).toContain(NOTICE_EN)
-    expect(text).not.toContain(NOTICE_RO)
+  test.each(PAGES)('%s renders the exact configured notice', async (path) => {
+    expect(await renderedText(base, path)).toContain(NOTICE)
   })
 
-  test('all English commercial pages carry the same English sentence', async () => {
+  test('all three pages carry the same single sentence', async () => {
     const found = await Promise.all(
-      EN_PAGES.map(async path => (await renderedText(base, path)).includes(NOTICE_EN)),
+      PAGES.map(async path => (await renderedText(base, path)).includes(NOTICE)),
     )
 
     expect(found).toEqual([true, true, true])
   })
 
-  test('/ro/terms renders only the separately approved Romanian notice', async () => {
-    const text = await renderedText(base, '/ro/terms')
-    expect(text).toContain(NOTICE_RO)
-    expect(text).not.toContain(NOTICE_EN)
-  })
-
-  test('the Terms JSON-LD reports the latest legal revision date', async () => {
+  test('the Terms JSON-LD reports the date the tax clause was added', async () => {
     const html = await (await fetch(`${base}/terms`)).text()
 
-    expect(html).toContain('"dateModified":"2026-08-29"')
+    expect(html).toContain('"dateModified":"2026-08-25"')
   })
 })
 
@@ -121,7 +113,7 @@ describe.skipIf(!isBuilt)('tax notice is absent when the variable is empty', () 
   let server: ReturnType<typeof Bun.spawn> | undefined
 
   beforeAll(async () => {
-    server = spawnServer(port, '', '')
+    server = spawnServer(port, '')
     await waitForServer(base)
   })
 
@@ -129,11 +121,10 @@ describe.skipIf(!isBuilt)('tax notice is absent when the variable is empty', () 
     server?.kill()
   })
 
-  test.each([...EN_PAGES, '/ro/terms'] as const)('%s publishes no tax sentence at all', async (path) => {
+  test.each(PAGES)('%s publishes no tax sentence at all', async (path) => {
     const text = await renderedText(base, path)
 
-    expect(text).not.toContain(NOTICE_EN)
-    expect(text).not.toContain(NOTICE_RO)
+    expect(text).not.toContain(NOTICE)
     // No fallback may guess a tax treatment in the application's own words.
     expect(text).not.toMatch(/no tax is added/i)
     expect(text).not.toMatch(/tax is (?:not )?included/i)

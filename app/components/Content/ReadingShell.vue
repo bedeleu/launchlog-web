@@ -12,7 +12,7 @@ withDefaults(defineProps<{
 </script>
 
 <template>
-  <div
+  <main
     data-reading-shell
     class="mx-auto w-full px-5 py-12 sm:px-8 md:py-18"
     :class="wide ? 'max-w-7xl' : 'max-w-5xl'"
@@ -41,5 +41,5 @@ withDefaults(defineProps<{
     <div class="pt-10 md:pt-14">
       <slot />
     </div>
-  </div>
+  </main>
 </template>
