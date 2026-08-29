@@ -77,7 +77,7 @@ const faqs = [
   { question: 'Which package should most products choose?', answer: 'Standard is the sensible default: a complete, machine-readable listing. Choose Featured when you want promotion — the Featured section on directory pages and eligibility for homepage Featured slots.' },
   { question: 'Can I preview before paying?', answer: 'Yes. The preview is private and free. You pay only when you decide to publish the listing.' },
   { question: 'How long does the listing stay active?', answer: 'Packages are annual. Your listing remains active for the paid year, with renewal handled through Stripe.' },
-  { question: 'Do you offer refunds?', answer: 'Yes. LaunchLog includes a 7-day money-back guarantee for paid listings.' },
+  { question: 'Do you offer refunds?', answer: 'Yes. LaunchLog includes a 7-day money-back guarantee for the initial subscription payment.' },
 ]
 
 useFaqSchema(faqs.map(f => ({ q: f.question, a: f.answer })))
@@ -88,7 +88,7 @@ useFaqSchema(faqs.map(f => ({ q: f.question, a: f.answer })))
     <ReleaseShell
       eyebrow="Release catalog · placement"
       title="Choose how your release enters the catalog."
-      description="One annual placement. A permanent public record for people, search engines, and machine-readable discovery. Preview first; pay only when you publish."
+      description="One annual placement. A durable public record while your subscription remains active, built for people, search engines, and machine-readable discovery. Preview first; pay only when you publish."
     >
       <section aria-labelledby="placement-editions">
         <div class="mb-4 flex flex-wrap items-end justify-between gap-3 border-b border-release-seam pb-3">
@@ -223,7 +223,7 @@ useFaqSchema(faqs.map(f => ({ q: f.question, a: f.answer })))
           <dl class="divide-y divide-release-seam border-y border-release-seam text-sm">
             <div class="flex items-start justify-between gap-4 py-3"><dt class="text-release-paper-muted">Payment</dt><dd class="text-right font-medium text-release-paper">Only when you publish</dd></div>
             <div class="flex items-start justify-between gap-4 py-3"><dt class="text-release-paper-muted">Billing</dt><dd class="text-right font-medium text-release-paper">Annual</dd></div>
-            <div class="flex items-start justify-between gap-4 py-3"><dt class="font-medium text-release-paper">7-day guarantee</dt><dd class="max-w-36 text-right text-release-paper-muted">Annual packages, no hidden fees, easy refund window.</dd></div>
+            <div class="flex items-start justify-between gap-4 py-3"><dt class="font-medium text-release-paper">7-day guarantee</dt><dd class="max-w-36 text-right text-release-paper-muted">Initial subscription payment, no hidden fees, easy refund window.</dd></div>
           </dl>
           <div v-if="taxNotice" data-tax-notice class="border border-release-seam border-l-2 border-l-release-warning bg-release-ink p-4">
             <p class="font-mono text-[0.62rem] font-semibold tracking-[0.16em] text-release-warning uppercase">Tax notice</p>
