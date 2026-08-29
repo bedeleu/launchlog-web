@@ -185,7 +185,7 @@ useHead({
         </div>
       </div>
       <div class="mt-6 grid gap-4 lg:grid-cols-3">
-        <pre v-for="example in [publicExample, discoveryExample, previewExample]" :key="example" class="overflow-x-auto border border-release-seam bg-release-rail p-4 font-mono text-xs leading-6 text-[#f6f1e7]"><code>{{ example }}</code></pre>
+        <pre v-for="example in [publicExample, discoveryExample, previewExample]" :key="example" class="min-w-0 max-w-full overflow-x-auto border border-release-seam bg-release-rail p-4 font-mono text-xs leading-6 text-[#f6f1e7]"><code>{{ example }}</code></pre>
       </div>
     </section>
 
@@ -204,13 +204,13 @@ useHead({
         </div>
       </div>
       <div class="mt-6 grid gap-4 lg:grid-cols-2">
-        <div>
+        <div class="min-w-0">
           <p class="release-kicker mb-2">List owned listings</p>
-          <pre class="overflow-x-auto border border-release-seam bg-release-rail p-4 font-mono text-xs leading-6 text-[#f6f1e7]"><code>{{ dashboardExample }}</code></pre>
+          <pre class="max-w-full overflow-x-auto border border-release-seam bg-release-rail p-4 font-mono text-xs leading-6 text-[#f6f1e7]"><code>{{ dashboardExample }}</code></pre>
         </div>
-        <div>
+        <div class="min-w-0">
           <p class="release-kicker mb-2">Update editable fields</p>
-          <pre class="overflow-x-auto border border-release-seam bg-release-rail p-4 font-mono text-xs leading-6 text-[#f6f1e7]"><code>{{ updateExample }}</code></pre>
+          <pre class="max-w-full overflow-x-auto border border-release-seam bg-release-rail p-4 font-mono text-xs leading-6 text-[#f6f1e7]"><code>{{ updateExample }}</code></pre>
         </div>
       </div>
     </section>
