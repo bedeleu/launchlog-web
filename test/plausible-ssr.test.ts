@@ -2,9 +2,8 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
-// Self-hosted Plausible must render as a real <script> in the SSR <head> ONLY when
-// NUXT_PUBLIC_PLAUSIBLE_SRC is set, and render nothing when it is empty (non-prod builds
-// must stay analytics-free). useHead runs at setup, so only rendered output proves it.
+// Optional analytics must never render in SSR HTML because the browser has not yet
+// established a valid consent record. A client plugin may load it only after opt-in.
 const serverEntry = fileURLToPath(new URL('../.output/server/index.mjs', import.meta.url))
 const isBuilt = existsSync(serverEntry)
 
@@ -13,9 +12,8 @@ if (!isBuilt && process.env.SSR_TESTS === 'required') {
 }
 
 const UPSTREAM_PORT = 3205
-const ON_PORT = 3206
-const OFF_PORT = 3207
-const SCRIPT = 'https://plausible.launchlog.ai/js/pa-IO89ybsX-AH93y-xY_tHi.js'
+const SERVER_PORT = 3206
+const ENDPOINT = 'https://plausible.launchlog.ai/api/event'
 
 const EMPTY_META = {
   current_page: 1, from: 0, last_page: 1, per_page: 30, to: 0, total: 0,
@@ -23,8 +21,7 @@ const EMPTY_META = {
 }
 
 let upstream: ReturnType<typeof Bun.serve> | undefined
-let onServer: ReturnType<typeof Bun.spawn> | undefined
-let offServer: ReturnType<typeof Bun.spawn> | undefined
+let server: ReturnType<typeof Bun.spawn> | undefined
 
 async function waitFor(base: string, timeoutMs = 60_000): Promise<void> {
   const deadline = Date.now() + timeoutMs
@@ -38,7 +35,7 @@ async function waitFor(base: string, timeoutMs = 60_000): Promise<void> {
   throw new Error(`SSR server did not become ready on ${base}`)
 }
 
-describe.skipIf(!isBuilt)('Plausible script injection (SSR)', () => {
+describe.skipIf(!isBuilt)('Plausible consent boundary (SSR)', () => {
   beforeAll(async () => {
     upstream = Bun.serve({
       port: UPSTREAM_PORT,
@@ -52,40 +49,34 @@ describe.skipIf(!isBuilt)('Plausible script injection (SSR)', () => {
       NUXT_PUBLIC_API_URL: `http://127.0.0.1:${UPSTREAM_PORT}`,
     }
 
-    onServer = Bun.spawn({
+    server = Bun.spawn({
       cmd: ['node', serverEntry],
-      env: { ...baseEnv, PORT: String(ON_PORT), NUXT_PUBLIC_PLAUSIBLE_SRC: SCRIPT },
-      stdout: 'ignore', stderr: 'ignore',
-    })
-    offServer = Bun.spawn({
-      cmd: ['node', serverEntry],
-      env: { ...baseEnv, PORT: String(OFF_PORT), NUXT_PUBLIC_PLAUSIBLE_SRC: '' },
+      env: {
+        ...baseEnv,
+        PORT: String(SERVER_PORT),
+        NUXT_PUBLIC_PLAUSIBLE_ENABLED: 'true',
+        NUXT_PUBLIC_PLAUSIBLE_DOMAIN: 'launchlog.ai',
+        NUXT_PUBLIC_PLAUSIBLE_ENDPOINT: ENDPOINT,
+      },
       stdout: 'ignore', stderr: 'ignore',
     })
 
-    await Promise.all([
-      waitFor(`http://127.0.0.1:${ON_PORT}`),
-      waitFor(`http://127.0.0.1:${OFF_PORT}`),
-    ])
+    await waitFor(`http://127.0.0.1:${SERVER_PORT}`)
   })
 
   afterAll(() => {
-    onServer?.kill()
-    offServer?.kill()
+    server?.kill()
     upstream?.stop(true)
   })
 
-  test('renders the async Plausible script + init when NUXT_PUBLIC_PLAUSIBLE_SRC is set', async () => {
-    const html = await fetch(`http://127.0.0.1:${ON_PORT}/`).then(r => r.text())
+  test('renders no analytics script or queue before browser consent', async () => {
+    const html = await fetch(`http://127.0.0.1:${SERVER_PORT}/`).then(r => r.text())
+    const scriptTags = html.match(/<script\b[^>]*>/g) ?? []
 
-    expect(html).toContain(`src="${SCRIPT}"`)
-    expect(html).toContain('plausible.init')
-  })
-
-  test('renders NO analytics script when NUXT_PUBLIC_PLAUSIBLE_SRC is empty', async () => {
-    const html = await fetch(`http://127.0.0.1:${OFF_PORT}/`).then(r => r.text())
-
-    expect(html).not.toContain('plausible.launchlog.ai')
-    expect(html).not.toContain('plausible.init')
+    // Nuxt serializes public runtime configuration into the payload. The API
+    // endpoint may therefore exist as inert data, but it must never be a script.
+    expect(scriptTags.some(tag => tag.includes(`src="${ENDPOINT}"`))).toBe(false)
+    expect(html).not.toContain('data-launchlog-analytics')
+    expect(html).not.toContain('window.plausible=')
   })
 })

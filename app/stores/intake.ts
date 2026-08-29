@@ -1,23 +1,18 @@
-import { defineStore } from 'pinia'
+import { defineStore, skipHydrate } from 'pinia'
 import { useLocalStorage } from '@vueuse/core'
 import type { PlanTier } from '~/composables/usePlans'
 import type { Preview } from '~/composables/usePreviews'
+import type { PersistedPreviewDraft } from '~/utils/intake-retention'
+import {
+  createIntakeLastUrlExpiry,
+  createFailClosedJsonSerializer,
+  isPersistedPreviewDraft,
+  pruneExpiredIntakeState,
+  resolvePreviewCreatedMeasurement,
+  resolveRetainedLastUrl,
+} from '~/utils/intake-retention'
 
-type PreviewDraft = {
-  token: string
-  sourceUrl: string
-  url: string
-  domain: string
-  title: string
-  tagline: string
-  description: string
-  email: string
-  tier: PlanTier
-  screenshotUrl: string | null
-  status: string
-  expiresAt: string | null
-  updatedAt: string
-}
+type PreviewDraft = PersistedPreviewDraft
 
 const isPlanTier = (value: string | null | undefined): value is PlanTier =>
   value === 'basic' || value === 'featured'
@@ -61,38 +56,103 @@ const toDraft = (preview: Preview, existing?: PreviewDraft): PreviewDraft => ({
     : (isPlanTier(preview.tier) ? preview.tier : 'basic'),
   screenshotUrl: preview.screenshot_url,
   status: preview.status,
+  previewCreatedMeasurementPending: existing?.previewCreatedMeasurementPending
+    ?? preview.created_new_preview === true,
   expiresAt: preview.expires_at,
   updatedAt: new Date().toISOString(),
 })
 
 export const useIntakeStore = defineStore('intake', () => {
-  const lastUrl = useLocalStorage('launchlog:intake:last-url', '')
-  const latestToken = useLocalStorage<string | null>('launchlog:intake:latest-token', null)
-  const drafts = useLocalStorage<Record<string, PreviewDraft>>('launchlog:intake:drafts', {})
+  const removeCorruptStorageKey = (key: string) => {
+    try {
+      window.localStorage.removeItem(key)
+    }
+    catch {
+      // Inaccessible storage cannot be retained or used by the app.
+    }
+  }
+  // Browser storage owns these refs. Nuxt's SSR Pinia payload contains only
+  // request-local defaults and must never overwrite a newer local draft during
+  // hydration (especially the one-shot Preview Created readiness marker).
+  const lastUrl = skipHydrate(useLocalStorage('launchlog:intake:last-url', ''))
+  const lastUrlExpiresAt = skipHydrate(useLocalStorage<string | null>('launchlog:intake:last-url-expires-at', null))
+  const latestToken = skipHydrate(useLocalStorage<string | null>('launchlog:intake:latest-token', null))
+  const drafts = skipHydrate(useLocalStorage<Record<string, PreviewDraft>>(
+    'launchlog:intake:drafts',
+    {},
+    {
+      serializer: createFailClosedJsonSerializer(
+        () => ({}),
+        () => removeCorruptStorageKey('launchlog:intake:drafts'),
+      ),
+    },
+  ))
   // Normalized-URL → token index, so ANY previously-previewed URL (not just the
   // last) resolves to its saved token in O(1).
-  const previewByUrlKey = useLocalStorage<Record<string, string>>('launchlog:intake:url-index', {})
+  const previewByUrlKey = skipHydrate(useLocalStorage<Record<string, string>>(
+    'launchlog:intake:url-index',
+    {},
+    {
+      serializer: createFailClosedJsonSerializer(
+        () => ({}),
+        () => removeCorruptStorageKey('launchlog:intake:url-index'),
+      ),
+    },
+  ))
   // One-shot handoff of the tier chosen on /pricing → /submit. Consumed when a
   // preview is created or resumed; after that the draft is the source of truth,
   // so polling and refreshes never reset the user's choice.
-  const preferredTier = useLocalStorage<PlanTier | null>('launchlog:intake:preferred-tier', null)
+  const preferredTier = skipHydrate(useLocalStorage<PlanTier | null>('launchlog:intake:preferred-tier', null))
+
+  const pruneExpiredDrafts = () => {
+    const pruned = pruneExpiredIntakeState({
+      drafts: drafts.value,
+      latestToken: latestToken.value,
+      urlIndex: previewByUrlKey.value,
+    }, Date.now(), isPersistedPreviewDraft)
+    if (!pruned.changed) return
+
+    drafts.value = pruned.drafts
+    latestToken.value = pruned.latestToken
+    previewByUrlKey.value = pruned.urlIndex
+  }
+
+  const pruneLastUrl = () => {
+    const retained = resolveRetainedLastUrl(lastUrl.value, lastUrlExpiresAt.value)
+    if (!retained.changed) return
+
+    lastUrl.value = retained.value
+    lastUrlExpiresAt.value = retained.expiresAt
+  }
+
+  if (import.meta.client) {
+    pruneExpiredDrafts()
+    pruneLastUrl()
+    if (preferredTier.value !== null && !isPlanTier(preferredTier.value)) {
+      preferredTier.value = null
+    }
+  }
 
   const latestDraft = computed(() =>
     latestToken.value ? drafts.value[latestToken.value] ?? null : null,
   )
 
-  const rememberSubmittedUrl = (url: string) => {
-    lastUrl.value = url
+  const rememberSubmittedUrl = (url: string, previewExpiry?: string | null) => {
+    const expiresAt = createIntakeLastUrlExpiry(Date.now(), previewExpiry)
+    const retained = resolveRetainedLastUrl(url, expiresAt)
+    lastUrl.value = retained.value
+    lastUrlExpiresAt.value = retained.expiresAt
   }
 
   const rememberPreview = (preview: Preview) => {
+    pruneExpiredDrafts()
     const existing = drafts.value[preview.token]
     drafts.value = {
       ...drafts.value,
       [preview.token]: toDraft(preview, existing),
     }
     latestToken.value = preview.token
-    lastUrl.value = preview.source_url || preview.url
+    rememberSubmittedUrl(preview.source_url || preview.url, preview.expires_at)
 
     const index = { ...previewByUrlKey.value }
     for (const candidate of [preview.source_url, preview.url]) {
@@ -117,6 +177,23 @@ export const useIntakeStore = defineStore('intake', () => {
 
   const getDraft = (token: string) => drafts.value[token] ?? null
 
+  const consumePreviewCreatedMeasurement = (preview: Preview): boolean => {
+    const existing = drafts.value[preview.token]
+    if (!existing) return false
+
+    const outcome = resolvePreviewCreatedMeasurement(
+      existing.previewCreatedMeasurementPending === true,
+      preview.status,
+    )
+    if (outcome.nextPending !== existing.previewCreatedMeasurementPending) {
+      updateDraft(preview.token, {
+        previewCreatedMeasurementPending: outcome.nextPending,
+      })
+    }
+
+    return outcome.shouldTrack
+  }
+
   const setPreferredTier = (tier: PlanTier) => {
     preferredTier.value = tier
   }
@@ -131,6 +208,7 @@ export const useIntakeStore = defineStore('intake', () => {
   }
 
   const previewForUrl = (url: string): PreviewDraft | null => {
+    pruneExpiredDrafts()
     const key = normalizeUrlKey(url)
     if (!key) return null
 
@@ -153,6 +231,7 @@ export const useIntakeStore = defineStore('intake', () => {
     rememberPreview,
     updateDraft,
     getDraft,
+    consumePreviewCreatedMeasurement,
     setPreferredTier,
     applyPreferredTier,
     previewForUrl,

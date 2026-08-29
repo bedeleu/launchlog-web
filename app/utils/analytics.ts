@@ -1,14 +1,25 @@
-// Thin, SSR-safe wrapper over the self-hosted Plausible queue. `window.plausible`
-// is defined by the init stub in app.vue only when NUXT_PUBLIC_PLAUSIBLE_SRC is
-// set, so this is a no-op on the server and when analytics is disabled.
-export type FunnelEvent =
-  | 'Preview Created'
-  | 'Checkout Started'
-  | 'Payment Canceled'
-  | 'Listing Published'
+import { hasAnalyticsConsent } from './privacy-consent'
+import type { FunnelEvent } from './plausible-privacy'
+
+interface AnalyticsWindow {
+  localStorage: Storage
+  location: Pick<Location, 'origin'>
+  plausible?: (event: string, options?: { url: string }) => void
+}
 
 export function track(event: FunnelEvent): void {
-  if (typeof window !== 'undefined') {
-    (window as unknown as { plausible?: (e: string) => void }).plausible?.(event)
+  if (typeof window === 'undefined') return
+
+  try {
+    const analyticsWindow = window as unknown as AnalyticsWindow
+    if (!hasAnalyticsConsent(analyticsWindow.localStorage)) return
+
+    const origin = new URL(analyticsWindow.location.origin)
+    if (origin.protocol !== 'https:' || origin.username || origin.password || origin.search || origin.hash) return
+
+    analyticsWindow.plausible?.(event, { url: `${origin.origin}/submit` })
+  }
+  catch {
+    // Analytics must never alter the product flow.
   }
 }

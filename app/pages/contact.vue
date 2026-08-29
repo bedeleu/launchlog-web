@@ -10,7 +10,13 @@ const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
 const pageUrl = `${siteUrl}/contact`
 const description
   = 'LaunchLog contact channels for listing support, billing, legal requests and copyright notices.'
+const operatorBrand = config.public.operatorBrand.trim()
 const legalName = config.public.legalName.trim()
+const legalAddress = config.public.legalAddress.trim()
+const legalRegistrationId = config.public.legalRegistrationId.trim()
+const legalTaxId = String(config.public.legalTaxId ?? '').trim()
+const legalShareCapital = config.public.legalShareCapital.trim()
+const legalPhone = config.public.legalPhone.trim()
 const supportEmail = config.public.supportEmail.trim()
 const legalEmail = config.public.legalEmail.trim()
 const dmcaEmail = config.public.dmcaEmail.trim()
@@ -118,6 +124,15 @@ const quickLinks = [
   { label: 'See pricing', to: '/pricing' },
 ]
 
+const legalDetails = computed(() => [
+  legalName ? { label: 'Contracting provider', value: legalName } : null,
+  legalAddress ? { label: 'Registered address', value: legalAddress } : null,
+  legalRegistrationId ? { label: 'Registration', value: legalRegistrationId } : null,
+  legalTaxId ? { label: 'Tax ID', value: legalTaxId } : null,
+  legalShareCapital ? { label: 'Share capital', value: legalShareCapital } : null,
+  legalPhone ? { label: 'Telephone', value: legalPhone } : null,
+].filter((detail): detail is NonNullable<typeof detail> => detail !== null))
+
 useSeoMeta({
   title: 'Contact LaunchLog',
   description,
@@ -160,7 +175,7 @@ useHead({
     <template #meta>
       <ContentReadingMeta
         :items="[
-        { label: 'Operator', value: legalName || 'LaunchLog' },
+        { label: 'Operator', value: operatorBrand || 'AB Solutions' },
         { label: 'Channel', value: 'Support request' },
         { label: 'Ownership', value: 'Manual verification' },
         ]"
@@ -219,6 +234,14 @@ useHead({
           </div>
         </div>
 
+        <div id="contact-privacy-notice" class="mt-6 border-l-2 border-release-signal bg-release-rail px-4 py-3 text-xs leading-5 text-release-paper-muted">
+          <p>
+            We use the required name, email and message to review and answer this request. If you do not provide them, we cannot submit or respond to it. Website is optional except for listing claims. See our
+            <NuxtLink to="/privacy" class="text-release-blaze underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-release-focus">Privacy Policy</NuxtLink>.
+          </p>
+          <p class="mt-1">Do not include passwords, payment-card details or private access tokens.</p>
+        </div>
+
         <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
           <button type="submit" class="release-action sm:min-w-44" :disabled="isSending || sent">
             <AppSpinner v-if="isSending" color="text-current" label="Sending request" />
@@ -257,6 +280,19 @@ useHead({
           <p class="mt-4 break-all font-mono text-xs text-release-blaze group-hover:underline">{{ channel.email }}</p>
         </a>
       </div>
+    </section>
+
+    <section v-if="legalDetails.length" class="mt-14" aria-labelledby="legal-identity-heading">
+      <p class="release-kicker">Legal identity</p>
+      <h2 id="legal-identity-heading" class="mt-4 text-2xl font-semibold tracking-tight text-[#f6f1e7]">
+        {{ operatorBrand || 'AB Solutions' }}
+      </h2>
+      <dl class="mt-5 grid border-t border-l border-release-seam sm:grid-cols-2">
+        <div v-for="detail in legalDetails" :key="detail.label" class="border-r border-b border-release-seam p-5">
+          <dt class="font-mono text-[11px] uppercase tracking-[0.12em] text-release-paper-muted">{{ detail.label }}</dt>
+          <dd class="mt-2 text-sm leading-6 text-[#f6f1e7]">{{ detail.value }}</dd>
+        </div>
+      </dl>
     </section>
 
     <section v-else class="release-panel mt-14 p-6 md:p-8">

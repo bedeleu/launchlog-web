@@ -12,6 +12,8 @@ const defaultTitle = 'LaunchLog — The log of what just shipped'
 const defaultDescription = 'LaunchLog is a curated directory for indie makers, SaaS founders and tech launches, built for discoverability in Google, Bing and AI answer engines.'
 const defaultKeywords = 'LaunchLog, SaaS directory, startup launch directory, indie maker directory, AI search visibility, llms.txt, schema.org, product launch'
 const ogImageUrl = computed(() => `${siteUrl.value}/og-image.jpg`)
+const isRomanianRoute = computed(() => route.path === '/ro' || route.path.startsWith('/ro/'))
+const documentLanguage = computed(() => isRomanianRoute.value ? 'ro' : 'en')
 const normalizedPath = computed(() => {
   if (route.path === '/') return '/'
 
@@ -43,6 +45,11 @@ const noindexPrefixes = [
   '/api-docs',
   '/privacy',
   '/terms',
+  '/withdrawal',
+  '/ro/privacy',
+  '/ro/terms',
+  '/ro/cookies',
+  '/ro/retragere',
   '/status',
 ]
 
@@ -64,7 +71,7 @@ useSeoMeta({
   ogType: 'website',
   ogUrl: canonicalUrl,
   ogSiteName: siteName,
-  ogLocale: 'en_US',
+  ogLocale: computed(() => isRomanianRoute.value ? 'ro_RO' : 'en_US'),
   ogImage: ogImageUrl,
   ogImageAlt: 'LaunchLog — The log of what just shipped',
   twitterCard: 'summary_large_image',
@@ -79,29 +86,10 @@ useSeoMeta({
   ),
 })
 
-// Self-hosted Plausible (cookieless, first-party). Injected only when the
-// script URL is configured, so non-prod builds render no analytics tag. The
-// init stub defines the queue + calls init before the async script loads; the
-// pa-<id>.js script encodes the site, so no data-domain is needed.
-const plausibleScript = computed(() => {
-  const src = config.public.plausibleSrc
-  if (!src) return []
-
-  return [
-    { src, async: true, 'data-plausible': 'launchlog' },
-    {
-      key: 'plausible-init',
-      innerHTML:
-        'window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init()',
-    },
-  ]
-})
-
 useHead({
   htmlAttrs: {
-    lang: 'en',
+    lang: documentLanguage,
   },
-  script: plausibleScript,
   link: [
     {
       rel: 'preload',
@@ -136,8 +124,8 @@ useHead({
   meta: [
     // Moved off the useSeoMeta shorthand, which unhead 3 removed. Same rendered tag.
     { name: 'keywords', content: defaultKeywords },
-    { name: 'language', content: 'English' },
-    { name: 'content-language', content: 'en' },
+    { name: 'language', content: computed(() => isRomanianRoute.value ? 'Romanian' : 'English') },
+    { name: 'content-language', content: documentLanguage },
     { name: 'theme-color', content: '#080907' },
     { name: 'referrer', content: 'strict-origin-when-cross-origin' },
     { name: 'format-detection', content: 'telephone=no' },
@@ -153,7 +141,7 @@ useHead({
 </script>
 
 <template>
-  <Html lang="en" class="dark">
+  <Html :lang="documentLanguage" class="dark">
     <Body>
       <NuxtRouteAnnouncer />
       <NuxtLayout>

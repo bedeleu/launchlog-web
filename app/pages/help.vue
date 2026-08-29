@@ -5,7 +5,7 @@ const pageUrl = `${siteUrl}/help`
 const description
   = 'Answers to common questions about LaunchLog listings, private previews, pricing, billing, discovery and account access.'
 const supportEmail = config.public.supportEmail.trim()
-const taxNotice = config.public.taxNotice.trim()
+const taxNotice = config.public.taxNoticeEn.trim()
 const legalEmail = config.public.legalEmail.trim()
 const { plans } = usePlans()
 const planPriceSummary = plans

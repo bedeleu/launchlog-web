@@ -1,0 +1,243 @@
+<script setup lang="ts">
+import {
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogOverlay,
+  DialogPortal,
+  DialogRoot,
+  DialogTitle,
+  SwitchRoot,
+  SwitchThumb,
+} from 'reka-ui'
+
+const {
+  consent,
+  preferencesOpen,
+  globalPrivacyControl,
+  initialized,
+  initialize,
+  refreshFromStorage,
+  rejectAnalytics,
+  save,
+  openPreferences,
+  restorePreferencesFocus,
+  syncFromStorage,
+} = usePrivacyConsent()
+const route = useRoute()
+const isRomanian = computed(() => route.path === '/ro' || route.path.startsWith('/ro/'))
+const copy = computed(() => isRomanian.value
+  ? {
+      choices: 'Opțiuni de confidențialitate',
+      control: 'Controlul confidențialității',
+      heading: 'Vizita dumneavoastră, alegerea dumneavoastră',
+      summary: 'Stocarea esențială din browser menține autentificarea și previzualizările private. Analiza agregată opțională este trimisă către endpointul Plausible găzduit de noi numai dacă o acceptați. Nu folosim instrumente de urmărire publicitară.',
+      gpc: 'Global Privacy Control detectat. LaunchLog nu vinde și nu divulgă date pentru publicitate comportamentală; analiza agregată opțională rămâne guvernată separat de alegerea de mai jos.',
+      read: 'Citiți',
+      privacy: 'Politica de confidențialitate',
+      cookies: 'Politica privind cookie-urile',
+      accept: 'Accept analiza',
+      reject: 'Refuz analiza',
+      manage: 'Gestionați opțiunile',
+      center: 'Centrul de confidențialitate',
+      dialogSummary: 'Analiza opțională este oprită implicit. Puteți schimba oricând alegerea; refuzul nu afectează serviciul.',
+      close: 'Închideți opțiunile de confidențialitate',
+      essential: 'Stocare esențială',
+      essentialBody: 'Reține preferințele de confidențialitate, continuitatea adresei pentru autentificare și starea revenirii la previzualizarea privată. Este necesară funcțiilor pe care le solicitați.',
+      always: 'Permanent activă',
+      analytics: 'Analiză găzduită de noi',
+      analyticsBody: 'Trimite numai vizualizări publice și evenimente de funnel aprobate direct către API-ul Events Plausible găzduit de noi. Nu setează cookie-uri de analiză; URL-urile private, tokenurile, identificatorii sesiunilor Stripe și identificatorii Reddit sunt blocați.',
+      analyticsLabel: 'Analiză',
+      advertising: 'Măsurare publicitară',
+      advertisingBody: 'Nu este activ niciun Reddit Pixel, cookie publicitar sau API nativ de conversii publicitare.',
+      notUsed: 'Neutilizată',
+      save: 'Salvați opțiunile',
+      rejectOptional: 'Refuzați opționalul',
+    }
+  : {
+      choices: 'Privacy choices',
+      control: 'Privacy control',
+      heading: 'Your visit, your choice',
+      summary: 'Essential browser storage keeps sign-in and private previews working. Optional aggregate analytics is sent to our self-hosted Plausible endpoint only if you accept it. We do not use advertising trackers.',
+      gpc: 'Global Privacy Control detected. LaunchLog does not sell or share data for behavioural advertising; optional aggregate analytics remains governed separately by the choice below.',
+      read: 'Read our',
+      privacy: 'Privacy Policy',
+      cookies: 'Cookie Policy',
+      accept: 'Accept analytics',
+      reject: 'Reject analytics',
+      manage: 'Manage choices',
+      center: 'Privacy center',
+      dialogSummary: 'Optional analytics is off by default. Change this choice at any time; rejecting it does not affect the service.',
+      close: 'Close privacy choices',
+      essential: 'Essential storage',
+      essentialBody: 'Remembers privacy preferences, sign-in email continuity and private-preview return state. Required for features you request.',
+      always: 'Always on',
+      analytics: 'Self-hosted analytics',
+      analyticsBody: 'Sends approved aggregate pageviews and funnel events directly to our self-hosted Plausible Events API. It sets no analytics cookies; private URLs, tokens, Stripe Session IDs and Reddit click IDs are blocked.',
+      analyticsLabel: 'Analytics',
+      advertising: 'Advertising measurement',
+      advertisingBody: 'No Reddit Pixel, advertising cookie or native ad conversion API is active.',
+      notUsed: 'Not used',
+      save: 'Save choices',
+      rejectOptional: 'Reject optional',
+    })
+
+const draftAnalytics = ref(false)
+const decisionAnnouncement = ref('')
+const showBanner = computed(() => initialized.value && consent.value === null)
+
+const chooseFromBanner = async (analytics: boolean) => {
+  save(analytics)
+  decisionAnnouncement.value = analytics ? copy.value.accept : copy.value.reject
+  await nextTick()
+  document.querySelector<HTMLElement>('#main-content')?.focus({ preventScroll: true })
+}
+
+watch(preferencesOpen, async (open, wasOpen) => {
+  if (open) {
+    draftAnalytics.value = consent.value?.analytics === true
+    return
+  }
+
+  if (wasOpen) {
+    await nextTick()
+    restorePreferencesFocus()
+  }
+})
+
+onMounted(() => {
+  initialize()
+  window.addEventListener('storage', syncFromStorage)
+  window.addEventListener('focus', refreshFromStorage)
+  window.addEventListener('pageshow', refreshFromStorage)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('storage', syncFromStorage)
+  window.removeEventListener('focus', refreshFromStorage)
+  window.removeEventListener('pageshow', refreshFromStorage)
+})
+</script>
+
+<template>
+  <div data-privacy-consent-root :lang="isRomanian ? 'ro' : 'en'">
+    <section
+    v-if="showBanner"
+    :aria-label="copy.choices"
+    class="fixed inset-x-3 bottom-3 z-[70] mx-auto max-h-[calc(100dvh-1.5rem)] max-w-4xl overflow-y-auto overscroll-contain border border-release-seam bg-release-ink p-5 shadow-[0_24px_80px_rgba(0,0,0,0.65)] sm:inset-x-6 sm:p-6"
+  >
+    <div class="grid gap-5 md:grid-cols-[1fr_auto] md:items-end">
+      <div>
+        <p class="release-kicker">{{ copy.control }}</p>
+        <h2 class="mt-2 text-xl font-semibold tracking-[-0.025em] text-[#f6f1e7]">
+          {{ copy.heading }}
+        </h2>
+        <p class="mt-2 max-w-2xl text-sm leading-6 text-release-paper-muted">
+          {{ copy.summary }}
+        </p>
+        <p v-if="globalPrivacyControl" class="mt-2 font-mono text-[11px] uppercase tracking-[0.1em] text-release-signal">
+          {{ copy.gpc }}
+        </p>
+        <p class="mt-3 text-xs leading-5 text-release-paper-muted">
+          {{ copy.read }} <NuxtLink :to="isRomanian ? '/ro/privacy' : '/privacy'" class="text-release-blaze underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus">{{ copy.privacy }}</NuxtLink>
+          {{ isRomanian ? 'și' : 'and' }} <NuxtLink :to="isRomanian ? '/ro/cookies' : '/cookies'" class="text-release-blaze underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus">{{ copy.cookies }}</NuxtLink>.
+        </p>
+      </div>
+
+      <div class="grid min-w-64 gap-2 sm:grid-cols-2 md:grid-cols-1">
+        <button type="button" class="consent-choice release-action-secondary w-full" @click="chooseFromBanner(true)">
+          {{ copy.accept }}
+        </button>
+        <button type="button" class="consent-choice release-action-secondary w-full" @click="chooseFromBanner(false)">
+          {{ copy.reject }}
+        </button>
+        <button
+          type="button"
+          class="min-h-11 px-3 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-release-paper-muted hover:text-[#f6f1e7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-release-focus sm:col-span-2 md:col-span-1"
+          @click="openPreferences"
+        >
+          {{ copy.manage }}
+        </button>
+      </div>
+    </div>
+    </section>
+
+    <p class="sr-only" role="status" aria-live="polite">{{ decisionAnnouncement }}</p>
+
+    <DialogRoot v-model:open="preferencesOpen">
+      <DialogPortal>
+        <DialogOverlay class="fixed inset-0 z-[80] bg-black/75 backdrop-blur-[2px]" />
+        <DialogContent
+        class="release-panel fixed top-1/2 left-1/2 z-[81] max-h-[min(90vh,46rem)] w-[min(calc(100vw-2rem),42rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto p-0 text-[#f6f1e7] shadow-[0_28px_100px_rgba(0,0,0,0.75)] focus:outline-none"
+      >
+        <div class="border-b border-release-seam p-5 sm:p-7">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <p class="release-kicker">{{ copy.center }}</p>
+              <DialogTitle class="mt-2 text-2xl font-semibold tracking-[-0.03em]">
+                {{ copy.choices }}
+              </DialogTitle>
+              <DialogDescription class="mt-2 max-w-xl text-sm leading-6 text-release-paper-muted">
+                {{ copy.dialogSummary }}
+              </DialogDescription>
+            </div>
+            <DialogClose
+              class="flex size-11 shrink-0 items-center justify-center border border-release-seam font-mono text-lg text-release-paper-muted hover:border-release-blaze hover:text-release-blaze focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-release-focus"
+              :aria-label="copy.close"
+            >
+              ×
+            </DialogClose>
+          </div>
+        </div>
+
+        <div class="divide-y divide-release-seam border-b border-release-seam">
+          <div class="grid gap-4 p-5 sm:grid-cols-[1fr_auto] sm:items-center sm:p-7">
+            <div>
+              <h3 class="font-semibold">{{ copy.essential }}</h3>
+              <p class="mt-1 text-sm leading-6 text-release-paper-muted">
+                {{ copy.essentialBody }}
+              </p>
+            </div>
+            <span class="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-release-signal">{{ copy.always }}</span>
+          </div>
+
+          <div class="grid gap-4 p-5 sm:grid-cols-[1fr_auto] sm:items-center sm:p-7">
+            <div>
+              <h3 class="font-semibold">{{ copy.analytics }}</h3>
+              <p class="mt-1 text-sm leading-6 text-release-paper-muted">
+                {{ copy.analyticsBody }}
+              </p>
+            </div>
+            <SwitchRoot
+              v-model="draftAnalytics"
+              :aria-label="copy.analyticsLabel"
+              class="relative h-7 w-12 shrink-0 border border-release-seam bg-release-rail transition-colors data-[state=checked]:border-release-signal data-[state=checked]:bg-release-signal focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-release-focus"
+            >
+              <SwitchThumb class="block size-5 translate-x-0.5 bg-release-paper transition-transform data-[state=checked]:translate-x-[1.35rem] data-[state=checked]:bg-release-ink" />
+            </SwitchRoot>
+          </div>
+
+          <div class="grid gap-4 p-5 sm:grid-cols-[1fr_auto] sm:items-center sm:p-7">
+            <div>
+              <h3 class="font-semibold">{{ copy.advertising }}</h3>
+              <p class="mt-1 text-sm leading-6 text-release-paper-muted">
+                {{ copy.advertisingBody }}
+              </p>
+            </div>
+            <span class="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-release-paper-muted">{{ copy.notUsed }}</span>
+          </div>
+        </div>
+
+        <div class="grid gap-3 p-5 sm:grid-cols-2 sm:p-7">
+          <button type="button" class="release-action w-full" @click="save(draftAnalytics)">
+            {{ copy.save }}
+          </button>
+          <button type="button" class="release-action-secondary w-full" @click="rejectAnalytics">
+            {{ copy.rejectOptional }}
+          </button>
+        </div>
+        </DialogContent>
+      </DialogPortal>
+    </DialogRoot>
+  </div>
+</template>

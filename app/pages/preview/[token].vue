@@ -4,9 +4,11 @@ import { CheckCircle2 } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import CheckoutLegalConsent from '@/components/Intake/CheckoutLegalConsent.vue'
 import type { PlanTier } from '~/composables/usePlans'
 import type { Preview } from '~/composables/usePreviews'
 import type { AiEnrichmentField, PreviewAiSuggestion } from '~/composables/useAiEnrichment'
+import type { CheckoutLegalLocale } from '~/utils/checkout-capability'
 import { toErrorLike } from '~/utils/error-like'
 import { resolveCheckoutEmail } from '~/utils/checkout-customer'
 import {
@@ -24,7 +26,7 @@ const route = useRoute()
 const router = useRouter()
 const token = route.params.token as string
 const { getPreview, updatePreview, recapturePreview, cancelPreviewCheckout } = usePreviews()
-const { createSession } = useBilling()
+const { createSession, getCheckoutCapability } = useBilling()
 const { user, waitForAuthReady, isAdmin: resolveIsAdmin } = useAuth()
 const { publishPreview: publishAdminPreview } = useAdminListings()
 const { findPlan } = usePlans()
@@ -38,6 +40,12 @@ useSeoMeta({
 })
 
 const { data: preview, error } = await useAsyncData(`preview-${token}`, () => getPreview(token))
+const {
+  data: checkoutCapability,
+  error: checkoutCapabilityError,
+  status: checkoutCapabilityStatus,
+  refresh: refreshCheckoutCapability,
+} = await useAsyncData('checkout-capability', () => getCheckoutCapability())
 if (preview.value) {
   intake.rememberPreview(preview.value)
   // Single place where the tier chosen on /pricing is consumed, so every entry
@@ -88,6 +96,61 @@ const isAuthenticatedBuyer = computed(() => authenticatedEmail.value !== null)
 // Standard is the honest default. Featured remains an explicit upgrade.
 const selectedTier = ref<PlanTier>(initialCheckout.tier)
 const selectedPlan = computed(() => findPlan(selectedTier.value))
+const legalLocale = ref<CheckoutLegalLocale>('en')
+const checkoutOffer = computed(() => checkoutCapability.value?.offers[selectedTier.value] ?? null)
+const checkoutTerms = computed(() => checkoutCapability.value?.legal.locales[legalLocale.value] ?? null)
+const alternateCheckoutTerms = computed(() => checkoutCapability.value?.legal.locales[legalLocale.value === 'en' ? 'ro' : 'en'] ?? null)
+const checkoutNotices = computed(() => checkoutOffer.value?.notices[legalLocale.value] ?? null)
+const checkoutProvider = computed(() => checkoutCapability.value?.provider ?? null)
+const checkoutProviderDetails = computed(() => checkoutProvider.value
+  ? [
+      `Registered office: ${checkoutProvider.value.legal_address}`,
+      `Trade Register: ${checkoutProvider.value.registration_id}`,
+      `Tax ID: ${checkoutProvider.value.tax_id}`,
+      `Share capital: ${checkoutProvider.value.share_capital}`,
+      `Telephone: ${checkoutProvider.value.phone}`,
+      `Email: ${checkoutProvider.value.email}`,
+    ]
+  : [])
+const orderPrice = computed(() => checkoutOffer.value
+  ? new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: checkoutOffer.value.currency,
+      currencyDisplay: 'code',
+    }).format(checkoutOffer.value.amount_minor / 100)
+  : 'Price unavailable')
+const checkoutOfferMatchesPublicPlan = computed(() => !!checkoutOffer.value
+  && checkoutOffer.value.tier === selectedPlan.value.tier
+  && checkoutOffer.value.name === selectedPlan.value.name
+  && checkoutOffer.value.amount_minor === selectedPlan.value.annualPriceCents
+  && checkoutOffer.value.currency === selectedPlan.value.currency
+  && checkoutOffer.value.interval === 'year'
+  && checkoutOffer.value.interval_count === 1
+  && checkoutOffer.value.quantity === 1)
+const checkoutLegalBlocker = computed(() => {
+  if (checkoutCapabilityError.value) return 'Secure checkout information is temporarily unavailable. Nothing can be charged or published.'
+  if (!checkoutCapability.value) return 'Loading the current provider, order and contract information…'
+  if (!checkoutCapability.value.checkout_enabled) return 'Secure checkout is currently closed. Nothing can be charged or published.'
+  if (!checkoutOfferMatchesPublicPlan.value) return 'The public plan and server order do not match. Checkout is blocked until the offer is corrected.'
+  if (!checkoutTerms.value || !checkoutNotices.value) return 'The selected contract language is incomplete. Checkout remains blocked.'
+  return null
+})
+const checkoutLegalReady = computed(() => checkoutLegalBlocker.value === null)
+const termsAccepted = ref(false)
+const immediatePerformanceRequested = ref(false)
+const resetCheckoutLegalDecisions = () => {
+  termsAccepted.value = false
+  immediatePerformanceRequested.value = false
+}
+
+const completePreviewCreatedMeasurement = (current: Preview) => {
+  if (intake.consumePreviewCreatedMeasurement(current)) track('Preview Created')
+}
+const retryCheckoutCapability = async () => {
+  resetCheckoutLegalDecisions()
+  checkoutError.value = null
+  await refreshCheckoutCapability()
+}
 const checkoutReserved = computed(() => preview.value?.checkout_reserved === true)
 const publishingMode = computed(() => resolvePreviewPublishingMode({
   authReady: authReady.value,
@@ -120,6 +183,7 @@ let slowGenerationTimer: ReturnType<typeof setTimeout> | undefined
 const applyPreview = (next: Preview) => {
   preview.value = next
   intake.rememberPreview(next)
+  completePreviewCreatedMeasurement(next)
   if (!form.title && next.title) form.title = next.title
   if (!form.tagline && next.tagline) form.tagline = next.tagline
   if (!form.description && next.description) form.description = next.description
@@ -184,8 +248,9 @@ const checkoutReturnStorage = () => {
   }
 }
 
-const reconcileStripeBack = async () => {
-  const returnedFromCheckout = route.query.checkout === 'cancelled'
+const reconcileStripeBack = async (force = false) => {
+  const returnedFromCheckout = force
+    || route.query.checkout === 'cancelled'
     || hasCheckoutReturnMarker(checkoutReturnStorage(), token)
 
   if (!returnedFromCheckout || checkoutCancellationRunning) return
@@ -209,7 +274,9 @@ const reconcileStripeBack = async () => {
 
   if (result.state === 'done' && result.preview) {
     applyPreview(result.preview)
-    track('Payment Canceled')
+    resetCheckoutLegalDecisions()
+    checkoutError.value = null
+    if (result.cancelled) track('Payment Canceled')
   }
   checkoutCancellationState.value = result.state === 'idle' ? 'idle' : result.state
   checkoutCancellationRunning = false
@@ -258,6 +325,7 @@ const verifyPublishingAccess = async () => {
 
 onMounted(() => {
   window.addEventListener('pageshow', handlePageShow)
+  if (preview.value) completePreviewCreatedMeasurement(preview.value)
   void reconcileStripeBack()
 
   if (isGenerating.value) {
@@ -342,15 +410,22 @@ const acceptAiSuggestion = async (fields: AiEnrichmentField[]) => {
 // Payment is blocked only by things that genuinely prevent checkout. A missing
 // or failed screenshot never blocks it — the API decides whether the remaining
 // data can be published, and the screenshot can be recaptured afterwards.
+const paymentActionLocked = computed(() =>
+  !authReady.value
+  || publishingMode.value.kind !== 'checkout'
+  || isGenerating.value
+  || domainConflict.value
+  || checkoutPending.value
+  || checkoutCancellationState.value === 'pending'
+  || checkoutCancellationState.value === 'error',
+)
+
 const canPay = computed(() =>
-  authReady.value
-  && publishingMode.value.kind === 'checkout'
-  && !isGenerating.value
-  && !domainConflict.value
+  !paymentActionLocked.value
   && emailLooksValid.value
-  && !checkoutPending.value
-  && checkoutCancellationState.value !== 'pending'
-  && checkoutCancellationState.value !== 'error',
+  && checkoutLegalReady.value
+  && termsAccepted.value
+  && immediatePerformanceRequested.value,
 )
 
 const canAdminPublish = computed(() =>
@@ -361,6 +436,22 @@ const canAdminPublish = computed(() =>
   && !adminPublishPending.value
   && checkoutCancellationState.value !== 'pending',
 )
+
+const focusCheckoutBlocker = async () => {
+  await nextTick()
+
+  const targetId = !emailLooksValid.value
+    ? 'a-email'
+    : !checkoutLegalReady.value
+      ? 'checkout-legal-config-alert'
+      : !termsAccepted.value
+        ? 'checkout-terms-accepted'
+        : !immediatePerformanceRequested.value
+          ? 'checkout-immediate-performance'
+          : null
+
+  if (targetId) document.getElementById(targetId)?.focus()
+}
 
 const publishAsAdmin = async () => {
   if (!canAdminPublish.value) return
@@ -388,7 +479,10 @@ const publishAsAdmin = async () => {
 
 const payAndPublish = async () => {
   attemptedPublish.value = true
-  if (!canPay.value) return
+  if (!canPay.value) {
+    await focusCheckoutBlocker()
+    return
+  }
 
   checkoutPending.value = true
   checkoutError.value = null
@@ -397,7 +491,15 @@ const payAndPublish = async () => {
   // if the selector or the field changes while the requests are in flight.
   const email = emailValue.value
   const tier = selectedTier.value
+  const capability = checkoutCapability.value
+  const terms = checkoutTerms.value
   let redirecting = false
+
+  if (!capability || !terms) {
+    await focusCheckoutBlocker()
+    checkoutPending.value = false
+    return
+  }
 
   try {
     // Save first: if the edits cannot be persisted, no session is created.
@@ -410,22 +512,38 @@ const payAndPublish = async () => {
       preview_token: token,
       tier,
       email,
+      terms_accepted: termsAccepted.value,
+      terms_version: capability.legal.terms_version,
+      immediate_performance_requested: immediatePerformanceRequested.value,
+      performance_notice_version: capability.legal.performance_notice_version,
+      legal_locale: legalLocale.value,
+      checkout_capability_version: capability.capability_version,
+      checkout_capability_sha256: capability.capability_sha256,
+      provider_sha256: capability.provider_sha256,
+      offer_catalog_sha256: capability.offer_catalog_sha256,
+      terms_document_sha256: terms.document_sha256,
     })
 
-    if (!session.url) {
-      checkoutError.value = 'Checkout could not be opened. Please try again or contact support.'
-      return
-    }
-
     redirecting = true
-    track('Checkout Started')
+    if (session.created_new_session) track('Checkout Started')
     markCheckoutRedirect(checkoutReturnStorage(), token)
     window.location.href = session.url
   }
   catch (e: unknown) {
-    checkoutError.value = checkoutReserved.value
-      ? 'Your saved checkout could not be reopened. Refresh this page or contact support; nothing has been charged or published.'
-      : (toErrorLike(e).data?.message ?? 'We could not start checkout. Please try again.')
+    const errorData = toErrorLike(e).data
+    const errorCode = errorData?.error_code ?? errorData?.code ?? errorData?.error
+    if (errorCode === 'checkout_capability_changed') {
+      resetCheckoutLegalDecisions()
+      await refreshCheckoutCapability()
+      checkoutError.value = 'The provider, offer or contract information changed. Review the current details and make both decisions again; nothing has been charged or published.'
+    }
+    else {
+      checkoutError.value = errorCode === 'checkout_agreement_changed'
+        ? 'This saved checkout uses an older legal notice. Cancel the saved checkout and restart before continuing; nothing has been charged or published.'
+        : checkoutReserved.value
+          ? 'Your saved checkout could not be reopened. Cancel the saved checkout and restart, or contact support; nothing has been charged or published.'
+          : (errorData?.message ?? 'We could not start checkout. Please try again.')
+    }
   }
   finally {
     // Keep the button locked while the browser is leaving for Stripe.
@@ -446,6 +564,16 @@ watch(
     })
   },
 )
+
+watch(selectedTier, (tier, previousTier) => {
+  if (tier !== previousTier && !checkoutReserved.value) resetCheckoutLegalDecisions()
+})
+
+watch(legalLocale, resetCheckoutLegalDecisions)
+
+watch(() => checkoutCapability.value?.capability_sha256, (next, previous) => {
+  if (previous && next !== previous) resetCheckoutLegalDecisions()
+})
 </script>
 
 <template>
@@ -668,13 +796,13 @@ watch(
                 </template>
               </p>
               <Button
-                v-if="checkoutCancellationState === 'error'"
+                v-if="checkoutCancellationState !== 'pending'"
                 type="button"
                 variant="outline"
                 size="sm"
                 class="mt-3"
-                @click="reconcileStripeBack"
-              >Try cancellation again</Button>
+                @click="reconcileStripeBack(true)"
+              >{{ checkoutCancellationState === 'error' ? 'Try cancellation again' : 'Cancel saved checkout and restart' }}</Button>
             </div>
             <div
               v-else-if="!authReady"
@@ -734,6 +862,104 @@ watch(
             </div>
           </section>
 
+          <section v-if="!isAdminAccount" class="space-y-4" aria-labelledby="checkout-order-heading">
+            <div>
+              <p class="font-mono text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-release-blaze">03 — Review annual order</p>
+              <h2 id="checkout-order-heading" class="mt-2 text-lg font-semibold text-release-paper">Your order before Stripe</h2>
+            </div>
+
+            <fieldset class="border border-release-seam p-4">
+              <legend class="px-1 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-release-paper-muted">Contract language</legend>
+              <div class="mt-1 grid grid-cols-2 gap-2 sm:max-w-sm">
+                <label
+                  v-for="option in ([{ value: 'en', label: 'English' }, { value: 'ro', label: 'Română' }] as const)"
+                  :key="option.value"
+                  class="relative cursor-pointer"
+                >
+                  <input v-model="legalLocale" type="radio" name="checkout-legal-locale" :value="option.value" class="peer sr-only" :disabled="paymentActionLocked">
+                  <span class="flex min-h-11 items-center justify-center border border-release-seam bg-release-ink px-3 font-mono text-xs font-semibold uppercase tracking-[0.08em] text-release-paper-muted transition-colors peer-checked:border-release-blaze peer-checked:text-release-paper peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-release-focus peer-disabled:cursor-not-allowed peer-disabled:opacity-50">
+                    {{ option.label }}
+                  </span>
+                </label>
+              </div>
+            </fieldset>
+
+            <dl class="grid border-t border-l border-release-seam text-sm sm:grid-cols-2">
+              <div class="border-r border-b border-release-seam p-4">
+                <dt class="font-mono text-[10px] uppercase tracking-[0.12em] text-release-paper-muted">Service</dt>
+                <dd class="mt-2 leading-6 text-release-paper">One {{ checkoutOffer?.name || selectedPlan.name }} LaunchLog directory listing for 12 months.</dd>
+              </div>
+              <div class="border-r border-b border-release-seam p-4">
+                <dt class="font-mono text-[10px] uppercase tracking-[0.12em] text-release-paper-muted">Base annual price</dt>
+                <dd class="mt-2 font-semibold text-release-paper">{{ orderPrice }}</dd>
+              </div>
+              <div class="border-r border-b border-release-seam p-4">
+                <dt class="font-mono text-[10px] uppercase tracking-[0.12em] text-release-paper-muted">Annual renewal</dt>
+                <dd :lang="legalLocale" class="mt-2 leading-6 text-release-paper">{{ checkoutNotices?.renewal || 'Current renewal information is unavailable.' }}</dd>
+              </div>
+              <div class="border-r border-b border-release-seam p-4">
+                <dt class="font-mono text-[10px] uppercase tracking-[0.12em] text-release-paper-muted">Cancellation</dt>
+                <dd :lang="legalLocale" class="mt-2 leading-6 text-release-paper">{{ checkoutNotices?.cancellation || 'Current cancellation information is unavailable.' }}</dd>
+              </div>
+              <div class="border-r border-b border-release-seam p-4">
+                <dt class="font-mono text-[10px] uppercase tracking-[0.12em] text-release-paper-muted">Voluntary refund</dt>
+                <dd :lang="legalLocale" class="mt-2 leading-6 text-release-paper">{{ checkoutNotices?.voluntary_refund || 'Current refund information is unavailable.' }}</dd>
+              </div>
+              <div class="border-r border-b border-release-seam p-4">
+                <dt class="font-mono text-[10px] uppercase tracking-[0.12em] text-release-paper-muted">Contracting provider</dt>
+                <dd class="mt-2 leading-6 text-release-paper">
+                  <strong class="font-semibold">{{ checkoutProvider?.legal_name || 'Not configured — checkout remains blocked' }}</strong>
+                  <ul v-if="checkoutProviderDetails.length" class="mt-2 space-y-1 text-xs leading-5 text-release-paper-muted">
+                    <li v-for="detail in checkoutProviderDetails" :key="detail">{{ detail }}</li>
+                  </ul>
+                </dd>
+              </div>
+            </dl>
+
+            <p v-if="checkoutNotices?.tax" data-tax-notice :lang="legalLocale" class="border-l-2 border-release-signal bg-release-rail px-4 py-3 text-xs leading-5 text-release-paper-muted">
+              {{ checkoutNotices.tax }}
+            </p>
+            <p v-else class="border-l-2 border-release-warning bg-release-warning/[0.06] px-4 py-3 text-xs leading-5 text-release-warning" role="alert">
+              Tax information is not configured. Checkout remains blocked until the accountant-approved notice is available.
+            </p>
+
+            <CheckoutLegalConsent
+              v-if="checkoutTerms && alternateCheckoutTerms"
+              v-model:terms-accepted="termsAccepted"
+              v-model:immediate-performance-requested="immediatePerformanceRequested"
+              :locale="legalLocale"
+              :terms-url="checkoutTerms.url"
+              :alternate-terms-url="alternateCheckoutTerms.url"
+              :terms-document="checkoutTerms.document"
+              :acceptance-text="checkoutTerms.acceptance_text"
+              :performance-request-text="checkoutTerms.performance_request_text"
+              :attempted="attemptedPublish"
+              :disabled="paymentActionLocked"
+            />
+
+            <p class="text-xs leading-5 text-release-paper-muted">
+              We retain a server-timestamped contract record and send the contract confirmation to your checkout email. Read the
+              <NuxtLink to="/privacy" target="_blank" class="text-release-blaze underline underline-offset-4">Privacy Policy</NuxtLink>
+              or use the permanent <NuxtLink to="/withdrawal" class="text-release-blaze underline underline-offset-4">withdrawal function</NuxtLink>.
+            </p>
+
+            <p v-if="checkoutLegalBlocker" id="checkout-legal-config-alert" tabindex="-1" class="text-sm leading-6 text-release-warning focus:outline-none" role="alert">
+              {{ checkoutLegalBlocker }}
+            </p>
+            <Button
+              v-if="checkoutCapabilityError"
+              type="button"
+              variant="outline"
+              size="sm"
+              :disabled="checkoutCapabilityStatus === 'pending'"
+              aria-describedby="checkout-legal-config-alert"
+              @click="retryCheckoutCapability"
+            >
+              <AppSpinner v-if="checkoutCapabilityStatus === 'pending'" class="mr-2" color="text-current" label="Reloading secure checkout information" />
+              {{ checkoutCapabilityStatus === 'pending' ? 'Reloading checkout information…' : 'Retry checkout information' }}
+            </Button>
+          </section>
+
           <!-- CTA -->
           <section>
             <Button
@@ -752,7 +978,7 @@ watch(
                     ? 'Preparing preview…'
                     : `Publish ${selectedPlan.name} as admin` }}
             </Button>
-            <Button v-else size="lg" class="w-full" :disabled="!canPay" @click="payAndPublish">
+            <Button v-else size="lg" class="w-full" :disabled="paymentActionLocked" @click="payAndPublish">
               <AppSpinner v-if="checkoutPending" class="mr-2" color="text-current" label="Opening secure checkout" />
               {{ checkoutPending
                 ? 'Opening secure checkout…'
@@ -763,8 +989,8 @@ watch(
                     : isGenerating
                       ? 'Preparing preview…'
                       : checkoutReserved
-                        ? `Resume secure checkout — ${selectedPlan.priceLabel}/year`
-                        : `Pay & publish — ${selectedPlan.priceLabel}/year` }}
+                        ? checkoutLegalReady ? `Resume secure payment — ${orderPrice}/year` : 'Secure checkout unavailable'
+                        : checkoutLegalReady ? `Continue to secure payment — ${orderPrice}/year` : 'Secure checkout unavailable' }}
             </Button>
             <div class="mt-3 min-h-5 text-center text-xs" aria-live="polite">
               <p v-if="adminPublishError || checkoutError" class="text-release-warning" role="alert">
@@ -778,8 +1004,8 @@ watch(
               <p v-else-if="isAdminAccount && !domainConflict" class="text-release-paper-muted">
                 Manual admin placement · no checkout or subscription.
               </p>
-              <p v-else-if="!domainConflict" class="text-release-paper-muted">
-                That's just {{ selectedPlan.monthlyLabel }}/mo · pay only when you publish · 7-day money-back guarantee.
+              <p v-else-if="!domainConflict" :lang="checkoutNotices?.voluntary_refund ? legalLocale : undefined" class="text-release-paper-muted">
+                {{ checkoutNotices?.voluntary_refund || 'No payment can start until the current checkout terms are available.' }}
               </p>
             </div>
           </section>

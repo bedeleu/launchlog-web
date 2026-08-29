@@ -4,7 +4,7 @@ import { ArrowRight, Check, FileJson2, Image, Minus, Search, ShieldCheck } from 
 const config = useRuntimeConfig()
 const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
 const ogImageUrl = `${siteUrl}/og-image.jpg`
-const taxNotice = config.public.taxNotice.trim()
+const taxNotice = config.public.taxNoticeEn.trim()
 const { plans } = usePlans()
 const pricingTitle = `LaunchLog Pricing — ${plans
   .map(plan => `${plan.name} ${plan.priceLabel}`)

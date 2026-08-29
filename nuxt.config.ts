@@ -1,5 +1,38 @@
 import tailwindcss from '@tailwindcss/vite'
 import { SITE_IDENTITY } from './shared/constants/site-identity'
+import { assertProductionLegalIdentity } from './shared/utils/legal-readiness'
+import { assertProductionAnalytics } from './shared/utils/analytics-readiness'
+
+const formalLegalIdentity = {
+  legalName: process.env.NUXT_PUBLIC_LEGAL_NAME,
+  legalAddress: process.env.NUXT_PUBLIC_LEGAL_ADDRESS,
+  legalRegistrationId: process.env.NUXT_PUBLIC_LEGAL_REGISTRATION_ID,
+  legalTaxId: process.env.NUXT_PUBLIC_LEGAL_TAX_ID,
+  legalShareCapital: process.env.NUXT_PUBLIC_LEGAL_SHARE_CAPITAL,
+  legalPhone: process.env.NUXT_PUBLIC_LEGAL_PHONE,
+  legalEmail: process.env.NUXT_PUBLIC_LEGAL_EMAIL,
+  taxNoticeEn: process.env.NUXT_PUBLIC_TAX_NOTICE_EN,
+  taxNoticeRo: process.env.NUXT_PUBLIC_TAX_NOTICE_RO,
+}
+
+const deploymentEnvironment = {
+  NUXT_DEPLOY_ENVIRONMENT: process.env.NUXT_DEPLOY_ENVIRONMENT,
+  RAILWAY_ENVIRONMENT_NAME: process.env.RAILWAY_ENVIRONMENT_NAME,
+  VERCEL_ENV: process.env.VERCEL_ENV,
+}
+
+const plausibleConfig = {
+  enabled: process.env.NUXT_PUBLIC_PLAUSIBLE_ENABLED === 'true',
+  domain: process.env.NUXT_PUBLIC_PLAUSIBLE_DOMAIN || '',
+  endpoint: process.env.NUXT_PUBLIC_PLAUSIBLE_ENDPOINT || '',
+}
+
+assertProductionLegalIdentity(deploymentEnvironment, formalLegalIdentity)
+assertProductionAnalytics(deploymentEnvironment, {
+  ...plausibleConfig,
+  enabled: process.env.NUXT_PUBLIC_PLAUSIBLE_ENABLED,
+  siteDomain: process.env.NUXT_PUBLIC_DOMAIN || 'launchlog.ai',
+})
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
@@ -49,15 +82,24 @@ export default defineNuxtConfig({
       // server/middleware/markdown-negotiation.ts for the canonical pattern.
       apiUrl: process.env.NUXT_PUBLIC_API_URL || 'https://api.launchlog.ai',
       domain: process.env.NUXT_PUBLIC_DOMAIN || 'launchlog.ai',
-      legalName: process.env.NUXT_PUBLIC_LEGAL_NAME || SITE_IDENTITY.operatorName,
-      legalEmail: process.env.NUXT_PUBLIC_LEGAL_EMAIL || '',
+      operatorBrand: SITE_IDENTITY.operatorName,
+      // Formal provider facts must match registration, Stripe and invoices. Empty
+      // values stay empty so the application never invents a legal identity.
+      legalName: formalLegalIdentity.legalName || '',
+      legalAddress: formalLegalIdentity.legalAddress || '',
+      legalRegistrationId: formalLegalIdentity.legalRegistrationId || '',
+      legalTaxId: formalLegalIdentity.legalTaxId || '',
+      legalShareCapital: formalLegalIdentity.legalShareCapital || '',
+      legalPhone: formalLegalIdentity.legalPhone || '',
+      legalEmail: formalLegalIdentity.legalEmail || '',
       supportEmail: process.env.NUXT_PUBLIC_SUPPORT_EMAIL || '',
       dmcaEmail: process.env.NUXT_PUBLIC_DMCA_EMAIL || '',
       statusPageUrl: process.env.NUXT_PUBLIC_STATUS_PAGE_URL || '',
-      // One accountant-approved sentence on how tax is treated, rendered
-      // identically on Pricing, Help and Terms. Empty renders nothing: a
-      // fallback here would be the application guessing at tax treatment.
-      taxNotice: process.env.NUXT_PUBLIC_TAX_NOTICE || '',
+      // Accountant-approved tax wording is configured independently per locale.
+      // Empty renders nothing: a fallback here would guess either tax treatment
+      // or a legal translation.
+      taxNoticeEn: formalLegalIdentity.taxNoticeEn || '',
+      taxNoticeRo: formalLegalIdentity.taxNoticeRo || '',
       firebase: {
         // 6 fields — no measurementId (D-032 — Plausible, not GA4).
         // storageBucket/messagingSenderId/appId kept for future App Check + headers, harmless if unused.
@@ -68,10 +110,11 @@ export default defineNuxtConfig({
         messagingSenderId: process.env.NUXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
         appId: process.env.NUXT_PUBLIC_FIREBASE_APP_ID,
       },
-      plausibleDomain: process.env.NUXT_PUBLIC_PLAUSIBLE_DOMAIN,
-      // Full URL of the self-hosted Plausible per-site script (pa-<id>.js).
-      // Empty renders no analytics tag at all — non-prod builds stay clean.
-      plausibleSrc: process.env.NUXT_PUBLIC_PLAUSIBLE_SRC || '',
+      plausibleEnabled: plausibleConfig.enabled,
+      plausibleDomain: plausibleConfig.domain,
+      // Exact self-hosted Plausible Events API endpoint. No vendor script runs
+      // in the browser; an empty value keeps analytics disabled.
+      plausibleEndpoint: plausibleConfig.endpoint,
       wordpressBlogUrl: process.env.NUXT_PUBLIC_WORDPRESS_BLOG_URL || 'https://blog.launchlog.ai',
     },
   },
@@ -131,6 +174,11 @@ export default defineNuxtConfig({
       '/api-docs',
       '/privacy',
       '/terms',
+      '/withdrawal',
+      '/ro/privacy',
+      '/ro/terms',
+      '/ro/cookies',
+      '/ro/retragere',
       '/status',
     ],
     sources: [

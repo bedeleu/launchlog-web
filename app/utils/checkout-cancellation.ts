@@ -1,6 +1,6 @@
 export type CheckoutCancellationResult<T> =
   | { state: 'idle' }
-  | { state: 'done', preview?: T }
+  | { state: 'done', preview: T, cancelled: boolean }
   | { state: 'error' }
 
 interface ReconcileCancelledCheckoutOptions<T> {
@@ -57,11 +57,12 @@ export const reconcileCancelledCheckout = async <T>({
 
   try {
     const current = await refresh()
-    const preview = isCheckoutReserved(current) ? await cancel() : current
+    const wasReserved = isCheckoutReserved(current)
+    const preview = wasReserved ? await cancel() : current
 
     await clearReturnState()
 
-    return { state: 'done', preview }
+    return { state: 'done', preview, cancelled: wasReserved }
   }
   catch {
     return { state: 'error' }

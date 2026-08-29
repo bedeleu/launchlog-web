@@ -15,6 +15,71 @@ const BASE = `http://127.0.0.1:${SERVER_PORT}`
 const GENERATING_TOKEN = 'g'.repeat(64)
 const CONFLICT_TOKEN = 'c'.repeat(64)
 const RESERVED_TOKEN = 'r'.repeat(64)
+const READY_TOKEN = 'q'.repeat(64)
+
+const checkoutCapability = {
+  schema_version: '1',
+  capability_version: '2026-08-29.1',
+  capability_sha256: 'a'.repeat(64),
+  checkout_enabled: true,
+  provider: {
+    legal_name: 'AB SOLUTIONS S.R.L.',
+    legal_address: 'Registered office pending final ONRC verification, 300369 Timișoara, Romania',
+    registration_id: 'J35/1784/2023',
+    tax_id: '48116710',
+    share_capital: 'RON 200',
+    phone: '+40 000 000 000',
+    email: 'legal@launchlog.ai',
+  },
+  provider_sha256: 'b'.repeat(64),
+  offers: Object.fromEntries(['basic', 'featured'].map((tier, index) => [tier, {
+    tier,
+    name: index === 0 ? 'Standard' : 'Featured',
+    amount_minor: index === 0 ? 2499 : 9900,
+    currency: 'USD',
+    interval: 'year',
+    interval_count: 1,
+    quantity: 1,
+    stripe_price_id: `price_${tier}`,
+    stripe_price_tax_behavior: 'exclusive',
+    automatic_tax_enabled: false,
+    notices: {
+      en: {
+        tax: 'Taxes are calculated and disclosed before payment.',
+        renewal: 'Renews every 12 months until cancelled.',
+        cancellation: 'Cancel before the next renewal date.',
+        voluntary_refund: 'A voluntary 14-day refund policy applies.',
+      },
+      ro: {
+        tax: 'Taxele sunt calculate și afișate înainte de plată.',
+        renewal: 'Se reînnoiește la fiecare 12 luni până la anulare.',
+        cancellation: 'Anulați înainte de următoarea dată de reînnoire.',
+        voluntary_refund: 'Se aplică o politică voluntară de rambursare de 14 zile.',
+      },
+    },
+  }])),
+  offer_catalog_sha256: 'c'.repeat(64),
+  legal: {
+    terms_version: '2026-08-29',
+    performance_notice_version: '2026-08-29',
+    locales: {
+      en: {
+        url: 'https://launchlog.ai/terms',
+        document: 'Exact English Terms snapshot served by the API.',
+        document_sha256: 'd'.repeat(64),
+        acceptance_text: 'I accept the exact English Terms displayed above.',
+        performance_request_text: 'I request that the listing service begin immediately.',
+      },
+      ro: {
+        url: 'https://launchlog.ai/ro/terms',
+        document: 'Copia exactă în limba română furnizată de API.',
+        document_sha256: 'e'.repeat(64),
+        acceptance_text: 'Accept Termenii exacți în limba română afișați mai sus.',
+        performance_request_text: 'Solicit începerea imediată a serviciului de listare.',
+      },
+    },
+  },
+}
 
 const preview = (status: 'generating' | 'failed') => ({
   token: status === 'generating' ? GENERATING_TOKEN : CONFLICT_TOKEN,
@@ -53,6 +118,16 @@ const reservedPreview = {
   checkout_reserved: true,
 }
 
+const readyPreview = {
+  ...reservedPreview,
+  token: READY_TOKEN,
+  title: 'Ready maker',
+  tagline: 'A checkout-ready listing.',
+  tier: null,
+  email: null,
+  checkout_reserved: false,
+}
+
 let api: ReturnType<typeof Bun.serve> | undefined
 let server: ReturnType<typeof Bun.spawn> | undefined
 
@@ -76,9 +151,11 @@ describe.skipIf(!isBuilt)('preview and ownership-request SSR', () => {
       port: API_PORT,
       fetch(request) {
         const path = new URL(request.url).pathname
+        if (path === '/api/v1/checkout/capability') return Response.json({ data: checkoutCapability })
         if (path.endsWith(GENERATING_TOKEN)) return Response.json({ data: preview('generating') })
         if (path.endsWith(CONFLICT_TOKEN)) return Response.json({ data: preview('failed') })
         if (path.endsWith(RESERVED_TOKEN)) return Response.json({ data: reservedPreview })
+        if (path.endsWith(READY_TOKEN)) return Response.json({ data: readyPreview })
         return Response.json({ message: 'not found' }, { status: 404 })
       },
     })
@@ -152,6 +229,28 @@ describe.skipIf(!isBuilt)('preview and ownership-request SSR', () => {
     expect(html).toContain('Cancelling checkout…')
     expect(html).not.toContain('Resume secure checkout')
     expect(html).not.toContain('This website is already represented on LaunchLog.')
+  })
+
+  test('a ready checkout is SSR-rendered from the complete server-authoritative legal snapshot', async () => {
+    const response = await fetch(`${BASE}/preview/${READY_TOKEN}`)
+    const html = await response.text()
+
+    expect(response.status).toBe(200)
+    expect(html).toContain('Your order before Stripe')
+    expect(html).toContain('AB SOLUTIONS S.R.L.')
+    expect(html).toContain('J35/1784/2023')
+    expect(html).toContain('48116710')
+    expect(html).toContain('USD\u00a024.99')
+    expect(html).toContain('Taxes are calculated and disclosed before payment.')
+    expect(html).toContain('Renews every 12 months until cancelled.')
+    expect(html).toContain('I accept the exact English Terms displayed above.')
+    expect(html).toContain('I request that the listing service begin immediately.')
+    expect(html).toContain('Exact English Terms snapshot served by the API.')
+    expect(html).toContain('Read the exact accepted snapshot')
+    expect(html).toContain('English')
+    expect(html).toContain('Română')
+    expect(html).not.toContain('IBAN')
+    expect(html).not.toContain('SWIFT')
   })
 
   test('the contact page renders a real prefilled ownership form', async () => {
