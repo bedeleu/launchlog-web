@@ -16,7 +16,6 @@ const legalName = config.public.legalName.trim()
 const legalAddress = config.public.legalAddress.trim()
 const legalRegistrationId = config.public.legalRegistrationId.trim()
 const legalTaxId = String(config.public.legalTaxId ?? '').trim()
-const legalShareCapital = config.public.legalShareCapital.trim()
 const legalPhone = config.public.legalPhone.trim()
 const legalEmail = config.public.legalEmail.trim()
 const supportEmail = config.public.supportEmail.trim()
@@ -28,7 +27,6 @@ const providerDetails = [
   legalAddress ? `Sediu social: ${legalAddress}.` : null,
   legalRegistrationId ? `Număr de înregistrare: ${legalRegistrationId}.` : null,
   legalTaxId ? `Cod de identificare fiscală: ${legalTaxId}.` : null,
-  legalShareCapital ? `Capital social: ${legalShareCapital}.` : null,
   legalPhone ? `Telefon: ${legalPhone}.` : null,
   legalEmail ? `E-mail: ${legalEmail}.` : null,
 ].filter((detail): detail is string => detail !== null)

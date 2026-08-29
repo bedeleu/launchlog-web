@@ -13,7 +13,6 @@ const fixture = () => ({
     legal_address: 'Registered address, Timișoara 300369, Romania',
     registration_id: 'J35/0000/2026',
     tax_id: '12345678',
-    share_capital: 'RON 200',
     phone: '+40 000 000 000',
     email: 'legal@example.com',
   },

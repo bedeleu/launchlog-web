@@ -107,7 +107,6 @@ const checkoutProviderDetails = computed(() => checkoutProvider.value
       `Registered office: ${checkoutProvider.value.legal_address}`,
       `Trade Register: ${checkoutProvider.value.registration_id}`,
       `Tax ID: ${checkoutProvider.value.tax_id}`,
-      `Share capital: ${checkoutProvider.value.share_capital}`,
       `Telephone: ${checkoutProvider.value.phone}`,
       `Email: ${checkoutProvider.value.email}`,
     ]

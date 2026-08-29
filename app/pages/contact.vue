@@ -15,7 +15,6 @@ const legalName = config.public.legalName.trim()
 const legalAddress = config.public.legalAddress.trim()
 const legalRegistrationId = config.public.legalRegistrationId.trim()
 const legalTaxId = String(config.public.legalTaxId ?? '').trim()
-const legalShareCapital = config.public.legalShareCapital.trim()
 const legalPhone = config.public.legalPhone.trim()
 const supportEmail = config.public.supportEmail.trim()
 const legalEmail = config.public.legalEmail.trim()
@@ -129,7 +128,6 @@ const legalDetails = computed(() => [
   legalAddress ? { label: 'Registered address', value: legalAddress } : null,
   legalRegistrationId ? { label: 'Registration', value: legalRegistrationId } : null,
   legalTaxId ? { label: 'Tax ID', value: legalTaxId } : null,
-  legalShareCapital ? { label: 'Share capital', value: legalShareCapital } : null,
   legalPhone ? { label: 'Telephone', value: legalPhone } : null,
 ].filter((detail): detail is NonNullable<typeof detail> => detail !== null))
 

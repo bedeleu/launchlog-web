@@ -27,7 +27,6 @@ const checkoutCapability = {
     legal_address: 'Registered office pending final ONRC verification, 300369 Timișoara, Romania',
     registration_id: 'J35/1784/2023',
     tax_id: '48116710',
-    share_capital: 'RON 200',
     phone: '+40 000 000 000',
     email: 'legal@launchlog.ai',
   },

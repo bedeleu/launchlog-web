@@ -30,7 +30,6 @@ describe('Romanian legal routes', () => {
       'legalAddress',
       'legalRegistrationId',
       'legalTaxId',
-      'legalShareCapital',
       'legalEmail',
     ]) {
       expect(privacy).toContain(`config.public.${field}`)
@@ -42,7 +41,6 @@ describe('Romanian legal routes', () => {
       'legalAddress',
       'legalRegistrationId',
       'legalTaxId',
-      'legalShareCapital',
       'legalPhone',
       'legalEmail',
       'supportEmail',

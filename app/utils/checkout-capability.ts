@@ -7,7 +7,6 @@ export interface CheckoutProviderSnapshot {
   legal_address: string
   registration_id: string
   tax_id: string
-  share_capital: string
   phone: string
   email: string
 }
@@ -183,7 +182,6 @@ export const parseCheckoutCapability = (value: unknown, configuredDomain: string
     legal_address: stringField(provider, 'legal_address', 1000),
     registration_id: stringField(provider, 'registration_id', 120),
     tax_id: stringField(provider, 'tax_id', 120),
-    share_capital: stringField(provider, 'share_capital', 120),
     phone: stringField(provider, 'phone', 120),
     email: stringField(provider, 'email', 320),
   }

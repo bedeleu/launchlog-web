@@ -9,7 +9,6 @@ const legalName = config.public.legalName.trim()
 const legalAddress = config.public.legalAddress.trim()
 const legalRegistrationId = config.public.legalRegistrationId.trim()
 const legalTaxId = String(config.public.legalTaxId ?? '').trim()
-const legalShareCapital = config.public.legalShareCapital.trim()
 const legalEmail = config.public.legalEmail.trim()
 const description
   = 'Cum prelucrează LaunchLog datele cu caracter personal pentru listări, conturi, plăți, asistență, analiză și funcționarea serviciului, precum și drepturile dumneavoastră.'
@@ -19,7 +18,6 @@ const controllerFacts = [
   legalAddress ? `Sediu social: ${legalAddress}.` : null,
   legalRegistrationId ? `Număr de înregistrare: ${legalRegistrationId}.` : null,
   legalTaxId ? `Cod de identificare fiscală: ${legalTaxId}.` : null,
-  legalShareCapital ? `Capital social: ${legalShareCapital}.` : null,
   legalEmail ? `Contact pentru confidențialitate: ${legalEmail}.` : null,
 ].filter((fact): fact is string => fact !== null)
 

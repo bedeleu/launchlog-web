@@ -3,7 +3,6 @@ export interface FormalLegalIdentity {
   legalAddress: string | undefined
   legalRegistrationId: string | undefined
   legalTaxId: string | undefined
-  legalShareCapital: string | undefined
   legalPhone: string | undefined
   legalEmail: string | undefined
   taxNoticeEn: string | undefined
@@ -21,7 +20,6 @@ const LEGAL_ENV_KEYS: Record<keyof FormalLegalIdentity, string> = {
   legalAddress: 'NUXT_PUBLIC_LEGAL_ADDRESS',
   legalRegistrationId: 'NUXT_PUBLIC_LEGAL_REGISTRATION_ID',
   legalTaxId: 'NUXT_PUBLIC_LEGAL_TAX_ID',
-  legalShareCapital: 'NUXT_PUBLIC_LEGAL_SHARE_CAPITAL',
   legalPhone: 'NUXT_PUBLIC_LEGAL_PHONE',
   legalEmail: 'NUXT_PUBLIC_LEGAL_EMAIL',
   taxNoticeEn: 'NUXT_PUBLIC_TAX_NOTICE_EN',

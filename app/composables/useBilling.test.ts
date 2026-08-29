@@ -27,7 +27,7 @@ const capabilityData = () => ({
   checkout_enabled: true,
   provider: {
     legal_name: 'Registered provider', legal_address: 'Timișoara 300369, Romania',
-    registration_id: 'J35/0000/2026', tax_id: '12345678', share_capital: 'RON 200',
+    registration_id: 'J35/0000/2026', tax_id: '12345678',
     phone: '+40 000 000 000', email: 'legal@example.com',
   },
   provider_sha256: 'b'.repeat(64),

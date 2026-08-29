@@ -13,7 +13,7 @@ const envExample = read('../.env.example')
 describe('production legal and privacy contract', () => {
   test('separates the public brand from the formal contracting provider', () => {
     expect(config).toContain('operatorBrand:')
-    for (const field of ['legalAddress:', 'legalRegistrationId:', 'legalTaxId:', 'legalShareCapital:', 'legalPhone:']) {
+    for (const field of ['legalAddress:', 'legalRegistrationId:', 'legalTaxId:', 'legalPhone:']) {
       expect(config).toContain(field)
     }
     expect(terms).toContain('AB Solutions')
@@ -21,7 +21,6 @@ describe('production legal and privacy contract', () => {
     expect(contact).toContain('legalAddress')
     expect(contact).toContain('legalRegistrationId')
     expect(contact).toContain('legalTaxId')
-    expect(terms).toContain('legalShareCapital')
     expect(terms).toContain("String(config.public.legalTaxId ?? '').trim()")
   })
 
