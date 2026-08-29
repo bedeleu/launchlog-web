@@ -37,6 +37,6 @@ describe('Release Catalog reading shell', () => {
     expect(footer).toContain('class="mt-6 inline-flex min-h-6 items-center')
     expect(footer).toContain('class="inline-flex min-h-6 min-w-6 items-center justify-center')
     expect(footer).toContain('class="inline-flex min-h-6 items-center text-sm')
-    expect(footer.match(/class="inline-flex min-h-6 items-center font-mono/g) ?? []).toHaveLength(2)
+    expect(footer.match(/class="inline-flex min-h-6 items-center font-mono/g) ?? []).toHaveLength(3)
   })
 })
