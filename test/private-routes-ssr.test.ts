@@ -269,6 +269,7 @@ describe.skipIf(!isBuilt)('excluded routes are immune to path casing', () => {
     const response = await fetch(`${BASE}/About`, { headers: { accept: 'text/html' } })
     const html = await response.text()
     const htmlTag = html.match(/<html[^>]*>/)?.[0] ?? ''
+    const mainTag = html.match(/<main[^>]*>/)?.[0] ?? ''
 
     expect(response.status).toBe(404)
     expect(htmlTag).toContain('lang="en"')
@@ -276,6 +277,9 @@ describe.skipIf(!isBuilt)('excluded routes are immune to path casing', () => {
     // Text is only visible because the dark Release Catalog shell is applied; assert both halves together.
     expect(html).toContain('bg-release-ink')
     expect(html).toContain('Record unavailable')
+    expect(html).toContain('aria-label="LaunchLog home"')
+    expect(mainTag).toContain('items-start')
+    expect(mainTag).not.toContain('items-center')
     expect(isDeindexed(response, html)).toBe(true)
   })
 
