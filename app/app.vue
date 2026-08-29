@@ -62,7 +62,7 @@ useSeoMeta({
   ogTitle: defaultTitle,
   ogDescription: defaultDescription,
   ogType: 'website',
-  ogUrl: canonicalUrl,
+  ogUrl: computed(() => shouldNoindex.value ? undefined : canonicalUrl.value),
   ogSiteName: siteName,
   ogLocale: 'en_US',
   ogImage: ogImageUrl,
@@ -72,11 +72,9 @@ useSeoMeta({
   twitterDescription: defaultDescription,
   twitterImage: ogImageUrl,
   twitterImageAlt: 'LaunchLog — The log of what just shipped',
-  robots: computed(() =>
-    shouldNoindex.value
-      ? 'noindex, nofollow'
-      : 'index, follow, max-image-preview:large',
-  ),
+  robots: computed(() => shouldNoindex.value
+    ? 'noindex, nofollow'
+    : 'index, follow, max-image-preview:large'),
 })
 
 // Self-hosted Plausible (cookieless, first-party). Injected only when the
@@ -97,11 +95,11 @@ const plausibleScript = computed(() => {
   ]
 })
 
-useHead({
+useHead(() => ({
   htmlAttrs: {
     lang: 'en',
   },
-  script: plausibleScript,
+  script: plausibleScript.value,
   link: [
     {
       rel: 'preload',
@@ -117,10 +115,9 @@ useHead({
       type: 'font/woff2',
       crossorigin: 'anonymous',
     },
-    {
-      rel: 'canonical',
-      href: canonicalUrl,
-    },
+    ...(!shouldNoindex.value
+      ? [{ rel: 'canonical' as const, href: canonicalUrl.value }]
+      : []),
     // `image_src` is a legacy non-standard rel, so unhead 3's strict `rel` union rejects it.
     // defineLink is the documented escape hatch. It takes a plain string rather than a ref, which
     // is fine here: the URL is derived from runtime config and never changes after setup.
@@ -139,7 +136,10 @@ useHead({
     { name: 'language', content: 'English' },
     { name: 'content-language', content: 'en' },
     { name: 'theme-color', content: '#080907' },
-    { name: 'referrer', content: 'strict-origin-when-cross-origin' },
+    {
+      name: 'referrer',
+      content: shouldNoindex.value ? 'no-referrer' : 'strict-origin-when-cross-origin',
+    },
     { name: 'format-detection', content: 'telephone=no' },
     { name: 'apple-mobile-web-app-title', content: siteName },
     { name: 'msapplication-TileColor', content: '#080907' },
@@ -149,7 +149,7 @@ useHead({
     { name: 'distribution', content: 'Global' },
     { name: 'rating', content: 'General' },
   ],
-})
+}))
 </script>
 
 <template>

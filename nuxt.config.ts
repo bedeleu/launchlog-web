@@ -90,6 +90,20 @@ export default defineNuxtConfig({
     '/dashboard': { ssr: false, headers: { 'x-robots-tag': 'noindex, nofollow' } },
     '/admin': { ssr: false, headers: { 'x-robots-tag': 'noindex, nofollow' } },
     '/admin/**': { ssr: false, headers: { 'x-robots-tag': 'noindex, nofollow' } },
+    '/preview/**': {
+      headers: {
+        'x-robots-tag': 'noindex, nofollow',
+        'cache-control': 'private, no-store',
+        'referrer-policy': 'no-referrer',
+      },
+    },
+    '/checkout/success': {
+      headers: {
+        'x-robots-tag': 'noindex, nofollow',
+        'cache-control': 'private, no-store',
+        'referrer-policy': 'no-referrer',
+      },
+    },
     // Private/non-indexable routes are kept out of the sitemap via `sitemap.exclude`
     // below (the canonical @nuxtjs/sitemap API) — no per-route `sitemap: false`
     // rules here, which aren't typed on NitroRouteConfig.
