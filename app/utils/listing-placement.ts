@@ -41,6 +41,12 @@ export interface DirectoryPageSegments<T> {
   standard: PlacedListing<T>[]
 }
 
+export interface HomepageListings<T> {
+  hero: T | null
+  featured: T[]
+  recent: T[]
+}
+
 const place = <T>(listing: T, variant: ListingCardVariant, span: PlacementSpan): PlacedListing<T> =>
   ({ listing, variant, span })
 
@@ -99,13 +105,34 @@ export const packUniform = <T extends PlacementListing>(
 ): PlacedListing<T>[] => listings.map(l => place(l, 'standard', 'unit'))
 
 /**
- * Homepage Featured: every buyer receives the same one-row 2x1 presentation.
+ * Homepage Featured: every buyer receives the same compact catalog cell.
  * The API still rotates the cohort daily, but list order never changes the size
- * of a purchased placement.
+ * of a purchased placement or turns one record into a page-sized banner.
  */
 export const packHomepageFeatured = <T extends PlacementListing>(
   listings: readonly T[],
-): PlacedListing<T>[] => listings.map(l => place(l, 'spotlight', 'full-short'))
+): PlacedListing<T>[] => listings.map(l => place(l, 'standard', 'unit'))
+
+export const composeHomepageListings = <T extends { slug: string }>(
+  featured: readonly T[],
+  recent: readonly T[],
+  featuredLimit: number,
+  recentLimit: number,
+): HomepageListings<T> => {
+  const hero = recent[0] ?? featured[0] ?? null
+  const heroSlugs = new Set(hero ? [hero.slug] : [])
+  const homepageFeatured = takeListingsWithoutSlugs(featured, heroSlugs, featuredLimit)
+  const visibleSlugs = new Set([
+    ...heroSlugs,
+    ...homepageFeatured.map(listing => listing.slug),
+  ])
+
+  return {
+    hero,
+    featured: homepageFeatured,
+    recent: takeListingsWithoutSlugs(recent, visibleSlugs, recentLimit),
+  }
+}
 
 /** Homepage recent dedupe: drop slugs already shown above, then fill the limit. */
 export const takeListingsWithoutSlugs = <T extends { slug: string }>(

@@ -55,8 +55,8 @@ const segments = computed<GridSegment[]>(() => {
 })
 
 // Every card is one row tall, so the API's 30-slot directory page and the grid's
-// cells stay the same unit. Homepage Featured cards take one full-width row;
-// no surface receives a two-row advantage based on list order.
+// cells stay the same unit. Homepage Featured cards use equal compact cells;
+// no surface receives a size advantage based on list order.
 const spanClass: Record<PlacementSpan, string> = {
   'unit': '',
   // Two columns only where there are three. At the sm/md two-column breakpoint a

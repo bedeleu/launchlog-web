@@ -43,7 +43,8 @@ describe('release cover material', () => {
     expect(source).toContain('loading="lazy"')
     expect(source).toContain('width="960"')
     expect(source).toContain('height="600"')
-    expect(source).toContain("isPriorityPlacement.value ? 'object-contain object-top' : 'object-cover object-top'")
+    expect(source).toContain("isPriorityPlacement.value || props.listing.tier === 'featured'")
+    expect(source).toContain("? 'object-contain object-top'")
     expect(source).toContain(':class="[imageFitClass, isDirectorySpotlight ? \'absolute inset-0\' : \'\']"')
   })
 

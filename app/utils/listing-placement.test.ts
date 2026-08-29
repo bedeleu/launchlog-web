@@ -1,6 +1,12 @@
 import type { PlacementListing } from './listing-placement'
 import { describe, expect, test } from 'bun:test'
-import { packDirectoryPage, packHomepageFeatured, packUniform, takeListingsWithoutSlugs } from './listing-placement'
+import {
+  composeHomepageListings,
+  packDirectoryPage,
+  packHomepageFeatured,
+  packUniform,
+  takeListingsWithoutSlugs,
+} from './listing-placement'
 
 const item = (slug: string, tier: PlacementListing['tier'] | string): PlacementListing =>
   ({ slug, tier: tier as PlacementListing['tier'] })
@@ -80,7 +86,7 @@ describe('packUniform', () => {
 })
 
 describe('packHomepageFeatured', () => {
-  test('gives every featured listing the same one-row homepage placement', () => {
+  test('gives every featured listing the same compact homepage cell', () => {
     const placed = packHomepageFeatured([
       item('f1', 'featured'),
       item('f2', 'featured'),
@@ -88,19 +94,50 @@ describe('packHomepageFeatured', () => {
     ])
 
     expect(placed.map(p => p.listing.slug)).toEqual(['f1', 'f2', 'f3'])
-    expect(placed.every(p => p.variant === 'spotlight' && p.span === 'full-short')).toBeTrue()
+    expect(placed.every(p => p.variant === 'standard' && p.span === 'unit')).toBeTrue()
   })
 
-  test('a single listing uses the same full-width card contract', () => {
+  test('a single listing keeps the same compact card contract', () => {
     const placed = packHomepageFeatured([item('f1', 'featured')])
 
     expect(placed).toHaveLength(1)
-    expect(placed[0]!.variant).toBe('spotlight')
-    expect(placed[0]!.span).toBe('full-short')
+    expect(placed[0]!.variant).toBe('standard')
+    expect(placed[0]!.span).toBe('unit')
   })
 
   test('returns nothing for an empty cohort', () => {
     expect(packHomepageFeatured([])).toEqual([])
+  })
+})
+
+describe('composeHomepageListings', () => {
+  test('shows the latest release once and fills both grids with unique records', () => {
+    const result = composeHomepageListings(
+      [item('f1', 'featured'), item('f2', 'featured'), item('f3', 'featured'), item('f4', 'featured')],
+      [
+        item('f1', 'featured'),
+        item('b1', 'basic'),
+        item('f2', 'featured'),
+        item('b2', 'basic'),
+        item('b3', 'basic'),
+        item('b4', 'basic'),
+        item('b5', 'basic'),
+        item('b6', 'basic'),
+      ],
+      3,
+      6,
+    )
+
+    expect(result.hero?.slug).toBe('f1')
+    expect(result.featured.map(listing => listing.slug)).toEqual(['f2', 'f3', 'f4'])
+    expect(result.recent.map(listing => listing.slug)).toEqual(['b1', 'b2', 'b3', 'b4', 'b5', 'b6'])
+
+    const renderedSlugs = [
+      result.hero!.slug,
+      ...result.featured.map(listing => listing.slug),
+      ...result.recent.map(listing => listing.slug),
+    ]
+    expect(new Set(renderedSlugs).size).toBe(renderedSlugs.length)
   })
 })
 

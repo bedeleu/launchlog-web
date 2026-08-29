@@ -95,7 +95,9 @@ const showImage = computed(() => Boolean(props.listing.screenshot_url) && !image
  * denser crop used by the standard grid.
  */
 const imageFitClass = computed(() =>
-  isPriorityPlacement.value ? 'object-contain object-top' : 'object-cover object-top')
+  isPriorityPlacement.value || props.listing.tier === 'featured'
+    ? 'object-contain object-top'
+    : 'object-cover object-top')
 
 const cardClass = computed(() => {
   // Release covers are square-cornered ink plates with hairline seams. The tier

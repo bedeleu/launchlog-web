@@ -2,7 +2,7 @@
 import { Button } from '@/components/ui/button'
 import { SITE_IDENTITY } from '#shared/constants/site-identity'
 import type { ListingCard } from '~/composables/useListings'
-import { takeListingsWithoutSlugs } from '~/utils/listing-placement'
+import { composeHomepageListings } from '~/utils/listing-placement'
 
 const { user } = useAuth()
 const { listListings } = useListings()
@@ -19,10 +19,15 @@ const { data: homeListings, error: homeListingsError, refresh: refreshHomeListin
   'home-directory-listings',
   async () => {
     const [featured, recent] = await Promise.all([
-      listListings({ tier: 'featured', sort: 'priority', per_page: HOMEPAGE_FEATURED_SLOTS }),
-      // Over-fetch: the featured slugs are removed below, and asking for exactly
-      // six would leave the recent row short whenever they overlap.
-      listListings({ sort: 'recent', per_page: HOMEPAGE_RECENT_SLOTS + HOMEPAGE_FEATURED_SLOTS }),
+      // One extra slot keeps all three paid placements visible when the latest
+      // release is also in the Featured cohort.
+      listListings({ tier: 'featured', sort: 'priority', per_page: HOMEPAGE_FEATURED_SLOTS + 1 }),
+      // The latest release becomes the hero and every visible Featured slug is
+      // removed from the recent grid, so fetch enough real records to refill it.
+      listListings({
+        sort: 'recent',
+        per_page: HOMEPAGE_RECENT_SLOTS + HOMEPAGE_FEATURED_SLOTS + 1,
+      }),
     ])
 
     return { featured, recent }
@@ -30,15 +35,16 @@ const { data: homeListings, error: homeListingsError, refresh: refreshHomeListin
   { default: () => ({ featured: [], recent: [] }) },
 )
 
-const featuredListings = computed(() => homeListings.value?.featured ?? [])
-
-const recentListings = computed(() => takeListingsWithoutSlugs(
+const homepageComposition = computed(() => composeHomepageListings(
+  homeListings.value?.featured ?? [],
   homeListings.value?.recent ?? [],
-  new Set(featuredListings.value.map(listing => listing.slug)),
+  HOMEPAGE_FEATURED_SLOTS,
   HOMEPAGE_RECENT_SLOTS,
 ))
 
-const heroListing = computed(() => featuredListings.value[0] ?? recentListings.value[0] ?? null)
+const heroListing = computed(() => homepageComposition.value.hero)
+const featuredListings = computed(() => homepageComposition.value.featured)
+const recentListings = computed(() => homepageComposition.value.recent)
 const heroHost = computed(() => {
   if (!heroListing.value) return 'Private preview · no payment required'
   try {
@@ -199,12 +205,12 @@ useHead({
                 {{ heroListing?.name ?? 'Your product becomes the next release' }}
               </p>
               <p class="font-mono text-[0.68rem] tracking-[0.12em] text-release-ink/65 uppercase">
-                Catalog specimen
+                Published record
               </p>
             </div>
           </template>
         </ReleaseCover>
-        <ReleaseEvidenceBand class="mt-3" label="Captured release" :value="heroHost" />
+        <ReleaseEvidenceBand class="mt-3" label="Latest release" :value="heroHost" />
       </div>
 
       <template #rail>

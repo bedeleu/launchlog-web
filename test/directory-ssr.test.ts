@@ -224,21 +224,26 @@ describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
     expect(html).not.toContain('lg:row-span-2')
   })
 
-  test('homepage featured listings share one aligned 2x1 presentation', async () => {
+  test('homepage shows the latest release once and keeps Featured cells compact', async () => {
     const html = await fetch(BASE).then(response => response.text())
     const cell = (slug: string) => html.match(new RegExp(`<a href="/listing/${slug}"[^>]*class="([^"]*)"`))?.[1]
 
-    for (const slug of ['one-featured', 'two-featured']) {
-      const classes = cell(slug)
-      expect(classes).toBeDefined()
-      expect(classes!).toContain('sm:col-span-2')
-      expect(classes!).toContain('lg:col-span-3')
-      expect(classes!).not.toContain('row-span-2')
-    }
+    // The newest record is the release cover, not a second copy inside the
+    // Featured grid. The remaining paid cohort keeps equal catalog cells.
+    expect(html).toContain('Latest release')
+    expect(html).not.toContain('Captured release')
+    expect(cell('one-featured')).toBeUndefined()
 
-    // Disclosure now belongs to each real placement band; the duplicate section
-    // register and its misleading one-lead hierarchy are both retired.
-    expect(html.match(/Priority placement/g) ?? []).toHaveLength(2)
+    const featuredCell = cell('two-featured')
+    expect(featuredCell).toBeDefined()
+    expect(featuredCell!).not.toContain('sm:col-span-2')
+    expect(featuredCell!).not.toContain('lg:col-span-3')
+    expect(featuredCell!).not.toContain('row-span-2')
+
+    // Compact Featured cards disclose the tier in their catalog register rather
+    // than adding a second full-width priority band to every row.
+    expect(html).toContain('>featured</span>')
+    expect(html.match(/Priority placement/g) ?? []).toHaveLength(0)
     expect(html).not.toContain('Featured · priority placement')
   })
 
