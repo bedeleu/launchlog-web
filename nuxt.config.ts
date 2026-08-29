@@ -36,6 +36,10 @@ export default defineNuxtConfig({
         { charset: 'utf-8' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         {
+          name: 'facebook-domain-verification',
+          content: '01c29hk1kargoooh257xip12xeg7fi',
+        },
+        {
           name: 'description',
           content:
             'A curated directory for indie makers, SaaS founders, and tech launches, with structured product pages for people and machine-readable discovery.',
