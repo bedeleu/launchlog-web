@@ -91,4 +91,21 @@ describe('buildListingSchema', () => {
     expect(JSON.stringify(schema)).not.toContain('undefined')
     expect(JSON.stringify(schema)).not.toContain('null')
   })
+
+  test('keeps hostile text as data in the graph', () => {
+    const payload = '</script><script>globalThis.__launchlog_xss=1</script><'
+    const schema = buildListingSchema({
+      ...listing,
+      name: payload,
+      tagline: payload,
+      description: payload,
+    }, 'https://launchlog.ai')
+    const graph = schema['@graph'] as Array<Record<string, unknown>>
+    const product = graph.find(node => node['@type'] === 'SoftwareApplication')
+    const breadcrumb = graph.find(node => node['@type'] === 'BreadcrumbList')
+
+    expect(product?.name).toBe(payload)
+    expect(product?.description).toBe(payload)
+    expect(JSON.stringify(breadcrumb)).toContain(payload)
+  })
 })

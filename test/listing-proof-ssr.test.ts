@@ -1,6 +1,8 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import type { Listing } from '../app/composables/useListings'
+import { buildListingSchema } from '../app/utils/listing-schema'
 
 const serverEntry = fileURLToPath(new URL('../.output/server/index.mjs', import.meta.url))
 const isBuilt = existsSync(serverEntry)
@@ -13,7 +15,7 @@ const UPSTREAM_PORT = 3207
 const SERVER_PORT = 3206
 const BASE = `http://127.0.0.1:${SERVER_PORT}`
 
-const LISTING = {
+const LISTING: Listing = {
   slug: 'proof-product',
   name: 'Proof Product',
   tagline: 'A machine-readable launch.',
@@ -21,7 +23,7 @@ const LISTING = {
   url: 'https://proof.example.com',
   screenshot_url: null,
   tier: 'basic',
-  source: 'paid',
+  source: 'customer',
   category: { name: 'Developer Tools', slug: 'developer-tools' },
   tags: [{ name: 'Proof', slug: 'proof' }],
   tech_stack: ['Nuxt'],
@@ -29,8 +31,18 @@ const LISTING = {
   has_schema_org: true,
   has_markdown_negotiation: true,
   country: null,
-  pricing: null,
   published_at: '2026-08-26T00:00:00Z',
+  link_text: null,
+  enriched_at: null,
+}
+
+const HOSTILE = '</script><script>globalThis.__launchlog_xss=1</script><'
+const HOSTILE_LISTING: Listing = {
+  ...LISTING,
+  slug: 'hostile-product',
+  name: HOSTILE,
+  tagline: HOSTILE,
+  description: HOSTILE,
 }
 
 let upstream: ReturnType<typeof Bun.serve> | undefined
@@ -61,6 +73,9 @@ describe.skipIf(!isBuilt)('listing receipt proof routes', () => {
         const { pathname } = new URL(request.url)
         if (pathname === '/api/v1/listings/proof-product') {
           return Response.json({ data: LISTING })
+        }
+        if (pathname === '/api/v1/listings/hostile-product') {
+          return Response.json({ data: HOSTILE_LISTING })
         }
         if (pathname === '/api/v1/listings/withdrawn-product') {
           return Response.json({ message: 'Gone' }, { status: 410 })
@@ -186,6 +201,28 @@ describe.skipIf(!isBuilt)('listing receipt proof routes', () => {
     expect(graph).not.toBeNull()
     expect(graph![1]).not.toContain('<')
     expect(JSON.parse(graph![1]!)['@context']).toBe('https://schema.org')
+  })
+
+  test('serializes hostile listing text as one inert JSON-LD document', async () => {
+    const response = await fetch(`${BASE}/listing/hostile-product`)
+    const html = await response.text()
+    const scripts = [...html.matchAll(
+      /<script[^>]+type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g,
+    )]
+
+    expect(response.status).toBe(200)
+    expect(scripts).toHaveLength(1)
+    expect(scripts[0]![1]).not.toContain('<')
+    expect(JSON.parse(scripts[0]![1]!)).toEqual(
+      buildListingSchema(HOSTILE_LISTING, 'https://launchlog.ai'),
+    )
+  })
+
+  test('emits no listing JSON-LD for an absent listing', async () => {
+    const response = await fetch(`${BASE}/listing/not-present`)
+    const html = await response.text()
+    expect(response.status).toBe(404)
+    expect(html).not.toMatch(/type="application\/ld\+json"/)
   })
 
   test('a withdrawn release is 410 and says so, instead of blaming the link', async () => {
