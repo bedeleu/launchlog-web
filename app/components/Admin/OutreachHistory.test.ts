@@ -713,6 +713,16 @@ describe('outreach delivery ledger', () => {
     expect(source).not.toMatch(/gradient|backdrop-blur|rounded-(?:lg|xl|2xl)|shadow-(?:lg|xl|2xl)/)
   })
 
+  test('keeps the desktop record actions inside the max-width ledger', async () => {
+    const desktopGrid = 'xl:grid-cols-[9rem_minmax(0,1fr)_minmax(0,1.25fr)_10rem_5rem_13rem]'
+    const html = await renderHistory()
+
+    expect(source.split(desktopGrid)).toHaveLength(3)
+    expect(source).not.toContain('minmax(13rem,1.1fr)')
+    expect(source).not.toContain('minmax(15rem,1.5fr)')
+    expect(html).toContain('data-outreach-history-actions')
+  })
+
   test('pauses the single timer while hidden, refreshes once on return, and cleans up', async () => {
     const { startOutreachHistoryRefresh } = loadModuleHelpers()
     let visible = true

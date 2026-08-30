@@ -390,7 +390,7 @@ onBeforeUnmount(() => {
     <div v-else role="table" aria-label="Outreach delivery history" class="divide-y divide-release-seam">
       <div
         role="row"
-        class="hidden grid-cols-[10rem_minmax(13rem,1.1fr)_minmax(15rem,1.5fr)_12rem_7rem_11rem] gap-4 bg-release-ink/50 px-5 py-2.5 font-mono text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-release-paper-muted xl:grid"
+        class="hidden gap-3 bg-release-ink/50 px-5 py-2.5 font-mono text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-release-paper-muted xl:grid xl:grid-cols-[9rem_minmax(0,1fr)_minmax(0,1.25fr)_10rem_5rem_13rem]"
       >
         <span role="columnheader">Created</span>
         <span role="columnheader">Recipient / product</span>
@@ -403,7 +403,7 @@ onBeforeUnmount(() => {
       <div v-for="send in rows" :key="send.id" role="rowgroup" data-outreach-history-row>
         <div
           role="row"
-          class="grid gap-x-5 gap-y-4 px-4 py-5 transition-colors hover:bg-release-ink/35 sm:grid-cols-2 sm:px-5 xl:grid-cols-[10rem_minmax(13rem,1.1fr)_minmax(15rem,1.5fr)_12rem_7rem_11rem] xl:items-start xl:gap-4"
+          class="grid gap-x-5 gap-y-4 px-4 py-5 transition-colors hover:bg-release-ink/35 sm:grid-cols-2 sm:px-5 xl:grid-cols-[9rem_minmax(0,1fr)_minmax(0,1.25fr)_10rem_5rem_13rem] xl:items-start xl:gap-3"
           :class="isRowOpen(send.id) ? 'bg-release-ink/55' : ''"
         >
           <div role="cell" class="min-w-0">
@@ -452,12 +452,12 @@ onBeforeUnmount(() => {
             <p class="mt-1 font-mono text-xs uppercase tracking-[0.08em] text-release-paper xl:mt-0">{{ send.delivery_channel }}</p>
           </div>
 
-          <div role="cell" class="flex flex-wrap items-start justify-end gap-2 sm:col-span-2 xl:col-span-1">
+          <div data-outreach-history-actions role="cell" class="flex min-w-0 flex-wrap items-start justify-end gap-2 sm:col-span-2 xl:col-span-1">
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              class="rounded-none border border-release-seam bg-transparent font-mono text-[0.68rem] uppercase tracking-[0.1em] text-release-paper hover:border-release-blaze hover:bg-transparent hover:text-release-blaze focus-visible:ring-release-focus active:bg-release-ink"
+              class="min-h-11 rounded-none border border-release-seam bg-transparent font-mono text-[0.68rem] uppercase tracking-[0.1em] text-release-paper hover:border-release-blaze hover:bg-transparent hover:text-release-blaze focus-visible:ring-release-focus active:bg-release-ink xl:min-h-8"
               :aria-expanded="isRowOpen(send.id)"
               :aria-controls="`outreach-details-${send.id}`"
               :aria-label="`${isRowOpen(send.id) ? 'Hide' : 'Show'} delivery details for ${send.product_name}`"
@@ -470,7 +470,7 @@ onBeforeUnmount(() => {
               type="button"
               variant="outline"
               size="sm"
-              class="rounded-none border-release-seam bg-transparent font-mono text-[0.68rem] uppercase tracking-[0.1em] text-release-paper hover:border-release-blaze hover:bg-transparent hover:text-release-blaze focus-visible:ring-release-focus active:bg-release-ink disabled:cursor-not-allowed disabled:opacity-45"
+              class="min-h-11 rounded-none border-release-seam bg-transparent font-mono text-[0.68rem] uppercase tracking-[0.1em] text-release-paper hover:border-release-blaze hover:bg-transparent hover:text-release-blaze focus-visible:ring-release-focus active:bg-release-ink disabled:cursor-not-allowed disabled:opacity-45 xl:min-h-8"
               :disabled="isRowRefreshing(send.id)"
               :aria-label="`Refresh delivery status for ${send.product_name} to ${send.recipient_email}`"
               @click="refreshRow(send)"
