@@ -55,6 +55,11 @@ describe('release cover material', () => {
 })
 
 describe('directory Featured row balance', () => {
+  test('lets the Featured proof end at its natural capture height', () => {
+    expect(source).toContain("isDirectorySpotlight.value ? 'lg:h-auto' : ''")
+    expect(source).toContain(':class="[cardClass, articleHeightClass]"')
+  })
+
   test('keeps the Featured capture content-driven at the horizontal breakpoint', () => {
     expect(source).toContain('lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]')
     expect(source).toContain('lg:aspect-[16/10] lg:h-auto lg:self-start')

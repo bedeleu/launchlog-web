@@ -118,6 +118,12 @@ const cardClass = computed(() => {
   return 'border-release-seam bg-release-rail group-hover:border-release-paper-muted/45 group-focus-visible:border-release-paper-muted/45'
 })
 
+// The directory grid row also contains a denser Standard companion. Let the
+// Featured proof keep its own natural height instead of inheriting that taller
+// row and exposing empty rail between the 16:10 capture and the obi.
+const articleHeightClass = computed(() =>
+  isDirectorySpotlight.value ? 'lg:h-auto' : '')
+
 const layoutClass = computed(() => {
   if (isSpotlight.value) return 'md:grid md:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]'
   // The capture stays the wide track because the customer's product is what
@@ -177,7 +183,7 @@ const taglineClass = computed(() => {
        hover feedback is the seam-colour step from cardClass. -->
   <article
     class="flex h-full min-w-0 flex-col overflow-hidden border transition-colors duration-200"
-    :class="cardClass"
+    :class="[cardClass, articleHeightClass]"
   >
     <!-- The split lives on an inner wrapper so the directory Featured card can
          close with an obi band that runs under cover and text alike. -->
