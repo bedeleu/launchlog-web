@@ -11,6 +11,8 @@ const props = withDefaults(defineProps<{
   interactive?: boolean
   /** Preview-only: slugs rendered as blurred context. Never set on live surfaces. */
   contextualSlugs?: string[]
+  /** Preview-only: the buyer's card receives the catalog proof frame. */
+  focusSlug?: string
   /** Preview-only: keep one context card on phones so the purchase form stays nearby. */
   compactContextOnMobile?: boolean
   generating?: boolean
@@ -20,6 +22,7 @@ const props = withDefaults(defineProps<{
   mode: 'uniform',
   interactive: true,
   contextualSlugs: () => [],
+  focusSlug: '',
   compactContextOnMobile: false,
   generating: false,
   headingLevel: 'h3',
@@ -100,10 +103,12 @@ const compactedContext = computed(() => new Set(
           :to="interactive && !contextual.has(item.listing.slug) ? `/listing/${item.listing.slug}` : undefined"
           :aria-hidden="contextual.has(item.listing.slug) ? 'true' : undefined"
           :tabindex="contextual.has(item.listing.slug) ? -1 : undefined"
+          :data-preview-focus="focusSlug === item.listing.slug ? 'true' : undefined"
           class="group block min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus focus-visible:ring-offset-2 focus-visible:ring-offset-release-ink"
           :class="[
             spanClass[item.span],
-            contextual.has(item.listing.slug) ? 'pointer-events-none select-none opacity-55 blur-[1.5px]' : '',
+            focusSlug === item.listing.slug ? 'relative z-10 ring-2 ring-release-paper ring-offset-2 ring-offset-release-rail lg:self-start' : '',
+            contextual.has(item.listing.slug) ? 'pointer-events-none select-none opacity-25 grayscale blur-[1.5px]' : '',
             compactedContext.has(item.listing.slug) ? 'hidden sm:block' : '',
           ]"
         >

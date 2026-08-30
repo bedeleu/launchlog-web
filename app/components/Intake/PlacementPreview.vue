@@ -114,6 +114,7 @@ const previewListings = computed<ListingCard[]>(() => [buyerCard.value, ...conte
           mode="mixed"
           :interactive="false"
           :contextual-slugs="contextSlugs"
+          focus-slug="preview-buyer"
           compact-context-on-mobile
           :generating="generating"
         />
