@@ -1,11 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-
-type MarkdownRoute = Record<string, string>
-interface MarkdownRouteModule {
-  resolveMarkdownRoute(pathname: string): MarkdownRoute | null
-}
-
-const { resolveMarkdownRoute } = await import('./' + 'markdown-route') as MarkdownRouteModule
+import { resolveMarkdownRoute } from './markdown-route'
 
 describe('Markdown route resolution', () => {
   test.each([

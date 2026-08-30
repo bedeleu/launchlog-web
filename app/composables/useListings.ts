@@ -14,8 +14,8 @@ export interface ListingTag {
 }
 
 export interface ListingPricing {
-  low: number
-  high: number
+  low: number | null
+  high: number | null
   currency: string
 }
 

@@ -35,11 +35,13 @@ export const buildListingSchema = (
   if (description) product.description = description
   if (listing.screenshot_url) product.image = listing.screenshot_url
   if (listing.tech_stack?.length) product.featureList = listing.tech_stack
-  if (listing.pricing) {
+  const pricing = listing.pricing
+  const price = pricing?.low ?? pricing?.high
+  if (pricing && typeof price === 'number' && Number.isFinite(price) && pricing.currency.trim() !== '') {
     product.offers = {
       '@type': 'Offer',
-      'price': listing.pricing.low,
-      'priceCurrency': listing.pricing.currency,
+      'price': price,
+      'priceCurrency': pricing.currency,
       'url': listing.url,
     }
   }

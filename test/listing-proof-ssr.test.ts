@@ -74,7 +74,7 @@ describe.skipIf(!isBuilt)('listing receipt proof routes', () => {
         const { pathname } = new URL(request.url)
         if (pathname === '/api/v1/listings/tool') {
           if (toolStatus !== 200) return Response.json({ message: 'upstream failure' }, { status: toolStatus })
-          return Response.json({ data: LISTING })
+          return Response.json({ data: { ...LISTING, slug: 'tool' } })
         }
         if (pathname === '/api/v1/listings/proof-product') {
           return Response.json({ data: LISTING })
@@ -128,7 +128,7 @@ describe.skipIf(!isBuilt)('listing receipt proof routes', () => {
     expect(response.headers.get('content-type')).toContain('text/markdown')
     expect(response.headers.get('x-robots-tag')).toBe('noindex, nofollow')
     expect(markdown).toContain('# Proof Product')
-    expect(markdown).toContain('**Website:** https://proof.example.com')
+    expect(markdown).toContain('<a href="https://proof.example.com" rel="noopener sponsored">Website</a>')
   })
   test('serves the negotiated Markdown on the listing URL itself', async () => {
     const response = await fetch(`${BASE}/listing/proof-product`, {
@@ -138,9 +138,31 @@ describe.skipIf(!isBuilt)('listing receipt proof routes', () => {
 
     expect(response.status).toBe(200)
     expect(response.headers.get('content-type')).toContain('text/markdown')
+    expect(response.headers.get('x-content-type-options')).toBe('nosniff')
     expect(response.headers.get('vary')).toBe('Accept')
     expect(response.headers.get('content-signal')).toBe('ai-train=yes, search=yes, ai-input=yes')
     expect(markdown).toContain('# Proof Product')
+  })
+
+  test('matches the explicit Markdown media type case-insensitively', async () => {
+    const response = await fetch(`${BASE}/listing/proof-product`, {
+      headers: { Accept: 'Text/Markdown; Q=0.5' },
+    })
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('content-type')).toContain('text/markdown')
+    expect(response.headers.get('x-content-type-options')).toBe('nosniff')
+    expect(response.headers.get('vary')).toContain('Accept')
+  })
+
+  test('keeps the HTML representation when explicit Markdown has q=0', async () => {
+    const response = await fetch(`${BASE}/listing/proof-product`, {
+      headers: { Accept: 'text/markdown; q=0, text/html' },
+    })
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('content-type')).toContain('text/html')
+    expect(response.headers.get('vary')).toContain('Accept')
   })
 
   test('keeps the proof routes reachable for the AI clients that send Accept: text/markdown', async () => {
