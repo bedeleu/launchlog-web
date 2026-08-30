@@ -123,6 +123,23 @@ const statusPresentations: Record<OutreachDeliveryStatus, StatusPresentation> = 
   },
 }
 
+const statusPrecedence: Record<OutreachDeliveryStatus, number> = {
+  unknown: 0,
+  pending: 10,
+  accepted: 20,
+  scheduled: 30,
+  sent: 40,
+  delivery_delayed: 50,
+  delivered: 60,
+  opened: 70,
+  clicked: 80,
+  failed: 90,
+  bounced: 100,
+  suppressed: 110,
+  complained: 120,
+  canceled: 130,
+}
+
 const emptyMeta: OutreachEmailSendPage['meta'] = {
   current_page: 1,
   from: null,
@@ -144,6 +161,7 @@ const refreshError = ref<string | null>(null)
 const openRows = ref(new Set<string>())
 let requestVersion = 0
 let stopAutoRefresh: (() => void) | null = null
+let disposed = false
 
 const statusPresentation = (status: OutreachDeliveryStatus): StatusPresentation => (
   statusPresentations[status]
@@ -165,6 +183,39 @@ const safeDiagnosticCode = (value: string | null): string | null => {
 }
 const isRowOpen = (id: string): boolean => openRows.value.has(id)
 const isRowRefreshing = (id: string): boolean => refreshingIds.value.has(id)
+const timestampValue = (value: string | null): number => value ? Date.parse(value) : Number.NEGATIVE_INFINITY
+
+const freshestSend = (current: OutreachEmailSend, incoming: OutreachEmailSend): OutreachEmailSend => {
+  const currentTuple = [
+    timestampValue(current.updated_at),
+    timestampValue(current.provider_event_at),
+    timestampValue(current.last_synced_at),
+    statusPrecedence[current.status],
+  ]
+  const incomingTuple = [
+    timestampValue(incoming.updated_at),
+    timestampValue(incoming.provider_event_at),
+    timestampValue(incoming.last_synced_at),
+    statusPrecedence[incoming.status],
+  ]
+
+  for (let index = 0; index < currentTuple.length; index += 1) {
+    if (incomingTuple[index] === currentTuple[index]) continue
+    return (incomingTuple[index] ?? Number.NEGATIVE_INFINITY) > (currentTuple[index] ?? Number.NEGATIVE_INFINITY)
+      ? incoming
+      : current
+  }
+
+  return incoming
+}
+
+const mergePageRows = (incomingRows: OutreachEmailSend[]): OutreachEmailSend[] => {
+  const currentById = new Map(rows.value.map(row => [row.id, row]))
+  return incomingRows.map((incoming) => {
+    const current = currentById.get(incoming.id)
+    return current ? freshestSend(current, incoming) : incoming
+  })
+}
 
 const setRowRefreshing = (id: string, refreshing: boolean) => {
   const next = new Set(refreshingIds.value)
@@ -191,18 +242,20 @@ const load = async (page = currentPage.value, silent = false, force = false): Pr
 
   try {
     const result = await history.list(page)
-    if (version !== requestVersion) return
-    rows.value = result.data
+    if (disposed || version !== requestVersion) return
+    rows.value = mergePageRows(result.data)
     meta.value = result.meta
     currentPage.value = result.meta.current_page
+    error.value = null
+    refreshError.value = null
   }
   catch {
-    if (version !== requestVersion) return
+    if (disposed || version !== requestVersion) return
     if (silent) refreshError.value = 'Delivery history could not be refreshed.'
     else error.value = 'Delivery history could not be loaded.'
   }
   finally {
-    if (version === requestVersion) {
+    if (!disposed && version === requestVersion) {
       loading.value = false
       silentRefreshing.value = false
     }
@@ -222,13 +275,15 @@ const refreshRow = async (send: OutreachEmailSend): Promise<void> => {
   refreshError.value = null
   try {
     const refreshed = await history.refresh(send.id)
-    rows.value = rows.value.map(row => row.id === refreshed.id ? refreshed : row)
+    if (disposed) return
+    rows.value = rows.value.map(row => row.id === refreshed.id ? freshestSend(row, refreshed) : row)
   }
   catch {
+    if (disposed) return
     refreshError.value = `Delivery status for ${send.product_name} could not be refreshed.`
   }
   finally {
-    setRowRefreshing(send.id, false)
+    if (!disposed) setRowRefreshing(send.id, false)
   }
 }
 
@@ -239,22 +294,24 @@ const showLatest = (): Promise<void> => showLatestOutreachPage(
 
 defineExpose({ showLatest })
 
-onMounted(async () => {
-  await load(1)
-  if (typeof document === 'undefined') return
+onMounted(() => {
+  if (typeof document !== 'undefined') {
+    const pageDocument = document
+    stopAutoRefresh = startOutreachHistoryRefresh({
+      isVisible: () => pageDocument.visibilityState === 'visible',
+      refresh: () => load(currentPage.value, true),
+      setInterval: (callback, milliseconds) => globalThis.setInterval(callback, milliseconds),
+      clearInterval: id => globalThis.clearInterval(id as ReturnType<typeof setInterval>),
+      addVisibilityListener: callback => pageDocument.addEventListener('visibilitychange', callback),
+      removeVisibilityListener: callback => pageDocument.removeEventListener('visibilitychange', callback),
+    })
+  }
 
-  const pageDocument = document
-  stopAutoRefresh = startOutreachHistoryRefresh({
-    isVisible: () => pageDocument.visibilityState === 'visible',
-    refresh: () => load(currentPage.value, true),
-    setInterval: (callback, milliseconds) => globalThis.setInterval(callback, milliseconds),
-    clearInterval: id => globalThis.clearInterval(id as ReturnType<typeof setInterval>),
-    addVisibilityListener: callback => pageDocument.addEventListener('visibilitychange', callback),
-    removeVisibilityListener: callback => pageDocument.removeEventListener('visibilitychange', callback),
-  })
+  void load(1)
 })
 
 onBeforeUnmount(() => {
+  disposed = true
   requestVersion += 1
   stopAutoRefresh?.()
   stopAutoRefresh = null
@@ -436,9 +493,14 @@ onBeforeUnmount(() => {
 
         <div
           v-if="isRowOpen(send.id)"
-          :id="`outreach-details-${send.id}`"
-          class="border-l-2 border-l-release-blaze bg-release-ink/70 px-4 py-5 sm:px-6 xl:ml-[10rem]"
+          role="row"
         >
+          <div
+            :id="`outreach-details-${send.id}`"
+            role="cell"
+            aria-colspan="6"
+            class="border-l-2 border-l-release-blaze bg-release-ink/70 px-4 py-5 sm:px-6 xl:ml-[10rem]"
+          >
           <div class="grid gap-x-8 gap-y-5 sm:grid-cols-2 xl:grid-cols-3">
             <dl class="space-y-4 text-sm">
               <div>
@@ -480,7 +542,7 @@ onBeforeUnmount(() => {
                     :href="send.preview_url"
                     target="_blank"
                     rel="noopener noreferrer"
-                    class="break-all text-release-blaze underline decoration-release-seam underline-offset-4 hover:decoration-release-blaze focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus"
+                    class="break-all text-release-blaze underline decoration-release-seam underline-offset-4 hover:decoration-release-blaze focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus active:text-release-paper active:decoration-release-paper"
                   >
                     Open direct preview ↗
                   </a>
@@ -544,6 +606,7 @@ onBeforeUnmount(() => {
               </dd>
             </div>
           </dl>
+          </div>
         </div>
       </div>
     </div>
