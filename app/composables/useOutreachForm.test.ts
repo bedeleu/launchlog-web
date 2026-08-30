@@ -201,7 +201,9 @@ describe('outreach form controller', () => {
   })
 
   test('blocks stale and duplicate submits without repeating external work', async () => {
-    let resolveSend: ((value: OutreachEmailSend) => void) | null = null
+    let resolveSend: (value: OutreachEmailSend) => void = () => {
+      throw new Error('Send promise was not initialized.')
+    }
     let sendCalls = 0
     const form = createOutreachFormController({
       randomUUID: createRequestIds(),
@@ -222,7 +224,7 @@ describe('outreach form controller', () => {
     const firstSubmit = form.submit()
     expect(await form.submit()).toBe('invalid')
     expect(sendCalls).toBe(1)
-    resolveSend?.(acceptedSendFixture)
+    resolveSend(acceptedSendFixture)
     expect(await firstSubmit).toBe('accepted')
   })
 
