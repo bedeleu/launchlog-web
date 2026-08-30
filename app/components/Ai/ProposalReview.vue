@@ -9,7 +9,7 @@ const props = withDefaults(defineProps<{
   proposed: AiEnrichmentPayload
   evidence?: Record<string, unknown>
   allowedFields?: AiEnrichmentField[]
-  mode?: 'preview' | 'owner' | 'admin'
+  mode?: 'owner' | 'admin'
   busy?: boolean
   categoryRequiresApproval?: boolean
 }>(), {
@@ -76,12 +76,6 @@ const evidenceExcerpt = (key: string) => {
   return null
 }
 
-const actionLabel = computed(() => {
-  if (props.mode === 'preview') return 'Apply selected changes'
-  if (props.mode === 'owner') return 'Apply & save selected changes'
-  if (props.mode === 'admin') return 'Apply & save selected changes'
-  return 'Apply selected changes'
-})
 </script>
 
 <template>
@@ -178,7 +172,7 @@ const actionLabel = computed(() => {
       </Button>
       <Button type="button" size="sm" class="rounded-none border border-release-paper bg-release-paper font-mono text-xs text-release-ink hover:border-release-warning hover:bg-release-warning" :disabled="busy || selected.length === 0" @click="emit('apply', selected)">
         <AppSpinner v-if="busy" class="mr-2" color="text-current" label="Applying selected suggestions" />
-        {{ busy ? 'Applying…' : actionLabel }}
+        {{ busy ? 'Applying…' : 'Apply & save selected changes' }}
       </Button>
     </div>
 

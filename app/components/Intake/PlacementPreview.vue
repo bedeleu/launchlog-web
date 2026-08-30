@@ -20,12 +20,11 @@ const displayTagline = computed(() =>
 )
 
 /**
- * Three illustrative rows, not a full 30-slot production page: the buyer only
+ * Two illustrative rows, not a full 30-slot production page: the buyer only
  * needs to see the shape of their own card among neighbours. The buyer's own
- * footprint is subtracted, so Featured needs 7 context cards and Standard 8 —
- * each case lands on exactly nine slots.
+ * footprint is subtracted, so each case lands on exactly six weighted slots.
  */
-const PREVIEW_SLOTS = 9
+const PREVIEW_SLOTS = 6
 const SAMPLE_IMAGES = 5
 
 const buyerWeight = computed(() => (isFeatured.value ? 2 : 1))
@@ -114,49 +113,10 @@ const previewListings = computed<ListingCard[]>(() => [buyerCard.value, ...conte
           mode="mixed"
           :interactive="false"
           :contextual-slugs="contextSlugs"
-          compact-context-on-mobile
+          focus-slug="preview-buyer"
           :generating="generating"
         />
       </div>
     </div>
-
-    <dl class="mt-4 grid gap-x-8 gap-y-4 border-y border-release-seam py-4 sm:grid-cols-2">
-      <div class="min-w-0">
-        <dt class="text-xs font-medium text-release-paper-muted">
-          Listing title
-        </dt>
-        <dd class="mt-1 break-words text-base font-semibold leading-6 text-white">
-          {{ displayTitle }}
-        </dd>
-      </div>
-      <div class="min-w-0">
-        <dt class="text-xs font-medium text-release-paper-muted">
-          Website
-        </dt>
-        <dd class="mt-1 break-all font-mono text-sm leading-6 text-white/90">
-          {{ preview.domain }}
-        </dd>
-      </div>
-      <div class="min-w-0 sm:col-span-2">
-        <dt class="text-xs font-medium text-release-paper-muted">
-          Short description
-        </dt>
-        <dd class="mt-1 break-words text-sm leading-6 text-white/80">
-          {{ displayTagline }}
-        </dd>
-      </div>
-    </dl>
-
-    <p class="mt-3 text-xs text-release-paper-muted">
-      <template v-if="isFeatured">
-        Featured takes the editorial spotlight card, placed first on eligible browse and category
-        pages, plus eligibility for one of up to three homepage Featured slots. Order within
-        Featured is re-seeded daily — it is not a guaranteed exposure cadence.
-      </template>
-      <template v-else>
-        Standard lists you in the directory with a standard card. Order within Standard is
-        re-seeded daily.
-      </template>
-    </p>
   </div>
 </template>

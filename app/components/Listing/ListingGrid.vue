@@ -11,8 +11,8 @@ const props = withDefaults(defineProps<{
   interactive?: boolean
   /** Preview-only: slugs rendered as blurred context. Never set on live surfaces. */
   contextualSlugs?: string[]
-  /** Preview-only: keep one context card on phones so the purchase form stays nearby. */
-  compactContextOnMobile?: boolean
+  /** Preview-only: the buyer's card receives the catalog proof frame. */
+  focusSlug?: string
   generating?: boolean
   /** Forwarded to every card; top-level directory pages pass 'h2'. */
   headingLevel?: 'h2' | 'h3'
@@ -20,7 +20,7 @@ const props = withDefaults(defineProps<{
   mode: 'uniform',
   interactive: true,
   contextualSlugs: () => [],
-  compactContextOnMobile: false,
+  focusSlug: '',
   generating: false,
   headingLevel: 'h3',
 })
@@ -69,9 +69,13 @@ const spanClass: Record<PlacementSpan, string> = {
 }
 
 const contextual = computed(() => new Set(props.contextualSlugs))
-const compactedContext = computed(() => new Set(
-  props.compactContextOnMobile ? props.contextualSlugs.slice(1) : [],
-))
+const contextVisibility = (slug: string): string => {
+  const contextIndex = props.contextualSlugs.indexOf(slug)
+  if (contextIndex === -1) return ''
+  if (contextIndex < 3) return 'hidden sm:block'
+  if (contextIndex >= 3) return 'hidden lg:block'
+  return ''
+}
 </script>
 
 <template>
@@ -90,7 +94,7 @@ const compactedContext = computed(() => new Set(
         Featured launches
       </p>
 
-      <div v-else-if="index > 0" class="mb-6 mt-6 border-t border-release-seam" />
+      <div v-else-if="index > 0" class="mb-6 mt-6 hidden border-t border-release-seam sm:block" />
 
       <div class="grid auto-rows-auto grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         <component
@@ -100,11 +104,13 @@ const compactedContext = computed(() => new Set(
           :to="interactive && !contextual.has(item.listing.slug) ? `/listing/${item.listing.slug}` : undefined"
           :aria-hidden="contextual.has(item.listing.slug) ? 'true' : undefined"
           :tabindex="contextual.has(item.listing.slug) ? -1 : undefined"
+          :data-preview-focus="focusSlug === item.listing.slug ? 'true' : undefined"
           class="group block min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus focus-visible:ring-offset-2 focus-visible:ring-offset-release-ink"
           :class="[
             spanClass[item.span],
-            contextual.has(item.listing.slug) ? 'pointer-events-none select-none opacity-55 blur-[1.5px]' : '',
-            compactedContext.has(item.listing.slug) ? 'hidden sm:block' : '',
+            focusSlug === item.listing.slug ? 'relative z-10 ring-2 ring-release-paper ring-offset-2 ring-offset-release-rail lg:self-start' : '',
+            contextual.has(item.listing.slug) ? 'pointer-events-none select-none opacity-25 grayscale blur-[1.5px]' : '',
+            contextVisibility(item.listing.slug),
           ]"
         >
           <ListingCard

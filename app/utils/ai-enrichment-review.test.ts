@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'bun:test'
-import { aiFieldDisplayValue, aiFieldLinks, changedAiFields, previewEditFromSuggestion } from './ai-enrichment-review'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { aiFieldDisplayValue, aiFieldLinks, changedAiFields } from './ai-enrichment-review'
+
+const source = readFileSync(fileURLToPath(new URL('./ai-enrichment-review.ts', import.meta.url)), 'utf8')
+const proposalReview = readFileSync(fileURLToPath(new URL('../components/Ai/ProposalReview.vue', import.meta.url)), 'utf8')
 
 describe('AI enrichment review', () => {
   test('only offers fields whose proposed value is different', () => {
@@ -10,17 +15,10 @@ describe('AI enrichment review', () => {
     )).toEqual(['tagline', 'description'])
   })
 
-  test('maps selected preview fields without overwriting unselected copy', () => {
-    expect(previewEditFromSuggestion(
-      { title: 'Current', tagline: 'Keep', description: 'Old', primary_category_id: null },
-      { title: 'Suggested', tagline: 'Replace', description: 'New', category_id: 'category-1' },
-      ['name', 'description', 'category'],
-    )).toEqual({
-      title: 'Suggested',
-      tagline: 'Keep',
-      description: 'New',
-      primary_category_id: 'category-1',
-    })
+  test('keeps proposal review exclusively on authenticated owner and admin surfaces', () => {
+    expect(source).not.toContain('previewEditFromSuggestion')
+    expect(proposalReview).not.toContain("'preview'")
+    expect(proposalReview).toContain("mode?: 'owner' | 'admin'")
   })
 
   test('formats visual proposal fields without hiding their exact URLs', () => {
