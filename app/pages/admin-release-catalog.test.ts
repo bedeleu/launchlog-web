@@ -7,6 +7,7 @@ const read = (path: string) => readFileSync(fileURLToPath(new URL(path, import.m
 const createPage = read('./admin/listings/new.vue')
 const editPage = read('./admin/listings/[id].vue')
 const listingsPage = read('./admin/listings/index.vue')
+const outreachPage = read('./admin/outreach.vue')
 const form = read('../components/Admin/ListingForm.vue')
 const releaseSelect = read('../components/ui/select/ReleaseSelect.vue')
 
@@ -45,5 +46,11 @@ describe('Release Catalog admin listing flow', () => {
     expect(releaseSelect).toContain('<ChevronDown')
     expect(form).not.toContain('>⌄</span>')
     expect(form).not.toContain('accent-release')
+  })
+
+  test('associates the outreach subject label with the select trigger', () => {
+    expect(outreachPage).toContain('<Label for="outreach-subject-variant"')
+    expect(outreachPage).toContain('trigger-id="outreach-subject-variant"')
+    expect(outreachPage).not.toContain('<ReleaseSelect\n              id="outreach-subject-variant"')
   })
 })
