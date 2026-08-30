@@ -17,11 +17,6 @@ export interface OutreachSendPayload {
   requestId: string
 }
 
-type UnwiredOutreachPagePayload = Pick<
-  OutreachSendPayload,
-  'recipientEmail' | 'subject' | 'text' | 'requestId'
->
-
 export const outreachDeliveryChannels = ['resend', 'smtp'] as const
 export const outreachDeliveryStatuses = [
   'pending',
@@ -72,17 +67,6 @@ const requestIdSchema = z.string().uuid()
 const deliveryChannelSchema = z.enum(outreachDeliveryChannels)
 const deliveryStatusSchema = z.enum(outreachDeliveryStatuses)
 const nullableDateTimeSchema = z.string().datetime({ offset: true }).nullable()
-const outreachSendPayloadSchema: z.ZodType<OutreachSendPayload> = z.object({
-  recipientEmail: z.string().email().max(255),
-  firstName: z.string().max(80).nullable(),
-  productName: z.string().min(1).max(120),
-  sourceName: z.string().min(1).max(120),
-  subjectVariant: z.enum(outreachSubjectVariants),
-  subject: z.string().min(1).max(200),
-  text: z.string().min(1).max(5000),
-  previewUrl: z.string().refine(isSafePreviewUrl).nullable(),
-  requestId: requestIdSchema,
-})
 
 export const outreachEmailSendSchema: z.ZodType<OutreachEmailSend> = z.object({
   id: z.string().uuid(),
@@ -94,7 +78,7 @@ export const outreachEmailSendSchema: z.ZodType<OutreachEmailSend> = z.object({
   subject_variant: z.enum(outreachSubjectVariants),
   subject: z.string(),
   text: z.string(),
-  preview_url: z.string().url().nullable(),
+  preview_url: z.string().refine(isSafePreviewUrl).nullable(),
   from_address: z.string().email(),
   from_name: z.string(),
   reply_to_address: z.string().email(),
@@ -123,33 +107,28 @@ export const useOutreachSend = () => {
     return { Authorization: `Bearer ${token}` }
   }
 
-  const send = async (
-    payload: OutreachSendPayload | UnwiredOutreachPagePayload,
-  ): Promise<OutreachEmailSend> => {
-    const parsedPayload = outreachSendPayloadSchema.safeParse(payload)
-    if (!parsedPayload.success) throw new Error('Invalid outreach send payload')
-
+  const send = async (payload: OutreachSendPayload): Promise<OutreachEmailSend> => {
     const response: unknown = await $fetch(
       `${config.public.apiUrl}/api/v1/admin/outreach/send`,
       {
         method: 'POST',
         headers: await authHeaders(),
         body: {
-          recipient_email: parsedPayload.data.recipientEmail,
-          first_name: parsedPayload.data.firstName,
-          product_name: parsedPayload.data.productName,
-          source_name: parsedPayload.data.sourceName,
-          subject_variant: parsedPayload.data.subjectVariant,
-          subject: parsedPayload.data.subject,
-          text: parsedPayload.data.text,
-          preview_url: parsedPayload.data.previewUrl,
-          request_id: parsedPayload.data.requestId,
+          recipient_email: payload.recipientEmail,
+          first_name: payload.firstName,
+          product_name: payload.productName,
+          source_name: payload.sourceName,
+          subject_variant: payload.subjectVariant,
+          subject: payload.subject,
+          text: payload.text,
+          preview_url: payload.previewUrl,
+          request_id: payload.requestId,
         },
       },
     )
 
     const parsed = sendResponseSchema.safeParse(response)
-    if (!parsed.success || parsed.data.data.request_id !== parsedPayload.data.requestId) {
+    if (!parsed.success || parsed.data.data.request_id !== payload.requestId) {
       throw new Error('Invalid outreach delivery response')
     }
 

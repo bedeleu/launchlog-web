@@ -7,6 +7,7 @@ import {
   buildOutreachDraft,
   outreachContextSchema,
   outreachSendSchema,
+  parseOutreachPreviewUrl,
 } from '~/utils/outreach-template'
 import { toErrorLike } from '~/utils/error-like'
 
@@ -130,10 +131,19 @@ async function sendEmail(): Promise<void> {
   sending.value = true
 
   try {
+    const preview = context.previewUrl.trim()
+      ? parseOutreachPreviewUrl(context.previewUrl)
+      : null
+
     await send({
       recipientEmail: parsed.data.recipientEmail,
+      firstName: context.firstName.trim() || null,
+      productName: context.productName.trim(),
+      sourceName: context.sourceName.trim(),
+      subjectVariant: 'preview',
       subject: parsed.data.subject,
       text: parsed.data.text,
+      previewUrl: preview?.url ?? null,
       requestId: requestId.value,
     })
     accepted.value = true
