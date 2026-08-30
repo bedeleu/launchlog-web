@@ -45,12 +45,32 @@ describe('release cover material', () => {
     expect(source).toContain('height="600"')
     expect(source).toContain("isPriorityPlacement.value || props.listing.tier === 'featured'")
     expect(source).toContain("? 'object-contain object-top'")
-    expect(source).toContain(':class="[imageFitClass, isDirectorySpotlight ? \'absolute inset-0\' : \'\']"')
+    expect(source).not.toContain("isDirectorySpotlight ? 'absolute inset-0'")
   })
 
   test('stays link-free so the grid keeps owning the anchor', () => {
     expect(source).not.toContain('<a ')
     expect(source).not.toContain('NuxtLink')
+  })
+})
+
+describe('directory Featured row balance', () => {
+  test('keeps the Featured capture content-driven at the horizontal breakpoint', () => {
+    expect(source).toContain('lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]')
+    expect(source).toContain('lg:aspect-[16/10] lg:h-auto lg:self-start')
+    expect(source).not.toContain('lg:aspect-auto lg:h-full lg:border-b-0 lg:border-r')
+    expect(source).toContain('gap-3 p-5 lg:gap-2 lg:justify-center lg:p-4 2xl:gap-2 2xl:p-5')
+    expect(source).toContain('line-clamp-4 text-sm leading-6 lg:leading-5 2xl:leading-6')
+  })
+
+  test('compacts the directory companion without cropping its capture', () => {
+    expect(source).toContain("const isDirectoryCompanion = computed(() => props.variant === 'directory-companion')")
+    expect(source).toContain('border-b lg:aspect-[16/10]')
+    expect(source).not.toContain('lg:aspect-video')
+    expect(source).toContain('isDirectoryCompanion.value || isPriorityPlacement.value')
+    expect(source).toContain('gap-2 p-4 lg:gap-1 lg:p-2')
+    expect(source).toContain('line-clamp-2 text-sm leading-6 lg:line-clamp-1 lg:leading-5')
+    expect(source).toContain("isDirectoryCompanion.value ? 'lg:pt-1.5 lg:leading-4' : ''")
   })
 })
 

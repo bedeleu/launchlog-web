@@ -29,9 +29,9 @@ describe('packDirectoryPage', () => {
     expect(slugsOf(page.featured)).toEqual(['f1', 'b1', 'f2', 'b2'])
     expect(page.featured.map(p => p.variant)).toEqual([
       'directory-spotlight',
-      'standard',
+      'directory-companion',
       'directory-spotlight',
-      'standard',
+      'directory-companion',
     ])
     expect(page.featured.map(p => p.span)).toEqual(['double', 'unit', 'double', 'unit'])
     expect(slugsOf(page.standard)).toEqual(['b3', 'b4'])
@@ -51,6 +51,25 @@ describe('packDirectoryPage', () => {
     expect(slugsOf(page.featured)).toEqual(['f1', 'f2'])
     expect(page.featured.every(p => p.span === 'double')).toBeTrue()
     expect(page.standard).toEqual([])
+  })
+
+  test('uses the compact companion treatment only inside a Featured directory row', () => {
+    const page = packDirectoryPage([
+      item('f1', 'featured'),
+      item('b1', 'basic'),
+      item('b2', 'basic'),
+    ])
+
+    expect(page.featured[1]).toMatchObject({
+      listing: { slug: 'b1', tier: 'basic' },
+      variant: 'directory-companion',
+      span: 'unit',
+    })
+    expect(page.standard[0]).toMatchObject({
+      listing: { slug: 'b2', tier: 'basic' },
+      variant: 'standard',
+      span: 'unit',
+    })
   })
 
   test('never duplicates or drops a listing across the two segments', () => {
@@ -73,7 +92,7 @@ describe('packDirectoryPage', () => {
     const page = packDirectoryPage([item('f1', 'featured'), item('x1', 'premium')])
 
     expect(slugsOf(page.featured)).toEqual(['f1', 'x1'])
-    expect(page.featured[1]!.variant).toBe('standard')
+    expect(page.featured[1]!.variant).toBe('directory-companion')
   })
 })
 

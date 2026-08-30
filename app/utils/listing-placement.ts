@@ -7,10 +7,11 @@ import type { ListingTier } from '../composables/useListings'
  *
  * `spotlight` is the full-width homepage Featured card;
  * `directory-spotlight` is the same visual system on the compact two-column
- * directory footprint. They stay separate because their responsive split
- * begins at different breakpoints.
+ * directory footprint; `directory-companion` is the real Standard record that
+ * closes that Featured row. The companion only compacts once the three-column
+ * directory exists, so narrower layouts keep the ordinary Standard card.
  */
-export type ListingCardVariant = 'standard' | 'spotlight' | 'directory-spotlight'
+export type ListingCardVariant = 'standard' | 'spotlight' | 'directory-spotlight' | 'directory-companion'
 
 /**
  * Semantic grid footprint. The grid component maps these onto Tailwind spans;
@@ -89,7 +90,7 @@ export const packDirectoryPage = <T extends PlacementListing>(
     // the third honestly empty. Widening it would show a placement the buyer did
     // not purchase, and synthesizing a card would fake a listing.
     if (companion) {
-      featured.push(place(companion, 'standard', 'unit'))
+      featured.push(place(companion, 'directory-companion', 'unit'))
       cursor += 1
     }
   }

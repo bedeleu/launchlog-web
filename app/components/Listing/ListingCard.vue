@@ -27,6 +27,7 @@ const isSpotlight = computed(() => props.variant === 'spotlight')
  * rather than from extra size or a colour the rest of the directory does not use.
  */
 const isDirectorySpotlight = computed(() => props.variant === 'directory-spotlight')
+const isDirectoryCompanion = computed(() => props.variant === 'directory-companion')
 const isPriorityPlacement = computed(() => isSpotlight.value || isDirectorySpotlight.value)
 
 /** Register host: real product truth, nothing invented. */
@@ -82,6 +83,9 @@ const registerRuleClass = computed(() =>
 const registerToneClass = computed(() =>
   showTierWord.value ? 'text-release-paper' : 'text-release-paper-muted')
 
+const registerSpacingClass = computed(() =>
+  isDirectoryCompanion.value ? 'lg:pt-1.5 lg:leading-4' : '')
+
 const imageFailed = ref(false)
 watch(() => props.listing.screenshot_url, () => {
   imageFailed.value = false
@@ -95,7 +99,7 @@ const showImage = computed(() => Boolean(props.listing.screenshot_url) && !image
  * denser crop used by the standard grid.
  */
 const imageFitClass = computed(() =>
-  isPriorityPlacement.value || props.listing.tier === 'featured'
+  isDirectoryCompanion.value || isPriorityPlacement.value || props.listing.tier === 'featured'
     ? 'object-contain object-top'
     : 'object-cover object-top')
 
@@ -116,12 +120,10 @@ const cardClass = computed(() => {
 
 const layoutClass = computed(() => {
   if (isSpotlight.value) return 'md:grid md:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]'
-  // No fixed height: the row is whatever its real Basic companion establishes,
-  // which matches the double-width spotlight layout. The screenshot takes the
-  // wide track because the customer's product is what Featured actually sells.
-  // The base flex column is load bearing: without it the article is a block
-  // below lg, h-full's surplus row height falls below the content, and the
-  // ledger rule floats above dead space instead of anchoring to the bottom.
+  // The capture stays the wide track because the customer's product is what
+  // Featured actually sells. The 1.7:1 split keeps the evidence dominant; the
+  // rail density, rather than a stretched capture, closes the row at narrow
+  // desktop widths while 2xl restores the more editorial spacing.
   if (isDirectorySpotlight.value) return 'flex flex-col lg:grid lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]'
   return 'flex flex-col'
 })
@@ -133,13 +135,15 @@ const layoutClass = computed(() => {
  */
 const mediaClass = computed(() => {
   if (isSpotlight.value) return 'border-b md:aspect-auto md:h-full md:border-b-0 md:border-r'
-  if (isDirectorySpotlight.value) return 'border-b lg:aspect-auto lg:h-full lg:border-b-0 lg:border-r'
+  if (isDirectorySpotlight.value) return 'border-b lg:aspect-[16/10] lg:h-auto lg:self-start lg:border-b-0 lg:border-r'
+  if (isDirectoryCompanion.value) return 'border-b lg:aspect-[16/10]'
   return 'border-b'
 })
 
 const contentClass = computed(() => {
   if (isSpotlight.value) return 'gap-3 p-5 md:p-6'
-  if (isDirectorySpotlight.value) return 'gap-3 p-5 lg:p-6'
+  if (isDirectorySpotlight.value) return 'gap-3 p-5 lg:gap-2 lg:justify-center lg:p-4 2xl:gap-2 2xl:p-5'
+  if (isDirectoryCompanion.value) return 'gap-2 p-4 lg:gap-1 lg:p-2'
   return 'gap-2 p-4'
 })
 
@@ -160,9 +164,10 @@ const obiSplitClass = computed(() =>
     : 'lg:flex-row lg:items-baseline lg:justify-between lg:gap-x-4')
 
 const taglineClass = computed(() => {
-  if (isDirectorySpotlight.value) return 'line-clamp-4 text-sm leading-6'
+  if (isDirectorySpotlight.value) return 'line-clamp-4 text-sm leading-6 lg:leading-5 2xl:leading-6'
   // Homepage spotlights have enough width for the larger editorial treatment.
   if (isPriorityPlacement.value) return 'line-clamp-3 text-base leading-7'
+  if (isDirectoryCompanion.value) return 'line-clamp-2 text-sm leading-6 lg:line-clamp-1 lg:leading-5'
   return 'line-clamp-2 text-sm leading-6'
 })
 </script>
@@ -197,7 +202,7 @@ const taglineClass = computed(() => {
           width="960"
           height="600"
           class="size-full"
-          :class="[imageFitClass, isDirectorySpotlight ? 'absolute inset-0' : '']"
+          :class="imageFitClass"
           @error="imageFailed = true"
         >
         <ListingShotFallback
@@ -225,7 +230,7 @@ const taglineClass = computed(() => {
         <p
           v-if="!isPriorityPlacement && hasRegisterLine"
           class="mt-auto break-words border-t border-dashed pt-2.5 font-mono text-xs leading-5"
-          :class="[registerRuleClass, registerToneClass]"
+          :class="[registerRuleClass, registerToneClass, registerSpacingClass]"
         >
           <template v-if="showTierWord">
             <span
