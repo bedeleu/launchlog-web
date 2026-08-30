@@ -47,6 +47,7 @@ const HOSTILE_LISTING: Listing = {
 
 let upstream: ReturnType<typeof Bun.serve> | undefined
 let server: ReturnType<typeof Bun.spawn> | undefined
+let toolStatus = 200
 
 async function waitForServer(timeoutMs = 60_000): Promise<void> {
   const deadline = Date.now() + timeoutMs
@@ -71,6 +72,10 @@ describe.skipIf(!isBuilt)('listing receipt proof routes', () => {
       port: UPSTREAM_PORT,
       fetch(request) {
         const { pathname } = new URL(request.url)
+        if (pathname === '/api/v1/listings/tool') {
+          if (toolStatus !== 200) return Response.json({ message: 'upstream failure' }, { status: toolStatus })
+          return Response.json({ data: { ...LISTING, slug: 'tool' } })
+        }
         if (pathname === '/api/v1/listings/proof-product') {
           return Response.json({ data: LISTING })
         }
@@ -123,7 +128,7 @@ describe.skipIf(!isBuilt)('listing receipt proof routes', () => {
     expect(response.headers.get('content-type')).toContain('text/markdown')
     expect(response.headers.get('x-robots-tag')).toBe('noindex, nofollow')
     expect(markdown).toContain('# Proof Product')
-    expect(markdown).toContain('**Website:** https://proof.example.com')
+    expect(markdown).toContain('<a href="https://proof.example.com" rel="noopener sponsored">Website</a>')
   })
   test('serves the negotiated Markdown on the listing URL itself', async () => {
     const response = await fetch(`${BASE}/listing/proof-product`, {
@@ -133,9 +138,31 @@ describe.skipIf(!isBuilt)('listing receipt proof routes', () => {
 
     expect(response.status).toBe(200)
     expect(response.headers.get('content-type')).toContain('text/markdown')
+    expect(response.headers.get('x-content-type-options')).toBe('nosniff')
     expect(response.headers.get('vary')).toBe('Accept')
     expect(response.headers.get('content-signal')).toBe('ai-train=yes, search=yes, ai-input=yes')
     expect(markdown).toContain('# Proof Product')
+  })
+
+  test('matches the explicit Markdown media type case-insensitively', async () => {
+    const response = await fetch(`${BASE}/listing/proof-product`, {
+      headers: { Accept: 'Text/Markdown; Q=0.5' },
+    })
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('content-type')).toContain('text/markdown')
+    expect(response.headers.get('x-content-type-options')).toBe('nosniff')
+    expect(response.headers.get('vary')).toContain('Accept')
+  })
+
+  test('keeps the HTML representation when explicit Markdown has q=0', async () => {
+    const response = await fetch(`${BASE}/listing/proof-product`, {
+      headers: { Accept: 'text/markdown; q=0, text/html' },
+    })
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('content-type')).toContain('text/html')
+    expect(response.headers.get('vary')).toContain('Accept')
   })
 
   test('keeps the proof routes reachable for the AI clients that send Accept: text/markdown', async () => {
@@ -244,5 +271,61 @@ describe.skipIf(!isBuilt)('listing receipt proof routes', () => {
     expect(response.headers.get('x-robots-tag')).toBe('noindex, nofollow')
     expect(html).toContain('Release not found')
     expect(html).not.toContain('Release withdrawn')
+  })
+
+  test('keeps Markdown and schema proof artifacts distinct on every upstream status', async () => {
+    const cases = [
+      { upstream: 200, expected: 200, contentType: 'text/markdown', path: '/listing/tool/markdown' },
+      { upstream: 200, expected: 200, contentType: 'application/ld+json', path: '/listing/tool/schema' },
+      { upstream: 404, expected: 404, contentType: 'text/markdown', path: '/listing/tool/markdown' },
+      { upstream: 404, expected: 404, contentType: 'application/ld+json', path: '/listing/tool/schema' },
+      { upstream: 410, expected: 410, contentType: 'text/markdown', path: '/listing/tool/markdown' },
+      { upstream: 410, expected: 410, contentType: 'application/ld+json', path: '/listing/tool/schema' },
+      { upstream: 503, expected: 503, contentType: 'text/markdown', path: '/listing/tool/markdown' },
+      { upstream: 503, expected: 503, contentType: 'application/ld+json', path: '/listing/tool/schema' },
+    ] as const
+
+    for (const current of cases) {
+      toolStatus = current.upstream
+      const response = await fetch(`${BASE}${current.path}`)
+      expect(response.status).toBe(current.expected)
+      expect(response.headers.get('content-type')).toContain(current.contentType)
+      expect(response.headers.get('x-robots-tag')).toBe('noindex, nofollow')
+      expect(response.headers.get('x-content-type-options')).toBe('nosniff')
+      if (current.expected !== 200) expect(response.headers.get('cache-control')).toBe('private, no-store')
+    }
+    toolStatus = 200
+  })
+
+  test('normalizes negotiated listing errors with private no-store receipts', async () => {
+    for (const status of [404, 410, 503]) {
+      toolStatus = status
+      const response = await fetch(`${BASE}/listing/tool`, {
+        headers: { Accept: 'text/markdown' },
+      })
+
+      expect(response.status).toBe(status)
+      expect(response.headers.get('content-type')).toContain('text/markdown')
+      expect(response.headers.get('vary')).toContain('Accept')
+      expect(response.headers.get('x-content-type-options')).toBe('nosniff')
+      expect(response.headers.get('x-robots-tag')).toBe('noindex, nofollow')
+      expect(response.headers.get('cache-control')).toBe('private, no-store')
+    }
+    toolStatus = 200
+  })
+
+  test('varies the listing representation by Accept without cross-request contamination', async () => {
+    toolStatus = 200
+    for (const accepts of [
+      ['text/html', 'text/markdown', 'text/html'],
+      ['text/markdown', 'text/html', 'text/markdown'],
+    ]) {
+      const responses = await Promise.all(accepts.map(accept => fetch(`${BASE}/listing/tool`, {
+        headers: { accept },
+      })))
+      expect(responses.map(response => response.headers.get('content-type')?.split(';')[0]))
+        .toEqual(accepts.map(accept => accept === 'text/markdown' ? 'text/markdown' : 'text/html'))
+      for (const response of responses) expect(response.headers.get('vary')).toContain('Accept')
+    }
   })
 })

@@ -30,7 +30,8 @@ describe('renderListingMarkdown', () => {
 
     expect(output).toContain('# Acme')
     expect(output).toContain('> Ship faster')
-    expect(output).toContain('**Website:** https://acme.test')
+    expect(output).toContain('<a href="https://acme.test" rel="noopener sponsored">Website</a>')
+    expect(output).not.toContain('**Website:** https://acme.test')
     expect(output).toContain('**Published:** 2026-07-28')
     expect(output).toContain('A concise product description.')
     expect(output).toContain('- Nuxt')
@@ -63,5 +64,31 @@ describe('renderListingMarkdown', () => {
     expect(output).toContain('https://launchlog.ai/listing/sparse')
     expect(output).not.toContain('undefined')
     expect(output).not.toContain('null')
+  })
+
+  test('does not treat listing text as Markdown or HTML author syntax', () => {
+    const hostile = {
+      ...listing,
+      name: '# title\n- [x](javascript:alert(1)) <img src=x>',
+      tagline: '`code` <script>alert(1)</script>',
+      description: '[click](https://example.com)\n\n<div>unsafe</div>',
+      tech_stack: ['<b>Vue</b>'],
+      category: { slug: 'hostile', name: '# Category' },
+      tags: [{ slug: 'hostile', name: '[tag](javascript:alert(1))' }],
+    } as unknown as Listing
+
+    const output = renderListingMarkdown(hostile, 'launchlog.ai')
+
+    expect(output).not.toMatch(/^# title|^- \[x\]\(/m)
+    expect(output).not.toContain('<script>')
+    expect(output).not.toContain('<img')
+    expect(output).not.toContain('<div>')
+    expect(output).not.toContain('[click](https://example.com)')
+  })
+
+  test('rejects an unsafe author-controlled website destination', () => {
+    const unsafe = { ...listing, url: 'javascript:alert(1)' } as Listing
+
+    expect(() => renderListingMarkdown(unsafe, 'launchlog.ai')).toThrow('Unsafe HTTPS URL')
   })
 })

@@ -1,29 +1,30 @@
 import type { Listing } from '../../app/composables/useListings'
+import { escapeMarkdownText, renderSafeHttpsLink } from './markdown'
 
-export const renderListingMarkdown = (listing: Listing, domain: string): string => `# ${listing.name}
+export const renderListingMarkdown = (listing: Listing, domain: string): string => `# ${escapeMarkdownText(listing.name)}
 
-> ${listing.tagline ?? ''}
+> ${escapeMarkdownText(listing.tagline ?? '')}
 
-**Website:** ${listing.url}
+**Website:** ${renderSafeHttpsLink('Website', listing.url, 'paid')}
 **Published:** ${listing.published_at ? new Date(listing.published_at).toISOString().split('T')[0] : 'unknown'}
 
 ## Description
 
-${listing.description ?? ''}
+${escapeMarkdownText(listing.description ?? '')}
 
 ## Tech Stack
 
-${(listing.tech_stack ?? []).map(technology => `- ${technology}`).join('\n')}
+${(listing.tech_stack ?? []).map(technology => `- ${escapeMarkdownText(technology)}`).join('\n')}
 
 ## Category
 
-${listing.category?.name ?? 'Uncategorized'}
+${escapeMarkdownText(listing.category?.name ?? 'Uncategorized')}
 
 ## Tags
 
-${(listing.tags ?? []).map(tag => `- ${tag.name}`).join('\n') || '_None_'}
+${(listing.tags ?? []).map(tag => `- ${escapeMarkdownText(tag.name)}`).join('\n') || '_None_'}
 
 ---
 
-*Listed on [${domain}](https://${domain}/listing/${listing.slug})*
+*Listed on [${escapeMarkdownText(domain)}](https://${domain}/listing/${encodeURIComponent(listing.slug)})*
 `

@@ -1,86 +1,66 @@
-/*
- * D-009 "invisible tech edge" — pillar #3 of three.
- *
- * Every /listing/{slug} URL returns markdown when called with Accept: text/markdown.
- * Same URL, different format. Cloudflare's "Markdown for Agents" pattern.
- *
- * Phase 0 skeleton: returns early on non-/listing/ paths and on missing markdown Accept.
- * Real implementation lands in Phase 3 when listings exist (Section 9.3 of PRD-MVP.md) —
- * at that point this middleware will fetch the listing from the API, render it as markdown,
- * and set the proper Vary / Content-Signal / Cache-Control headers.
- */
-import {
-  listingAbsenceStatus,
-  type ListingAbsenceStatus,
-} from '#shared/utils/listing-http-status'
-import type { Listing } from '../../app/composables/useListings'
+import { resolveMarkdownRoute } from '../utils/markdown-route'
+import { acceptsExplicitMarkdown } from '../utils/markdown'
 import { renderListingMarkdown } from '../utils/listing-markdown'
-
-// The API wraps the resource in a JsonResource envelope.
-interface ListingEnvelope {
-  data?: Listing | null
-}
+import { fetchListingProof, ListingProofError } from '../utils/listing-proof'
 
 export default defineEventHandler(async (event) => {
+  const route = resolveMarkdownRoute(getRequestURL(event).pathname)
+  if (route?.kind !== 'listing') return
+
+  appendVaryAccept(event)
+
   const accept = getRequestHeader(event, 'accept') ?? ''
-  if (!accept.includes('text/markdown')) return
+  if (!acceptsExplicitMarkdown(accept)) return
 
-  const url = getRequestURL(event)
-  if (!url.pathname.startsWith('/listing/')) return
-
-  const slug = url.pathname.replace('/listing/', '').replace(/\/$/, '')
-  if (!slug) return
-
-  // Only the listing URL itself negotiates. /listing/{slug}/markdown and
-  // /listing/{slug}/schema are the dedicated proof artifacts and own their own
-  // representation, so this middleware must not swallow them: it used to treat
-  // "{slug}/markdown" as a slug, miss it upstream, and answer the AI clients the
-  // feature exists for with a 404 on the very routes the record links to.
-  if (slug.includes('/')) return
-
-  const config = useRuntimeConfig()
+  setResponseHeader(event, 'Cache-Control', 'private, no-store')
 
   try {
-    // NUXT_PUBLIC_API_URL is the host only (e.g. https://api.launchlog.ai), without the /api prefix.
-    // The Laravel routes/api.php is mounted under apiPrefix: 'api' (bootstrap/app.php), so callers must
-    // include /api/v1/... in the path. See D-051 / plan v5 Resolved upfront point 5.
-    // The API wraps the resource in a JsonResource envelope ({ data: {...} }).
-    const envelope = await $fetch<ListingEnvelope>(`${config.public.apiUrl}/api/v1/listings/${slug}`)
-    const listing = envelope?.data ?? null
-    const absenceStatus = listingAbsenceStatus(undefined, listing)
-    if (absenceStatus || !listing) {
-      return renderMissingListing(event, slug, absenceStatus ?? 404)
-    }
+    const { listing, domain } = await fetchListingProof(route.slug)
+    const body = renderListingMarkdown(listing, domain)
 
     setResponseHeaders(event, {
       'Content-Type': 'text/markdown; charset=utf-8',
-      'Vary': 'Accept',
       'Content-Signal': 'ai-train=yes, search=yes, ai-input=yes',
-      'Cache-Control': 's-maxage=3600',
+      'X-Content-Type-Options': 'nosniff',
+      'Cache-Control': 'public, s-maxage=3600',
     })
 
-    return renderListingMarkdown(listing, config.public.domain as string)
+    return body
   }
   catch (error) {
-    const absenceStatus = listingAbsenceStatus(error, undefined)
-    if (absenceStatus) return renderMissingListing(event, slug, absenceStatus)
-    throw error
+    if (!(error instanceof ListingProofError)) throw error
+    return renderListingError(event, error.status)
   }
 })
 
-function renderMissingListing(
+function renderListingError(
   event: Parameters<typeof setResponseStatus>[0],
-  slug: string,
-  status: ListingAbsenceStatus,
+  status: 404 | 410 | 503,
 ): string {
   setResponseStatus(event, status)
   setResponseHeaders(event, {
     'Content-Type': 'text/markdown; charset=utf-8',
-    'Vary': 'Accept',
     'X-Robots-Tag': 'noindex, nofollow',
+    'X-Content-Type-Options': 'nosniff',
+    'Cache-Control': 'private, no-store',
   })
 
-  return status === 410
-    ? `# Listing withdrawn\n\n> Listing \`${slug}\` has been withdrawn and is no longer available.\n`
-    : `# Listing not found\n\n> Listing \`${slug}\` does not exist.\n`
+  if (status === 410) {
+    return '# Listing withdrawn\n\n> This listing has been withdrawn and is no longer available.\n'
+  }
+  if (status === 503) {
+    return '# Listing temporarily unavailable\n\n> This listing cannot be loaded right now. Please try again later.\n'
+  }
+  return '# Listing not found\n\n> This listing does not exist.\n'
+}
+
+function appendVaryAccept(event: Parameters<typeof setResponseHeader>[0]): void {
+  const current = getResponseHeader(event, 'Vary')
+  const values = String(current ?? '')
+    .split(',')
+    .map(value => value.trim())
+    .filter(Boolean)
+
+  if (values.some(value => value === '*' || value.toLowerCase() === 'accept')) return
+  setResponseHeader(event, 'Vary', [...values, 'Accept'].join(', '))
 }

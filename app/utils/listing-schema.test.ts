@@ -92,6 +92,33 @@ describe('buildListingSchema', () => {
     expect(JSON.stringify(schema)).not.toContain('null')
   })
 
+  test('uses the available high pricing bound when low is null', () => {
+    const schema = buildListingSchema({
+      ...listing,
+      pricing: { low: null, high: 99, currency: 'USD' },
+    }, 'https://launchlog.ai')
+    const graph = schema['@graph'] as Array<Record<string, unknown>>
+    const product = graph.find(node => node['@type'] === 'SoftwareApplication')
+
+    expect(product?.offers).toEqual({
+      '@type': 'Offer',
+      'price': 99,
+      'priceCurrency': 'USD',
+      'url': 'https://acme.test',
+    })
+  })
+
+  test('omits Offer when neither pricing bound is available', () => {
+    const schema = buildListingSchema({
+      ...listing,
+      pricing: { low: null, high: null, currency: 'USD' },
+    }, 'https://launchlog.ai')
+    const graph = schema['@graph'] as Array<Record<string, unknown>>
+    const product = graph.find(node => node['@type'] === 'SoftwareApplication')
+
+    expect(product).not.toHaveProperty('offers')
+  })
+
   test('keeps hostile text as data in the graph', () => {
     const payload = '</script><script>globalThis.__launchlog_xss=1</script><'
     const schema = buildListingSchema({
