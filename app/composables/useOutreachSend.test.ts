@@ -3,6 +3,9 @@ import {
   outreachDeliveryStatuses,
   useOutreachSend,
 } from './useOutreachSend'
+import type {
+  OutreachSendPayload,
+} from './useOutreachSend'
 
 const globals = globalThis as unknown as Record<string, unknown>
 const calls: Array<{ url: string, options?: Record<string, unknown> }> = []
@@ -34,6 +37,30 @@ const sendResource = {
   updated_at: '2026-08-30T12:00:00Z',
 } as const
 
+const sendPayload = {
+  recipientEmail: 'founder@example.com',
+  firstName: 'Maya',
+  productName: 'ShipFast',
+  sourceName: 'Product Hunt',
+  subjectVariant: 'preview',
+  subject: 'I made a private LaunchLog preview for ShipFast',
+  text: 'Exact body',
+  previewUrl,
+  requestId,
+} satisfies OutreachSendPayload
+
+type Equal<Left, Right> =
+  (<Value>() => Value extends Left ? 1 : 2) extends
+  (<Value>() => Value extends Right ? 1 : 2)
+    ? (<Value>() => Value extends Right ? 1 : 2) extends
+      (<Value>() => Value extends Left ? 1 : 2)
+      ? true
+      : false
+    : false
+
+type SendParameter = Parameters<ReturnType<typeof useOutreachSend>['send']>[0]
+const sendUsesOnlyCompletePayload: Equal<SendParameter, OutreachSendPayload> = true
+
 beforeEach(() => {
   calls.length = 0
   globals.useRuntimeConfig = () => ({ public: { apiUrl: 'https://api.launchlog.test' } })
@@ -54,18 +81,12 @@ afterEach(() => {
 })
 
 describe('outreach send client', () => {
+  test('exposes only the complete structured payload contract', () => {
+    expect(sendUsesOnlyCompletePayload).toBe(true)
+  })
+
   test('posts every structured field and returns the validated full resource', async () => {
-    const result = await useOutreachSend().send({
-      recipientEmail: 'founder@example.com',
-      firstName: 'Maya',
-      productName: 'ShipFast',
-      sourceName: 'Product Hunt',
-      subjectVariant: 'preview',
-      subject: 'I made a private LaunchLog preview for ShipFast',
-      text: 'Exact body',
-      previewUrl,
-      requestId,
-    })
+    const result = await useOutreachSend().send(sendPayload)
 
     expect(result).toEqual(sendResource)
     expect(calls).toEqual([{
@@ -125,15 +146,43 @@ describe('outreach send client', () => {
     expect(calls).toHaveLength(0)
   })
 
-  test('rejects the temporarily unwired page payload before making a request', async () => {
-    await expect(useOutreachSend().send({
-      recipientEmail: 'founder@example.com',
-      subject: 'Hello',
-      text: 'Body',
-      requestId,
-    })).rejects.toThrow('Invalid outreach send payload')
+  test('accepts a null response preview URL', async () => {
+    globals.$fetch = () => Promise.resolve({
+      data: {
+        ...sendResource,
+        preview_url: null,
+      },
+    })
 
-    expect(calls).toHaveLength(0)
+    const result = await useOutreachSend().send({
+      ...sendPayload,
+      previewUrl: null,
+    })
+
+    expect(result.preview_url).toBeNull()
+  })
+
+  test('rejects every non-canonical response preview URL', async () => {
+    const invalidPreviewUrls = [
+      'javascript:alert(1)',
+      `https://external.example/preview/${'A'.repeat(64)}`,
+      `https://founder:secret@launchlog.ai/preview/${'A'.repeat(64)}`,
+      `${previewUrl}?source=outreach`,
+      `${previewUrl}#private`,
+      `https://launchlog.ai/path/../preview/${'A'.repeat(64)}`,
+    ]
+
+    for (const invalidPreviewUrl of invalidPreviewUrls) {
+      globals.$fetch = () => Promise.resolve({
+        data: {
+          ...sendResource,
+          preview_url: invalidPreviewUrl,
+        },
+      })
+
+      await expect(useOutreachSend().send(sendPayload))
+        .rejects.toThrow('Invalid outreach delivery response')
+    }
   })
 
   test('rejects a malformed full resource before returning it', async () => {
@@ -146,15 +195,9 @@ describe('outreach send client', () => {
     })
 
     await expect(useOutreachSend().send({
-      recipientEmail: 'founder@example.com',
-      firstName: 'Maya',
-      productName: 'ShipFast',
-      sourceName: 'Product Hunt',
-      subjectVariant: 'preview',
+      ...sendPayload,
       subject: 'Hello',
       text: 'Body',
-      previewUrl,
-      requestId,
     })).rejects.toThrow('Invalid outreach delivery response')
   })
 
@@ -167,15 +210,9 @@ describe('outreach send client', () => {
     })
 
     await expect(useOutreachSend().send({
-      recipientEmail: 'founder@example.com',
-      firstName: 'Maya',
-      productName: 'ShipFast',
-      sourceName: 'Product Hunt',
-      subjectVariant: 'preview',
+      ...sendPayload,
       subject: 'Hello',
       text: 'Body',
-      previewUrl,
-      requestId,
     })).rejects.toThrow('Invalid outreach delivery response')
   })
 })
