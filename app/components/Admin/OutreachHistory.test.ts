@@ -218,7 +218,7 @@ describe('outreach delivery ledger', () => {
       clearInterval: (id: unknown) => { cleared.push(id) },
       addVisibilityListener: (callback: () => void) => { visibilityCallback = callback },
       removeVisibilityListener: (callback: () => void) => {
-        expect(callback).toBe(visibilityCallback)
+        expect(callback === visibilityCallback).toBe(true)
         visibilityCallback = undefined
       },
     })
