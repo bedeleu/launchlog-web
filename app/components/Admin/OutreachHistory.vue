@@ -138,7 +138,7 @@ const meta = ref<OutreachEmailSendPage['meta']>({ ...emptyMeta })
 const currentPage = ref(1)
 const loading = ref(true)
 const silentRefreshing = ref(false)
-const refreshingId = ref<string | null>(null)
+const refreshingIds = ref(new Set<string>())
 const error = ref<string | null>(null)
 const refreshError = ref<string | null>(null)
 const openRows = ref(new Set<string>())
@@ -164,6 +164,14 @@ const safeDiagnosticCode = (value: string | null): string | null => {
   return /^[a-z0-9_-]{1,64}$/i.test(value) ? value : 'Unavailable'
 }
 const isRowOpen = (id: string): boolean => openRows.value.has(id)
+const isRowRefreshing = (id: string): boolean => refreshingIds.value.has(id)
+
+const setRowRefreshing = (id: string, refreshing: boolean) => {
+  const next = new Set(refreshingIds.value)
+  if (refreshing) next.add(id)
+  else next.delete(id)
+  refreshingIds.value = next
+}
 
 const toggleDetails = (id: string) => {
   const next = new Set(openRows.value)
@@ -208,9 +216,9 @@ const goToPage = async (page: number): Promise<void> => {
 }
 
 const refreshRow = async (send: OutreachEmailSend): Promise<void> => {
-  if (refreshingId.value !== null) return
+  if (isRowRefreshing(send.id)) return
 
-  refreshingId.value = send.id
+  setRowRefreshing(send.id, true)
   refreshError.value = null
   try {
     const refreshed = await history.refresh(send.id)
@@ -220,7 +228,7 @@ const refreshRow = async (send: OutreachEmailSend): Promise<void> => {
     refreshError.value = `Delivery status for ${send.product_name} could not be refreshed.`
   }
   finally {
-    refreshingId.value = null
+    setRowRefreshing(send.id, false)
   }
 }
 
@@ -411,17 +419,17 @@ onBeforeUnmount(() => {
               variant="outline"
               size="sm"
               class="rounded-none border-release-seam bg-transparent font-mono text-[0.68rem] uppercase tracking-[0.1em] text-release-paper hover:border-release-blaze hover:bg-transparent hover:text-release-blaze focus-visible:ring-release-focus active:bg-release-ink disabled:cursor-not-allowed disabled:opacity-45"
-              :disabled="refreshingId === send.id"
+              :disabled="isRowRefreshing(send.id)"
               :aria-label="`Refresh delivery status for ${send.product_name} to ${send.recipient_email}`"
               @click="refreshRow(send)"
             >
               <AppSpinner
-                v-if="refreshingId === send.id"
+                v-if="isRowRefreshing(send.id)"
                 size="size-3.5"
                 color="text-current"
                 :label="`Refreshing delivery status for ${send.product_name}`"
               />
-              {{ refreshingId === send.id ? 'Refreshing' : 'Refresh' }}
+              {{ isRowRefreshing(send.id) ? 'Refreshing' : 'Refresh' }}
             </Button>
           </div>
         </div>

@@ -73,7 +73,7 @@ const renderHistory = (overrides: RenderOverrides = {}) => {
       loading: overrides.loading ?? false,
       error: overrides.error ?? null,
       silentRefreshing: overrides.silentRefreshing ?? false,
-      refreshingId: overrides.refreshingId ?? null,
+      isRowRefreshing: (id: string) => id === (overrides.refreshingId ?? null),
       refreshError: overrides.refreshError ?? null,
       openRows: overrides.openRows ?? new Set<string>(),
       meta: overrides.pageMeta ?? meta,
