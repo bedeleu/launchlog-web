@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import type { OutreachEmailSendPage } from './useOutreachHistory'
 import { useOutreachHistory } from './useOutreachHistory'
 
 const API = 'https://api.launchlog.test'
@@ -32,7 +33,7 @@ const sendResource = {
   updated_at: '2026-08-30T12:00:00Z',
 } as const
 
-const historyPage = {
+const historyPage: OutreachEmailSendPage = {
   data: [sendResource],
   links: {
     first: `${API}/api/v1/admin/outreach/sends?page=1`,
@@ -48,7 +49,7 @@ const historyPage = {
     to: 21,
     total: 41,
   },
-} as const
+}
 
 type FetchCall = { url: string, options?: Record<string, unknown> }
 

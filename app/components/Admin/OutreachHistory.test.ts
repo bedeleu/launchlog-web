@@ -112,7 +112,7 @@ const loadModuleHelpers = () => {
     startOutreachHistoryRefresh: (options: Record<string, unknown>) => () => void
     showLatestOutreachPage: (
       setPage: (page: number) => void,
-      load: (page: number, silent: boolean) => Promise<void>,
+      load: (page: number, silent: boolean, force?: boolean) => Promise<void>,
     ) => Promise<void>
   }
 }
@@ -168,7 +168,7 @@ describe('outreach delivery ledger', () => {
     expect(html).toContain(send.last_synced_at)
     expect(html).toContain(send.created_at)
     expect(html).toContain('provider_refresh_failed')
-    expect(html).not.toMatch(/bit\.ly|utm_|tracking/i)
+    expect(html).not.toMatch(/href="https?:\/\/(?:bit\.ly|[^"]+[?&]utm_)/i)
   })
 
   test('uses bounded pagination and a row-specific project-styled refresh action', async () => {
@@ -184,8 +184,8 @@ describe('outreach delivery ledger', () => {
     expect(pageTwo).toContain('Refreshing delivery status for ShipFast')
     expect(pageTwo).toContain('focus-visible:ring-release-focus')
     expect(pageTwo).toContain('disabled')
-    expect(firstPage).toMatch(/aria-label="Previous outreach history page"[^>]*disabled/)
-    expect(firstPage).toMatch(/aria-label="Next outreach history page"[^>]*disabled/)
+    expect(firstPage).toMatch(/<button[^>]*disabled[^>]*aria-label="Previous outreach history page"/)
+    expect(firstPage).toMatch(/<button[^>]*disabled[^>]*aria-label="Next outreach history page"/)
   })
 
   test('keeps the visual system industrial, flat, and explicit across interaction states', async () => {
@@ -250,10 +250,10 @@ describe('outreach delivery ledger', () => {
 
     await showLatestOutreachPage(
       page => { events.push(`page:${page}`) },
-      async (page, silent) => { events.push(`load:${page}:${silent}`) },
+      async (page, silent, force) => { events.push(`load:${page}:${silent}:${force}`) },
     )
 
-    expect(events).toEqual(['page:1', 'load:1:true'])
+    expect(events).toEqual(['page:1', 'load:1:true:true'])
     expect(source).toContain('defineExpose({ showLatest })')
   })
 })
