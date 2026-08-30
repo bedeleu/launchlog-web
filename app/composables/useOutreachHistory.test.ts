@@ -159,6 +159,27 @@ describe('outreach history API boundary', () => {
     }
   })
 
+  test('rejects malformed page timestamps returned by the network at the shared Zod boundary', async () => {
+    const malformedResources = [
+      { ...sendResource, created_at: '2026-02-30T12:00:00Z' },
+      { ...sendResource, updated_at: '2026-08-30T24:00:00Z' },
+      { ...sendResource, accepted_at: '2026-08-30T12:00:60Z' },
+      { ...sendResource, provider_event_at: '2026-08-30T12:00:00.0000000Z' },
+      { ...sendResource, last_synced_at: '2026-08-30T12:00:00+24:00' },
+    ]
+
+    for (const malformedResource of malformedResources) {
+      response = {
+        ...historyPage,
+        data: [malformedResource],
+      }
+      await expect(useOutreachHistory().list(2))
+        .rejects.toThrow('Invalid outreach history response')
+    }
+
+    expect(calls).toHaveLength(malformedResources.length)
+  })
+
   test('rejects a manual refresh resource that does not match the requested UUID', async () => {
     response = {
       data: {

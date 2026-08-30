@@ -1,11 +1,19 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import {
-  outreachDeliveryStatuses,
-  useOutreachSend,
-} from './useOutreachSend'
+import * as outreachSendModule from './useOutreachSend'
 import type {
   OutreachSendPayload,
 } from './useOutreachSend'
+
+const {
+  outreachDeliveryStatuses,
+  useOutreachSend,
+} = outreachSendModule
+const parseIsoOffsetToMicroseconds = (value: string): bigint | null => {
+  const parser = (outreachSendModule as unknown as {
+    parseIsoOffsetToMicroseconds?: (timestamp: string) => bigint | null
+  }).parseIsoOffsetToMicroseconds
+  return parser?.(value) ?? null
+}
 
 const globals = globalThis as unknown as Record<string, unknown>
 const calls: Array<{ url: string, options?: Record<string, unknown> }> = []
@@ -60,6 +68,89 @@ type Equal<Left, Right> =
 
 type SendParameter = Parameters<ReturnType<typeof useOutreachSend>['send']>[0]
 const sendUsesOnlyCompletePayload: Equal<SendParameter, OutreachSendPayload> = true
+
+describe('strict ISO-offset instants', () => {
+  test('exports one shared strict instant parser', () => {
+    expect('parseIsoOffsetToMicroseconds' in outreachSendModule).toBe(true)
+  })
+
+  test('returns exact microseconds for fractions and normalized maximum offsets', () => {
+    const cases = [
+      ['1970-01-01T00:00:00Z', 0n],
+      ['1970-01-01T00:00:00.1Z', 100_000n],
+      ['1970-01-01T00:00:00.000001+00:00', 1n],
+      ['1970-01-01T01:00:00+01:00', 0n],
+      ['1969-12-31T23:00:00-01:00', 0n],
+      ['1970-01-01T23:59:00+23:59', 0n],
+      ['1969-12-31T00:01:00-23:59', 0n],
+    ] as const
+
+    for (const [value, expected] of cases) {
+      expect(parseIsoOffsetToMicroseconds(value)).toBe(expected)
+    }
+  })
+
+  test('preserves proleptic years 0000 through 0099 without 1900 coercion', () => {
+    expect(parseIsoOffsetToMicroseconds('0000-01-01T00:00:00Z'))
+      .toBe(-62_167_219_200_000_000n)
+    expect(parseIsoOffsetToMicroseconds('0001-01-01T00:00:00Z'))
+      .toBe(-62_135_596_800_000_000n)
+    expect(parseIsoOffsetToMicroseconds('0099-01-01T00:00:00Z'))
+      .toBe(-59_042_995_200_000_000n)
+    expect(parseIsoOffsetToMicroseconds('0099-01-01T00:00:00+01:00'))
+      .toBe(-59_042_998_800_000_000n)
+
+    const yearOne = parseIsoOffsetToMicroseconds('0001-12-31T23:59:59.999999Z')
+    const yearNinetyNine = parseIsoOffsetToMicroseconds('0099-01-01T00:00:00+23:59')
+    expect(yearOne).not.toBeNull()
+    expect(yearNinetyNine).not.toBeNull()
+    expect(yearOne! < yearNinetyNine!).toBe(true)
+  })
+
+  test('accepts real Gregorian leap days and rejects invalid calendar or clock fields', () => {
+    expect(parseIsoOffsetToMicroseconds('2000-02-29T23:59:59.999999Z')).not.toBeNull()
+    expect(parseIsoOffsetToMicroseconds('0000-02-29T00:00:00Z')).not.toBeNull()
+
+    const invalidValues = [
+      '2026-00-01T00:00:00Z',
+      '2026-13-01T00:00:00Z',
+      '2026-01-00T00:00:00Z',
+      '2026-01-32T00:00:00Z',
+      '2026-04-31T00:00:00Z',
+      '2025-02-29T00:00:00Z',
+      '1900-02-29T00:00:00Z',
+      '2026-01-01T24:00:00Z',
+      '2026-01-01T00:60:00Z',
+      '2026-01-01T00:00:60Z',
+      '2026-01-01T00:00:00+24:00',
+      '2026-01-01T00:00:00-24:00',
+      '2026-01-01T00:00:00+01:60',
+    ]
+
+    for (const value of invalidValues) {
+      expect(parseIsoOffsetToMicroseconds(value)).toBeNull()
+    }
+  })
+
+  test('rejects non-exact formats and precision beyond six fractional digits', () => {
+    const invalidValues = [
+      '2026-01-01 00:00:00Z',
+      '2026-1-01T00:00:00Z',
+      '2026-01-01T0:00:00Z',
+      '2026-01-01T00:00Z',
+      '2026-01-01T00:00:00',
+      '2026-01-01T00:00:00z',
+      '2026-01-01T00:00:00.',
+      '2026-01-01T00:00:00.0000000Z',
+      '2026-01-01T00:00:00+0100',
+      '2026-01-01T00:00:00+1:00',
+    ]
+
+    for (const value of invalidValues) {
+      expect(parseIsoOffsetToMicroseconds(value)).toBeNull()
+    }
+  })
+})
 
 beforeEach(() => {
   calls.length = 0
@@ -199,6 +290,22 @@ describe('outreach send client', () => {
       subject: 'Hello',
       text: 'Body',
     })).rejects.toThrow('Invalid outreach delivery response')
+  })
+
+  test('rejects malformed timestamps from the network at the shared Zod boundary', async () => {
+    const malformedResources = [
+      { ...sendResource, created_at: '2026-02-30T12:00:00Z' },
+      { ...sendResource, updated_at: '2026-08-30T24:00:00Z' },
+      { ...sendResource, accepted_at: '2026-08-30T12:00:60Z' },
+      { ...sendResource, provider_event_at: '2026-08-30T12:00:00.0000000Z' },
+      { ...sendResource, last_synced_at: '2026-08-30T12:00:00+01:60' },
+    ]
+
+    for (const malformedResource of malformedResources) {
+      globals.$fetch = () => Promise.resolve({ data: malformedResource })
+      await expect(useOutreachSend().send(sendPayload))
+        .rejects.toThrow('Invalid outreach delivery response')
+    }
   })
 
   test('rejects a valid resource whose request id does not match the request', async () => {
