@@ -38,6 +38,70 @@ export const outreachDeliveryStatuses = [
 export type OutreachDeliveryChannel = typeof outreachDeliveryChannels[number]
 export type OutreachDeliveryStatus = typeof outreachDeliveryStatuses[number]
 
+const isoOffsetPattern = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?(Z|([+-])(\d{2}):(\d{2}))$/
+
+const isGregorianLeapYear = (year: number): boolean => (
+  year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)
+)
+
+const daysInGregorianMonth = (year: number, month: number): number => {
+  if (month === 2) return isGregorianLeapYear(year) ? 29 : 28
+  return [4, 6, 9, 11].includes(month) ? 30 : 31
+}
+
+const daysSinceUnixEpoch = (year: number, month: number, day: number): bigint => {
+  const adjustedYear = year - (month <= 2 ? 1 : 0)
+  const era = Math.trunc((adjustedYear >= 0 ? adjustedYear : adjustedYear - 399) / 400)
+  const yearOfEra = adjustedYear - era * 400
+  const adjustedMonth = month + (month > 2 ? -3 : 9)
+  const dayOfYear = Math.trunc((153 * adjustedMonth + 2) / 5) + day - 1
+  const dayOfEra = yearOfEra * 365
+    + Math.trunc(yearOfEra / 4)
+    - Math.trunc(yearOfEra / 100)
+    + dayOfYear
+
+  return BigInt(era * 146_097 + dayOfEra - 719_468)
+}
+
+export const parseIsoOffsetToMicroseconds = (value: string): bigint | null => {
+  const match = isoOffsetPattern.exec(value)
+  if (!match) return null
+
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, fraction = '', , offsetSign, offsetHourText = '00', offsetMinuteText = '00'] = match
+  const year = Number(yearText)
+  const month = Number(monthText)
+  const day = Number(dayText)
+  const hour = Number(hourText)
+  const minute = Number(minuteText)
+  const second = Number(secondText)
+  const offsetHour = Number(offsetHourText)
+  const offsetMinute = Number(offsetMinuteText)
+
+  if (
+    month < 1
+    || month > 12
+    || day < 1
+    || day > daysInGregorianMonth(year, month)
+    || hour > 23
+    || minute > 59
+    || second > 59
+    || offsetHour > 23
+    || offsetMinute > 59
+  ) return null
+
+  const dayMicroseconds = daysSinceUnixEpoch(year, month, day) * 86_400_000_000n
+  const timeMicroseconds = BigInt(hour) * 3_600_000_000n
+    + BigInt(minute) * 60_000_000n
+    + BigInt(second) * 1_000_000n
+    + BigInt(fraction.padEnd(6, '0'))
+  const offsetDirection = offsetSign === '-' ? -1n : 1n
+  const offsetMicroseconds = offsetDirection
+    * BigInt(offsetHour * 60 + offsetMinute)
+    * 60_000_000n
+
+  return dayMicroseconds + timeMicroseconds - offsetMicroseconds
+}
+
 export interface OutreachEmailSend {
   id: string
   request_id: string
@@ -66,7 +130,11 @@ export interface OutreachEmailSend {
 const requestIdSchema = z.string().uuid()
 const deliveryChannelSchema = z.enum(outreachDeliveryChannels)
 const deliveryStatusSchema = z.enum(outreachDeliveryStatuses)
-const nullableDateTimeSchema = z.string().datetime({ offset: true }).nullable()
+const dateTimeSchema = z.string().refine(
+  value => parseIsoOffsetToMicroseconds(value) !== null,
+  'Invalid ISO offset timestamp',
+)
+const nullableDateTimeSchema = dateTimeSchema.nullable()
 
 export const outreachEmailSendSchema: z.ZodType<OutreachEmailSend> = z.object({
   id: z.string().uuid(),
@@ -89,8 +157,8 @@ export const outreachEmailSendSchema: z.ZodType<OutreachEmailSend> = z.object({
   provider_event_at: nullableDateTimeSchema,
   last_synced_at: nullableDateTimeSchema,
   diagnostic_code: z.string().nullable(),
-  created_at: z.string().datetime({ offset: true }),
-  updated_at: z.string().datetime({ offset: true }),
+  created_at: dateTimeSchema,
+  updated_at: dateTimeSchema,
 })
 
 const sendResponseSchema = z.object({

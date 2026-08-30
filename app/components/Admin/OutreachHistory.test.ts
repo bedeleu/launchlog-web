@@ -15,6 +15,7 @@ import {
 } from 'vue'
 import * as VueRuntime from 'vue'
 import { renderToString } from '@vue/server-renderer'
+import { parseIsoOffsetToMicroseconds } from '../../composables/useOutreachSend'
 import type { OutreachEmailSend } from '~/composables/useOutreachSend'
 import type { OutreachEmailSendPage } from '~/composables/useOutreachHistory'
 
@@ -31,13 +32,18 @@ const executableScript = transpiledScript
   .replace(/import\s*{([^}]+)}\s*from\s*["']vue["'];?/g, (_statement, bindings: string) => (
     `const { ${bindings.replaceAll(' as ', ': ')} } = VueRuntime;`
   ))
+  .replace(/import\s*{\s*parseIsoOffsetToMicroseconds\s*}\s*from\s*["']~\/composables\/useOutreachSend["'];?/g, '')
   .replace('export default', 'return')
 const render = new Function('Vue', compile(template, {
   mode: 'function',
   prefixIdentifiers: true,
   bindingMetadata: compiledSfcScript.bindings,
 }).code)(await import('vue'))
-const OutreachHistory = new Function('VueRuntime', executableScript)(VueRuntime)
+const OutreachHistory = new Function(
+  'VueRuntime',
+  'parseIsoOffsetToMicroseconds',
+  executableScript,
+)(VueRuntime, parseIsoOffsetToMicroseconds)
 OutreachHistory.render = render
 const passthrough = (tag: string) => defineComponent({
   inheritAttrs: false,
@@ -376,7 +382,9 @@ const loadModuleHelpers = () => {
   const script = descriptor.script?.content
   if (!script) throw new Error('OutreachHistory module helpers are missing')
   const transpiled = new Bun.Transpiler({ loader: 'ts' }).transformSync(script)
-  const executable = transpiled.replaceAll('export function ', 'function ')
+  const executable = transpiled
+    .replace(/import\s*{\s*parseIsoOffsetToMicroseconds\s*}\s*from\s*["']~\/composables\/useOutreachSend["'];?/g, '')
+    .replaceAll('export function ', 'function ')
   return new Function(`${executable}\nreturn { startOutreachHistoryRefresh, showLatestOutreachPage }`)() as {
     startOutreachHistoryRefresh: (options: Record<string, unknown>) => () => void
     showLatestOutreachPage: (

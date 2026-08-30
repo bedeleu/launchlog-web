@@ -1,19 +1,12 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import * as outreachSendModule from './useOutreachSend'
+import {
+  outreachDeliveryStatuses,
+  parseIsoOffsetToMicroseconds,
+  useOutreachSend,
+} from './useOutreachSend'
 import type {
   OutreachSendPayload,
 } from './useOutreachSend'
-
-const {
-  outreachDeliveryStatuses,
-  useOutreachSend,
-} = outreachSendModule
-const parseIsoOffsetToMicroseconds = (value: string): bigint | null => {
-  const parser = (outreachSendModule as unknown as {
-    parseIsoOffsetToMicroseconds?: (timestamp: string) => bigint | null
-  }).parseIsoOffsetToMicroseconds
-  return parser?.(value) ?? null
-}
 
 const globals = globalThis as unknown as Record<string, unknown>
 const calls: Array<{ url: string, options?: Record<string, unknown> }> = []
@@ -70,10 +63,6 @@ type SendParameter = Parameters<ReturnType<typeof useOutreachSend>['send']>[0]
 const sendUsesOnlyCompletePayload: Equal<SendParameter, OutreachSendPayload> = true
 
 describe('strict ISO-offset instants', () => {
-  test('exports one shared strict instant parser', () => {
-    expect('parseIsoOffsetToMicroseconds' in outreachSendModule).toBe(true)
-  })
-
   test('returns exact microseconds for fractions and normalized maximum offsets', () => {
     const cases = [
       ['1970-01-01T00:00:00Z', 0n],

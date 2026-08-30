@@ -1,4 +1,5 @@
 <script lang="ts">
+import { parseIsoOffsetToMicroseconds } from '~/composables/useOutreachSend'
 import type { OutreachDeliveryStatus, OutreachEmailSend } from '~/composables/useOutreachSend'
 import type { OutreachEmailSendPage } from '~/composables/useOutreachHistory'
 
@@ -183,35 +184,9 @@ const safeDiagnosticCode = (value: string | null): string | null => {
 }
 const isRowOpen = (id: string): boolean => openRows.value.has(id)
 const isRowRefreshing = (id: string): boolean => refreshingIds.value.has(id)
-const isoOffsetPattern = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(Z|([+-])(\d{2}):(\d{2}))$/
-
-const instantMicroseconds = (value: string | null): bigint | null => {
-  if (!value) return null
-
-  const match = isoOffsetPattern.exec(value)
-  if (!match) return null
-
-  const [, year, month, day, hour, minute, second, fraction = '', , offsetSign, offsetHour = '00', offsetMinute = '00'] = match
-  const localMilliseconds = Date.UTC(
-    Number(year),
-    Number(month) - 1,
-    Number(day),
-    Number(hour),
-    Number(minute),
-    Number(second),
-  )
-  const fractionMicroseconds = BigInt(fraction.padEnd(6, '0').slice(0, 6))
-  const signedOffsetMinutes = (offsetSign === '-' ? -1 : 1)
-    * (Number(offsetHour) * 60 + Number(offsetMinute))
-
-  return BigInt(localMilliseconds) * 1_000n
-    + fractionMicroseconds
-    - BigInt(signedOffsetMinutes) * 60_000_000n
-}
-
 const compareInstants = (left: string | null, right: string | null): number => {
-  const leftInstant = instantMicroseconds(left)
-  const rightInstant = instantMicroseconds(right)
+  const leftInstant = left === null ? null : parseIsoOffsetToMicroseconds(left)
+  const rightInstant = right === null ? null : parseIsoOffsetToMicroseconds(right)
   if (leftInstant === rightInstant) return 0
   if (leftInstant === null) return -1
   if (rightInstant === null) return 1
