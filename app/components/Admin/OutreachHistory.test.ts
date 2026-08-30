@@ -554,6 +554,49 @@ describe('outreach delivery ledger', () => {
     expect(harness.state.rows[0]?.status).toBe('delivered')
   })
 
+  test('keeps the newer provider microsecond when an older stronger status arrives late', async () => {
+    const pageRequest = deferred<OutreachEmailSendPage>()
+    const rowRequest = deferred<OutreachEmailSend>()
+    const sharedTimes = {
+      updated_at: '2026-08-30T12:10:01+00:00',
+      last_synced_at: '2026-08-30T12:10:02+00:00',
+    }
+    const initialRow = sendWith({
+      ...sharedTimes,
+      status: 'accepted',
+      provider_event_at: '2026-08-30T12:10:00.000000+00:00',
+    })
+    const olderStrongRow = sendWith({
+      ...sharedTimes,
+      status: 'bounced',
+      provider_event_at: '2026-08-30T12:10:00.000100+00:00',
+    })
+    const newerLowerPrecedenceRow = sendWith({
+      ...sharedTimes,
+      status: 'delivered',
+      provider_event_at: '2026-08-30T12:10:00.000900+00:00',
+    })
+    let listCalls = 0
+    const harness = mountHistoryComponent({
+      list: () => listCalls++ === 0 ? Promise.resolve(pageFor([initialRow])) : pageRequest.promise,
+      refresh: () => rowRequest.promise,
+    })
+    await flushComponent()
+
+    const refreshingRow = click(findButton(harness.root, 'Refresh delivery status for ShipFast to founder@example.com'))
+    const loadingPage = click(findButton(harness.root, 'Refresh current outreach history page'))
+    pageRequest.resolve(pageFor([newerLowerPrecedenceRow]))
+    await loadingPage
+    await flushComponent()
+    expect(harness.state.rows[0]?.provider_event_at).toBe('2026-08-30T12:10:00.000900+00:00')
+
+    rowRequest.resolve(olderStrongRow)
+    await refreshingRow
+    await flushComponent()
+    expect(harness.state.rows[0]?.status).toBe('delivered')
+    expect(harness.state.rows[0]?.provider_event_at).toBe('2026-08-30T12:10:00.000900+00:00')
+  })
+
   test('labels accepted truthfully and explains delivered without promising inbox placement', async () => {
     const accepted = await renderHistory()
     const delivered = await renderHistory({ rows: [{ ...send, status: 'delivered' }] })
