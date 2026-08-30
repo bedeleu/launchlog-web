@@ -183,30 +183,49 @@ const safeDiagnosticCode = (value: string | null): string | null => {
 }
 const isRowOpen = (id: string): boolean => openRows.value.has(id)
 const isRowRefreshing = (id: string): boolean => refreshingIds.value.has(id)
-const timestampValue = (value: string | null): number => value ? Date.parse(value) : Number.NEGATIVE_INFINITY
+const isoOffsetPattern = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(Z|([+-])(\d{2}):(\d{2}))$/
+
+const instantMicroseconds = (value: string | null): bigint | null => {
+  if (!value) return null
+
+  const match = isoOffsetPattern.exec(value)
+  if (!match) return null
+
+  const [, year, month, day, hour, minute, second, fraction = '', , offsetSign, offsetHour = '00', offsetMinute = '00'] = match
+  const localMilliseconds = Date.UTC(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(hour),
+    Number(minute),
+    Number(second),
+  )
+  const fractionMicroseconds = BigInt(fraction.padEnd(6, '0').slice(0, 6))
+  const signedOffsetMinutes = (offsetSign === '-' ? -1 : 1)
+    * (Number(offsetHour) * 60 + Number(offsetMinute))
+
+  return BigInt(localMilliseconds) * 1_000n
+    + fractionMicroseconds
+    - BigInt(signedOffsetMinutes) * 60_000_000n
+}
+
+const compareInstants = (left: string | null, right: string | null): number => {
+  const leftInstant = instantMicroseconds(left)
+  const rightInstant = instantMicroseconds(right)
+  if (leftInstant === rightInstant) return 0
+  if (leftInstant === null) return -1
+  if (rightInstant === null) return 1
+  return leftInstant > rightInstant ? 1 : -1
+}
 
 const freshestSend = (current: OutreachEmailSend, incoming: OutreachEmailSend): OutreachEmailSend => {
-  const currentTuple = [
-    timestampValue(current.updated_at),
-    timestampValue(current.provider_event_at),
-    timestampValue(current.last_synced_at),
-    statusPrecedence[current.status],
-  ]
-  const incomingTuple = [
-    timestampValue(incoming.updated_at),
-    timestampValue(incoming.provider_event_at),
-    timestampValue(incoming.last_synced_at),
-    statusPrecedence[incoming.status],
-  ]
-
-  for (let index = 0; index < currentTuple.length; index += 1) {
-    if (incomingTuple[index] === currentTuple[index]) continue
-    return (incomingTuple[index] ?? Number.NEGATIVE_INFINITY) > (currentTuple[index] ?? Number.NEGATIVE_INFINITY)
-      ? incoming
-      : current
+  const timestampFields = ['updated_at', 'provider_event_at', 'last_synced_at'] as const
+  for (const field of timestampFields) {
+    const comparison = compareInstants(incoming[field], current[field])
+    if (comparison !== 0) return comparison > 0 ? incoming : current
   }
 
-  return incoming
+  return statusPrecedence[incoming.status] >= statusPrecedence[current.status] ? incoming : current
 }
 
 const mergePageRows = (incomingRows: OutreachEmailSend[]): OutreachEmailSend[] => {

@@ -569,7 +569,7 @@ describe('outreach delivery ledger', () => {
     const olderStrongRow = sendWith({
       ...sharedTimes,
       status: 'bounced',
-      provider_event_at: '2026-08-30T12:10:00.000100+00:00',
+      provider_event_at: '2026-08-30T13:10:00.000100+01:00',
     })
     const newerLowerPrecedenceRow = sendWith({
       ...sharedTimes,
