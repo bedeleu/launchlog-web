@@ -263,7 +263,7 @@ const goToPage = async (page: number): Promise<void> => {
 }
 
 const refreshRow = async (send: OutreachEmailSend): Promise<void> => {
-  if (isRowRefreshing(send.id)) return
+  if (send.delivery_channel !== 'resend' || !send.provider_email_id || isRowRefreshing(send.id)) return
 
   setRowRefreshing(send.id, true)
   refreshError.value = null
@@ -466,6 +466,7 @@ onBeforeUnmount(() => {
               {{ isRowOpen(send.id) ? 'Close' : 'Details' }}
             </Button>
             <Button
+              v-if="send.delivery_channel === 'resend' && send.provider_email_id"
               type="button"
               variant="outline"
               size="sm"
@@ -482,6 +483,15 @@ onBeforeUnmount(() => {
               />
               {{ isRowRefreshing(send.id) ? 'Refreshing' : 'Refresh' }}
             </Button>
+            <span
+              v-else
+              class="border border-release-seam px-2.5 py-1.5 font-mono text-[0.68rem] uppercase tracking-[0.1em] text-release-paper-muted"
+              :aria-label="send.delivery_channel === 'resend'
+                ? `Delivery status refresh unavailable for ${send.product_name}: waiting for a Resend provider ID.`
+                : `Delivery status refresh unavailable for ${send.product_name}: only Resend deliveries can be refreshed.`"
+            >
+              No refresh
+            </span>
           </div>
         </div>
 
@@ -499,11 +509,11 @@ onBeforeUnmount(() => {
             <dl class="space-y-4 text-sm">
               <div>
                 <dt class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-release-paper-muted">From</dt>
-                <dd class="mt-1 break-words text-release-paper">{{ send.from_name }} &lt;{{ send.from_address }}&gt;</dd>
+                <dd class="mt-1 break-words text-release-paper">{{ send.from_address ? `${send.from_name ? `${send.from_name} ` : ''}<${send.from_address}>` : (send.from_name || '—') }}</dd>
               </div>
               <div>
                 <dt class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-release-paper-muted">Reply-To</dt>
-                <dd class="mt-1 break-all text-release-paper">{{ send.reply_to_address }}</dd>
+                <dd class="mt-1 break-all text-release-paper">{{ send.reply_to_address || '—' }}</dd>
               </div>
               <div>
                 <dt class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-release-paper-muted">To</dt>

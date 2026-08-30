@@ -140,7 +140,7 @@ function preventSingleLineSubmit(event: KeyboardEvent): void {
           <div>
             <Label for="outreach-subject-variant" class="text-release-paper">Subject direction</Label>
             <ReleaseSelect
-              id="outreach-subject-variant"
+              trigger-id="outreach-subject-variant"
               :model-value="subjectVariant"
               :options="subjectOptions"
               label="Choose outreach subject direction"

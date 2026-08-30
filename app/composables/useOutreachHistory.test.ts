@@ -95,6 +95,69 @@ describe('outreach history API boundary', () => {
     }])
   })
 
+  test('accepts pending and failed rows before a sender snapshot exists', async () => {
+    const pendingId = '1d184d68-7c86-4433-8d33-b44224ae5197'
+    const failedId = '8a14a395-6b3b-453d-a637-665101c4a6ba'
+    response = {
+      ...historyPage,
+      data: [
+        {
+          ...sendResource,
+          id: pendingId,
+          request_id: '0ea19c4e-f401-4b48-b7cf-61068136457c',
+          from_address: null,
+          from_name: null,
+          reply_to_address: null,
+          provider_email_id: null,
+          status: 'pending',
+          accepted_at: null,
+        },
+        {
+          ...sendResource,
+          id: failedId,
+          request_id: '829c8d58-daaa-411f-96bc-e1a16888cc36',
+          from_address: null,
+          from_name: null,
+          reply_to_address: null,
+          provider_email_id: null,
+          status: 'failed',
+          accepted_at: null,
+          diagnostic_code: 'provider_send_failed',
+        },
+      ],
+      meta: {
+        ...historyPage.meta,
+        to: 22,
+        total: 42,
+      },
+    }
+
+    const page = await useOutreachHistory().list(2)
+
+    expect(page.data.map(row => ({
+      id: row.id,
+      from_address: row.from_address,
+      from_name: row.from_name,
+      reply_to_address: row.reply_to_address,
+      status: row.status,
+    }))).toEqual([
+      {
+        id: pendingId,
+        from_address: null,
+        from_name: null,
+        reply_to_address: null,
+        status: 'pending',
+      },
+      {
+        id: failedId,
+        from_address: null,
+        from_name: null,
+        reply_to_address: null,
+        status: 'failed',
+      },
+    ])
+  })
+
   test('refreshes exactly one validated row through the manual reconciliation route', async () => {
     response = { data: sendResource }
 

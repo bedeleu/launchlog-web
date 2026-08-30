@@ -9,11 +9,13 @@ const props = withDefaults(defineProps<{
   options: ReleaseSelectOption[]
   placeholder?: string
   label: string
+  triggerId?: string
   disabled?: boolean
   class?: HTMLAttributes['class']
 }>(), {
   modelValue: '',
   placeholder: 'Select an option',
+  triggerId: undefined,
   disabled: false,
   class: '',
 })
@@ -94,6 +96,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
 <template>
   <div ref="root" class="relative">
     <button
+      :id="triggerId"
       type="button"
       role="combobox"
       :aria-label="label"

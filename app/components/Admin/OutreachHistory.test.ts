@@ -330,7 +330,7 @@ const pageFor = (rows: OutreachEmailSend[]): OutreachEmailSendPage => ({
 })
 
 interface RenderOverrides {
-  rows?: Array<Record<string, unknown>>
+  rows?: OutreachEmailSend[]
   loading?: boolean
   error?: string | null
   silentRefreshing?: boolean
@@ -641,6 +641,48 @@ describe('outreach delivery ledger', () => {
     expect(html).toContain(send.created_at)
     expect(html).toContain('provider_refresh_failed')
     expect(html).not.toMatch(/href="https?:\/\/(?:bit\.ly|[^"]+[?&]utm_)/i)
+  })
+
+  test('renders unavailable sender snapshots as clear em dashes', async () => {
+    const html = await renderHistory({
+      rows: [sendWith({
+        from_address: null,
+        from_name: null,
+        reply_to_address: null,
+        provider_email_id: null,
+        status: 'failed',
+      })],
+      openRows: new Set([sendId]),
+    })
+
+    expect(html).toMatch(/>From<\/dt>\s*<dd[^>]*>—<\/dd>/)
+    expect(html).toMatch(/>Reply-To<\/dt>\s*<dd[^>]*>—<\/dd>/)
+    expect(html).not.toContain('&lt;&gt;')
+  })
+
+  test('offers provider refresh only for Resend rows with a provider id', async () => {
+    const pendingResend = sendWith({
+      id: 'cf738409-b3ab-43e4-b902-6788e39782ee',
+      product_name: 'QueueKit',
+      recipient_email: 'queue@example.com',
+      provider_email_id: null,
+      status: 'pending',
+    })
+    const smtpSend = sendWith({
+      id: '68a74469-feca-4c3d-b32a-39b9481389cb',
+      product_name: 'MailKit',
+      recipient_email: 'mail@example.com',
+      delivery_channel: 'smtp',
+      provider_email_id: 'smtp-message-id',
+    })
+
+    const html = await renderHistory({ rows: [send, pendingResend, smtpSend] })
+
+    expect(html).toContain('aria-label="Refresh delivery status for ShipFast to founder@example.com"')
+    expect(html).not.toContain('aria-label="Refresh delivery status for QueueKit to queue@example.com"')
+    expect(html).not.toContain('aria-label="Refresh delivery status for MailKit to mail@example.com"')
+    expect(html).toContain('aria-label="Delivery status refresh unavailable for QueueKit: waiting for a Resend provider ID."')
+    expect(html).toContain('aria-label="Delivery status refresh unavailable for MailKit: only Resend deliveries can be refreshed."')
   })
 
   test('uses bounded pagination and a row-specific project-styled refresh action', async () => {

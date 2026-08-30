@@ -113,9 +113,9 @@ export interface OutreachEmailSend {
   subject: string
   text: string
   preview_url: string | null
-  from_address: string
-  from_name: string
-  reply_to_address: string
+  from_address: string | null
+  from_name: string | null
+  reply_to_address: string | null
   delivery_channel: OutreachDeliveryChannel
   provider_email_id: string | null
   status: OutreachDeliveryStatus
@@ -147,9 +147,9 @@ export const outreachEmailSendSchema: z.ZodType<OutreachEmailSend> = z.object({
   subject: z.string(),
   text: z.string(),
   preview_url: z.string().refine(isSafePreviewUrl).nullable(),
-  from_address: z.string().email(),
-  from_name: z.string(),
-  reply_to_address: z.string().email(),
+  from_address: z.string().email().nullable(),
+  from_name: z.string().nullable(),
+  reply_to_address: z.string().email().nullable(),
   delivery_channel: deliveryChannelSchema,
   provider_email_id: z.string().nullable(),
   status: deliveryStatusSchema,
