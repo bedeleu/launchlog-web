@@ -1,5 +1,11 @@
 import { describe, expect, test } from 'bun:test'
-import { escapeMarkdownText, renderSafeHttpsLink } from './markdown'
+
+interface MarkdownModule {
+  escapeMarkdownText(value: string): string
+  renderSafeHttpsLink(label: string, url: string, provenance: 'paid' | 'editorial'): string
+}
+
+const { escapeMarkdownText, renderSafeHttpsLink } = await import('./' + 'markdown') as MarkdownModule
 
 describe('safe discovery Markdown', () => {
   test('neutralizes author syntax, HTML and controls', () => {

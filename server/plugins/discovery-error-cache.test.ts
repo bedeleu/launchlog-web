@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'bun:test'
-import { normalizeDiscoveryError } from './discovery-error-cache'
+
+interface DiscoveryErrorCacheModule {
+  normalizeDiscoveryError(error: unknown): { statusCode: number }
+}
+
+const { normalizeDiscoveryError } = await import('./' + 'discovery-error-cache') as DiscoveryErrorCacheModule
 
 describe('discovery error cache contract', () => {
   test.each([
