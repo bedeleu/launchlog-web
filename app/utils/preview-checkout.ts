@@ -1,5 +1,29 @@
 import type { PlanTier } from '~/composables/usePlans'
 
+export const PREVIEW_COPY_LIMITS = {
+  title: 120,
+  tagline: 200,
+  description: 2000,
+} as const
+
+export const firstPreviewCopyError = (copy: {
+  title: string
+  tagline: string
+  description: string
+}): string | null => {
+  if (copy.title.length > PREVIEW_COPY_LIMITS.title) {
+    return `Shorten the title to ${PREVIEW_COPY_LIMITS.title} characters or fewer.`
+  }
+  if (copy.tagline.length > PREVIEW_COPY_LIMITS.tagline) {
+    return `Shorten the tagline to ${PREVIEW_COPY_LIMITS.tagline} characters or fewer.`
+  }
+  if (copy.description.length > PREVIEW_COPY_LIMITS.description) {
+    return `Shorten the description to ${PREVIEW_COPY_LIMITS.description.toLocaleString('en')} characters or fewer.`
+  }
+
+  return null
+}
+
 type CheckoutSelection = {
   checkoutReserved: boolean
   previewTier: string | null | undefined

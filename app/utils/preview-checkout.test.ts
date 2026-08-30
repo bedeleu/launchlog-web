@@ -1,7 +1,20 @@
 import { describe, expect, test } from 'bun:test'
-import { buildPreviewTextEdit, resolvePreviewCheckout } from './preview-checkout'
+import { buildPreviewTextEdit, firstPreviewCopyError, resolvePreviewCheckout } from './preview-checkout'
 
 describe('preview checkout recovery', () => {
+  test('publishing is blocked when captured copy exceeds the API contract', () => {
+    expect(firstPreviewCopyError({
+      title: 'x'.repeat(121),
+      tagline: '',
+      description: '',
+    })).toBe('Shorten the title to 120 characters or fewer.')
+
+    expect(firstPreviewCopyError({
+      title: 'Valid title',
+      tagline: 'Valid tagline',
+      description: 'Valid description',
+    })).toBeNull()
+  })
   test('an active reservation restores the server-side tier and email over a stale browser draft', () => {
     expect(resolvePreviewCheckout({
       checkoutReserved: true,

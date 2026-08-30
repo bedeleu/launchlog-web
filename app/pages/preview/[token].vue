@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { PlanTier } from '~/composables/usePlans'
 import type { Preview } from '~/composables/usePreviews'
-import type { AiEnrichmentField, PreviewAiSuggestion } from '~/composables/useAiEnrichment'
 import { toErrorLike } from '~/utils/error-like'
 import { resolveCheckoutEmail } from '~/utils/checkout-customer'
 import {
@@ -15,9 +14,8 @@ import {
   markCheckoutRedirect,
   reconcileCancelledCheckout,
 } from '~/utils/checkout-cancellation'
-import { buildPreviewTextEdit, resolvePreviewCheckout } from '~/utils/preview-checkout'
+import { buildPreviewTextEdit, firstPreviewCopyError, resolvePreviewCheckout } from '~/utils/preview-checkout'
 import { resolvePreviewPublishingMode } from '~/utils/preview-publishing'
-import { previewEditFromSuggestion } from '~/utils/ai-enrichment-review'
 import { resolvePreviewAuthAccess } from '~/utils/preview-auth-access'
 
 const route = useRoute()
@@ -28,7 +26,6 @@ const { createSession } = useBilling()
 const { user, waitForAuthReady, isAdmin: resolveIsAdmin } = useAuth()
 const { publishPreview: publishAdminPreview } = useAdminListings()
 const { findPlan } = usePlans()
-const { suggestPreview } = useAiEnrichment()
 const intake = useIntakeStore()
 
 // Private artifact — must never be indexed (D-057).
@@ -70,9 +67,11 @@ const form = reactive({
 })
 const primaryCategoryId = ref<string | null>(preview.value?.primary_category_id ?? null)
 const showEdit = ref(false)
-const aiSuggestion = ref<PreviewAiSuggestion | null>(null)
-const aiBusy = ref(false)
-const aiError = ref<string | null>(null)
+const previewCopyError = computed(() => firstPreviewCopyError(form))
+
+watch(previewCopyError, (copyError) => {
+  if (copyError) showEdit.value = true
+}, { immediate: true })
 
 // Account: email only. The account itself is created server-side after the
 // payment webhook (D-057) — no password, no coupon, nothing to fill in twice.
@@ -293,52 +292,6 @@ const checkoutError = ref<string | null>(null)
 const adminPublishPending = ref(false)
 const adminPublishError = ref<string | null>(null)
 
-const generateAiSuggestion = async () => {
-  if (aiBusy.value) return
-  aiBusy.value = true
-  aiError.value = null
-  try {
-    aiSuggestion.value = await suggestPreview(token)
-  }
-  catch (e: unknown) {
-    aiError.value = toErrorLike(e).data?.message ?? 'The AI draft could not be prepared. Your current preview is unchanged.'
-  }
-  finally {
-    aiBusy.value = false
-  }
-}
-
-const acceptAiSuggestion = async (fields: AiEnrichmentField[]) => {
-  if (!aiSuggestion.value || aiBusy.value) return
-  aiBusy.value = true
-  aiError.value = null
-  const next = previewEditFromSuggestion({
-    title: form.title,
-    tagline: form.tagline,
-    description: form.description,
-    primary_category_id: primaryCategoryId.value,
-  }, aiSuggestion.value.proposed, fields)
-  try {
-    applyPreview(await updatePreview(token, {
-      title: next.title || null,
-      tagline: next.tagline || null,
-      description: next.description || null,
-      primary_category_id: next.primary_category_id,
-    }))
-    form.title = next.title
-    form.tagline = next.tagline
-    form.description = next.description
-    primaryCategoryId.value = next.primary_category_id
-    aiSuggestion.value = null
-  }
-  catch (e: unknown) {
-    aiError.value = toErrorLike(e).data?.message ?? 'The selected suggestions could not be saved. Your current preview is unchanged.'
-  }
-  finally {
-    aiBusy.value = false
-  }
-}
-
 // Payment is blocked only by things that genuinely prevent checkout. A missing
 // or failed screenshot never blocks it — the API decides whether the remaining
 // data can be published, and the screenshot can be recaptured afterwards.
@@ -347,6 +300,7 @@ const canPay = computed(() =>
   && publishingMode.value.kind === 'checkout'
   && !isGenerating.value
   && !domainConflict.value
+  && previewCopyError.value === null
   && emailLooksValid.value
   && !checkoutPending.value
   && checkoutCancellationState.value !== 'pending'
@@ -358,6 +312,7 @@ const canAdminPublish = computed(() =>
   && publishingMode.value.kind === 'admin'
   && !isGenerating.value
   && !domainConflict.value
+  && previewCopyError.value === null
   && !adminPublishPending.value
   && checkoutCancellationState.value !== 'pending',
 )
@@ -499,9 +454,9 @@ watch(
 
       <!-- Keep the real product visible while enrichment runs. The buyer can
            understand the placement and plans instead of staring at a fake page. -->
-      <div class="mt-8 grid gap-10 xl:grid-cols-[minmax(0,1fr)_400px] xl:items-start">
-        <!-- LEFT: the WOW live preview, sticky; plan switches are instant (v-show in the component) -->
-        <div class="min-w-0 xl:sticky xl:top-8">
+      <div class="mt-8 grid gap-10 xl:grid-cols-[minmax(0,1fr)_minmax(18rem,20rem)_15rem] xl:items-start xl:gap-6">
+        <!-- LEFT: compact proof and editable listing details in normal document flow. -->
+        <div class="min-w-0">
           <IntakePlacementPreview
             class="min-w-0"
             :preview="preview"
@@ -509,6 +464,19 @@ watch(
             :title="form.title"
             :tagline="form.tagline"
             :generating="isGenerating"
+          />
+
+          <IntakePreviewEditor
+            v-if="!domainConflict && !isGenerating"
+            v-model:title="form.title"
+            v-model:tagline="form.tagline"
+            v-model:description="form.description"
+            v-model:open="showEdit"
+            :domain="preview.domain"
+            :has-screenshot="hasScreenshot"
+            :recapturing="recapturing"
+            :recapture-error="recaptureError"
+            @recapture="recapture"
           />
 
           <!-- Compact warning: the capture failed, publishing still works. -->
@@ -542,29 +510,14 @@ watch(
               {{ recaptureError }}
             </p>
           </div>
-
-          <!-- Discreet listing-text editor — not a step; defaults come from the crawl -->
-          <IntakePreviewEditor
-            v-if="!domainConflict && !isGenerating"
-            v-model:title="form.title"
-            v-model:tagline="form.tagline"
-            v-model:description="form.description"
-            v-model:open="showEdit"
-            :has-screenshot="hasScreenshot"
-            :recapturing="recapturing"
-            :recapture-error="recaptureError"
-            :ai-busy="aiBusy"
-            :ai-error="aiError"
-            :ai-suggestion="aiSuggestion"
-            @recapture="recapture"
-            @improve="generateAiSuggestion"
-            @apply="acceptAiSuggestion"
-            @reject="aiSuggestion = null"
-          />
         </div>
 
-        <!-- RIGHT: order form (package + email) -->
-        <div class="min-w-0 space-y-8">
+        <!-- RIGHT: package and identity stay in document flow. The compact
+             payment docket is the only sticky surface at desktop widths. -->
+        <div
+          class="min-w-0 space-y-6"
+          :class="domainConflict || authAccessState === 'unavailable' ? 'xl:col-span-2 xl:max-w-[32rem]' : ''"
+        >
           <IntakeDuplicateReleaseNotice
             v-if="domainConflict && existingListing"
             :action="existingListing.action"
@@ -593,7 +546,7 @@ watch(
             </Button>
           </section>
 
-          <template v-else>
+          <template v-else-if="!domainConflict">
           <!-- 01 — Select package -->
           <section>
             <h2 class="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-release-paper-muted">
@@ -630,19 +583,14 @@ watch(
                     ? '02 — Publishing account'
                     : '02 — Where should we send your listing?' }}
             </h2>
-            <div
+            <ReleaseStateMarker
               v-if="checkoutCancellationState === 'done'"
-              class="flex items-start gap-3 border border-release-signal/35 bg-release-signal/[0.07] px-4 py-4"
-              role="status"
-            >
-              <CheckCircle2 class="mt-0.5 size-5 shrink-0 text-release-signal" aria-hidden="true" />
-              <div>
-                <p class="text-sm font-semibold text-release-paper">Checkout cancelled</p>
-                <p class="mt-1 text-sm leading-6 text-release-paper-muted">
-                  Nothing was charged or published. This website is available again, so you can change the plan or retry.
-                </p>
-              </div>
-            </div>
+              data-checkout-return-status
+              state="success"
+              label="Checkout cancelled"
+              detail="Nothing was charged or published. The website is available again."
+              live
+            />
             <div
               v-if="checkoutReserved && !isAdminAccount"
               class="border border-release-warning/45 bg-release-warning/[0.05] px-4 py-4"
@@ -734,12 +682,39 @@ watch(
             </div>
           </section>
 
-          <!-- CTA -->
-          <section>
+          </template>
+        </div>
+
+        <ReleaseActionRail
+          v-if="!domainConflict && authAccessState !== 'unavailable'"
+          data-payment-docket
+          class="xl:sticky xl:top-6"
+          step="03 — Publish"
+          :title="isAdminAccount ? 'Admin docket' : 'Payment docket'"
+          aria-label="Payment and publish controls"
+        >
+          <ReleaseStateMarker
+            v-if="isAdminAccount"
+            state="success"
+            label="Admin placement"
+            detail="No Stripe subscription."
+          />
+          <dl v-else class="border-y border-release-seam">
+            <div class="py-3">
+              <dt class="font-mono text-[0.65rem] font-semibold tracking-[0.14em] text-release-paper-muted uppercase">
+                Total today
+              </dt>
+              <dd class="mt-2 text-2xl font-semibold tabular-nums text-release-paper">
+                {{ selectedPlan.priceLabel }} <span class="text-xs font-normal text-release-paper-muted">/ year</span>
+              </dd>
+            </div>
+          </dl>
+
+          <template #footer>
             <Button
               v-if="isAdminAccount"
               size="lg"
-              class="w-full"
+              class="min-h-14 w-full whitespace-normal rounded-none border border-release-paper bg-release-paper px-3 text-release-ink hover:border-release-warning hover:bg-release-warning"
               :disabled="!canAdminPublish"
               @click="publishAsAdmin"
             >
@@ -750,41 +725,46 @@ watch(
                   ? 'Cancelling previous checkout…'
                   : isGenerating
                     ? 'Preparing preview…'
-                    : `Publish ${selectedPlan.name} as admin` }}
+                    : `Publish ${selectedPlan.name}` }}
             </Button>
-            <Button v-else size="lg" class="w-full" :disabled="!canPay" @click="payAndPublish">
+            <Button
+              v-else
+              size="lg"
+              class="min-h-14 w-full whitespace-normal rounded-none border border-release-paper bg-release-paper px-3 text-release-ink hover:border-release-warning hover:bg-release-warning"
+              :disabled="!canPay"
+              @click="payAndPublish"
+            >
               <AppSpinner v-if="checkoutPending" class="mr-2" color="text-current" label="Opening secure checkout" />
               {{ checkoutPending
                 ? 'Opening secure checkout…'
                 : checkoutCancellationState === 'pending'
                   ? 'Cancelling checkout…'
                   : checkoutCancellationState === 'error'
-                    ? 'Retry cancellation above'
+                    ? 'Retry cancellation'
                     : isGenerating
                       ? 'Preparing preview…'
                       : checkoutReserved
-                        ? `Resume secure checkout — ${selectedPlan.priceLabel}/year`
-                        : `Pay & publish — ${selectedPlan.priceLabel}/year` }}
+                        ? `Resume · ${selectedPlan.priceLabel}`
+                        : `Pay ${selectedPlan.priceLabel} & publish` }}
             </Button>
-            <div class="mt-3 min-h-5 text-center text-xs" aria-live="polite">
-              <p v-if="adminPublishError || checkoutError" class="text-release-warning" role="alert">
-                {{ adminPublishError || checkoutError }}
+            <div class="mt-3 min-h-5 text-center text-xs leading-5" aria-live="polite">
+              <p v-if="previewCopyError || adminPublishError || checkoutError" class="text-release-warning" role="alert">
+                {{ previewCopyError || adminPublishError || checkoutError }}
               </p>
               <p v-else-if="isGenerating" class="text-release-paper-muted">
                 {{ isAdminAccount
                   ? 'Admin publishing unlocks automatically when the preview is ready.'
                   : 'Checkout unlocks automatically when the preview is ready.' }}
               </p>
-              <p v-else-if="isAdminAccount && !domainConflict" class="text-release-paper-muted">
-                Manual admin placement · no checkout or subscription.
+              <p v-else-if="isAdminAccount" class="text-release-paper-muted">
+                Direct placement · no checkout.
               </p>
-              <p v-else-if="!domainConflict" class="text-release-paper-muted">
-                That's just {{ selectedPlan.monthlyLabel }}/mo · pay only when you publish · 7-day money-back guarantee.
+              <p v-else class="text-release-paper-muted">
+                Secure Stripe checkout · 7-day money-back guarantee.
               </p>
             </div>
-          </section>
           </template>
-        </div>
+        </ReleaseActionRail>
       </div>
     </template>
   </div>

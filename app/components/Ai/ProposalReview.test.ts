@@ -7,7 +7,7 @@ const dashboard = readFileSync(fileURLToPath(new URL('../../pages/dashboard.vue'
 
 describe('one-step AI approval', () => {
   test('makes the owner action explicitly apply and persist the selected fields', () => {
-    expect(review).toContain("if (props.mode === 'owner') return 'Apply & save selected changes'")
+    expect(review).toContain("busy ? 'Applying…' : 'Apply & save selected changes'")
     expect(review).toContain("emit('apply', selected)")
     expect(review).toContain('Selected fields publish immediately')
   })
