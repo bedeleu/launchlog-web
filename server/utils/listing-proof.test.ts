@@ -3,7 +3,7 @@ import { fetchListingProof, ListingProofError } from './listing-proof'
 
 describe('listing proof status', () => {
   test('returns the current public listing and domain shape on valid injected success', async () => {
-    const listing = { slug: 'tool', name: 'Tool' } as any
+    const listing = { slug: 'tool', name: 'Tool' }
     const fetcher = async () => ({ data: listing })
 
     const result = await fetchListingProof('tool', 'https://api.example', fetcher)
