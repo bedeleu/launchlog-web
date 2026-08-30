@@ -133,14 +133,30 @@ export interface OutreachDraft {
 
 export function buildOutreachSubjectOptions(context: OutreachContext): OutreachSubjectOption[] {
   const preview = context.previewUrl ? parseOutreachPreviewUrl(context.previewUrl) : null
-  const previewSubject = preview?.url === context.previewUrl
-    ? `I made a private LaunchLog preview for ${context.productName}`
-    : `A LaunchLog idea for ${context.productName}`
+  const hasPreview = preview?.url === context.previewUrl
 
   return [
-    { value: 'preview', label: 'Private preview', subject: previewSubject },
-    { value: 'fit', label: 'Product fit', subject: `${context.productName} could be a fit for LaunchLog` },
-    { value: 'source', label: 'Discovery source', subject: `Found ${context.productName} on ${context.sourceName}` },
+    {
+      value: 'preview',
+      label: 'Private preview',
+      subject: hasPreview
+        ? `Your private LaunchLog preview for ${context.productName}`
+        : `A LaunchLog idea for ${context.productName}`,
+    },
+    {
+      value: 'fit',
+      label: 'Product fit',
+      subject: hasPreview
+        ? `${context.productName} on LaunchLog — private preview`
+        : `${context.productName} could be a fit for LaunchLog`,
+    },
+    {
+      value: 'source',
+      label: 'Discovery source',
+      subject: hasPreview
+        ? `I prepared a LaunchLog preview for ${context.productName}`
+        : `Found ${context.productName} on ${context.sourceName}`,
+    },
   ]
 }
 
@@ -154,24 +170,20 @@ export function buildOutreachDraft(
     .find(option => option.value === variant)?.subject
   if (!subject) throw new Error('Invalid outreach subject variant')
 
-  const common = [
-    greeting,
-    '',
-    `I found ${context.productName} on ${context.sourceName} and thought it would be a good fit for LaunchLog.`,
-    '',
-  ]
-
   if (preview) {
     return {
       subject,
       text: [
-        ...common,
-        'I made a private preview so you can see how it would look:',
+        greeting,
+        '',
+        `I came across ${context.productName} on ${context.sourceName} and prepared a private, unpublished preview of how it could look in the LaunchLog catalog.`,
+        '',
+        'View the private preview:',
         preview.url,
         '',
-        'Nothing has been published. You can review it first and decide whether you want to publish.',
+        "Nothing has been published. If you'd like to claim it or adjust anything, just reply and I'll help.",
         '',
-        'If this is not relevant, just let me know and I will not follow up.',
+        'If this isn\'t relevant, reply "no" and I won\'t follow up.',
         '',
         'Alex',
         'LaunchLog.ai — The log of what just shipped.',
@@ -183,7 +195,10 @@ export function buildOutreachDraft(
   return {
     subject,
     text: [
-      ...common,
+      greeting,
+      '',
+      `I found ${context.productName} on ${context.sourceName} and thought it would be a good fit for LaunchLog.`,
+      '',
       'Nothing has been published. Would you like me to make a private preview first?',
       '',
       'If this is not relevant, just let me know and I will not follow up.',

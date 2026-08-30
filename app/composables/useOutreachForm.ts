@@ -6,6 +6,7 @@ import {
   buildOutreachSubjectOptions,
   outreachContextSchema,
   outreachSendSchema,
+  outreachSubjectVariants,
   parseOutreachPreviewUrl,
   verifyOutreachPreview,
 } from '../utils/outreach-template'
@@ -23,6 +24,7 @@ type DraftField = 'subject' | 'text'
 type FormNotice = { kind: 'success' | 'error', message: string } | null
 
 export interface OutreachFormDependencies {
+  random: () => number
   randomUUID: () => string
   verifyPreview: (token: string) => Promise<OutreachPreviewVerification>
   send: (payload: OutreachSendPayload) => Promise<OutreachEmailSend>
@@ -122,7 +124,10 @@ export function createOutreachFormController(dependencies: OutreachFormDependenc
       return false
     }
 
-    const draft = buildOutreachDraft(parsed.data, subjectVariant.value)
+    const variantIndex = Math.floor(dependencies.random() * outreachSubjectVariants.length)
+    const variant = outreachSubjectVariants[variantIndex] ?? 'preview'
+    subjectVariant.value = variant
+    const draft = buildOutreachDraft(parsed.data, variant)
     subject.value = draft.subject
     text.value = draft.text
     draftSignature.value = contextSignature.value
@@ -257,6 +262,7 @@ export function useOutreachForm(): OutreachFormController {
   const { getPreview } = usePreviews()
 
   return createOutreachFormController({
+    random: () => Math.random(),
     randomUUID: () => crypto.randomUUID(),
     verifyPreview: async token => verifyOutreachPreview(await getPreview(token), token),
     send,

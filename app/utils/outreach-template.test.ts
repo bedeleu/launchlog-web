@@ -12,7 +12,7 @@ import {
 } from './outreach-template'
 
 describe('minimal outreach draft', () => {
-  test('offers the three exact deterministic subjects without leaking the greeting name', () => {
+  test('offers the three exact private-preview subjects without leaking the greeting name', () => {
     const previewUrl = `https://launchlog.ai/preview/${'aB3z'.repeat(16)}`
     const context = outreachContextSchema.parse({
       recipientEmail: ' founder@example.com ',
@@ -27,17 +27,17 @@ describe('minimal outreach draft', () => {
       {
         value: 'preview',
         label: 'Private preview',
-        subject: 'I made a private LaunchLog preview for ShipFast',
+        subject: 'Your private LaunchLog preview for ShipFast',
       },
       {
         value: 'fit',
         label: 'Product fit',
-        subject: 'ShipFast could be a fit for LaunchLog',
+        subject: 'ShipFast on LaunchLog — private preview',
       },
       {
         value: 'source',
         label: 'Discovery source',
-        subject: 'Found ShipFast on Product Hunt',
+        subject: 'I prepared a LaunchLog preview for ShipFast',
       },
     ])
     expect(buildOutreachSubjectOptions(context).map(option => option.subject)).not.toContain('Maya')
@@ -56,18 +56,18 @@ describe('minimal outreach draft', () => {
     const draft = buildOutreachDraft(context, 'preview')
 
     expect(draft).toEqual({
-      subject: 'I made a private LaunchLog preview for ShipFast',
+      subject: 'Your private LaunchLog preview for ShipFast',
       text: [
         'Hi Maya,',
         '',
-        'I found ShipFast on Product Hunt and thought it would be a good fit for LaunchLog.',
+        'I came across ShipFast on Product Hunt and prepared a private, unpublished preview of how it could look in the LaunchLog catalog.',
         '',
-        'I made a private preview so you can see how it would look:',
+        'View the private preview:',
         previewUrl,
         '',
-        'Nothing has been published. You can review it first and decide whether you want to publish.',
+        "Nothing has been published. If you'd like to claim it or adjust anything, just reply and I'll help.",
         '',
-        'If this is not relevant, just let me know and I will not follow up.',
+        'If this isn\'t relevant, reply "no" and I won\'t follow up.',
         '',
         'Alex',
         'LaunchLog.ai — The log of what just shipped.',
