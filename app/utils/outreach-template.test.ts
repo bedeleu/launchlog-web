@@ -1,33 +1,15 @@
 import { describe, expect, test } from 'bun:test'
-import type { OutreachContext } from './outreach-template'
-import * as outreachTemplate from './outreach-template'
 import {
   buildOutreachDraft,
+  buildOutreachSubjectOptions,
   isSafePreviewUrl,
   outreachContextSchema,
   outreachSendSchema,
+  outreachSubjectVariants,
   parseOutreachPreviewUrl,
   shouldPreventOutreachEnterSubmit,
   verifyOutreachPreview,
 } from './outreach-template'
-
-type SubjectOption = {
-  value: 'preview' | 'fit' | 'source'
-  label: string
-  subject: string
-}
-
-type SubjectContract = {
-  outreachSubjectVariants?: readonly string[]
-  buildOutreachSubjectOptions?: (context: OutreachContext) => SubjectOption[]
-}
-
-const subjectContract = outreachTemplate as SubjectContract
-const outreachSubjectVariants = subjectContract.outreachSubjectVariants ?? []
-const buildOutreachSubjectOptions = (context: OutreachContext): SubjectOption[] => {
-  expect(subjectContract.buildOutreachSubjectOptions).toBeFunction()
-  return subjectContract.buildOutreachSubjectOptions?.(context) ?? []
-}
 
 describe('minimal outreach draft', () => {
   test('offers the three exact deterministic subjects without leaking the greeting name', () => {
@@ -149,6 +131,22 @@ describe('minimal outreach draft', () => {
       previewUrl: ` ${canonical} `,
     })
     expect(parsed.previewUrl).toBe(canonical)
+  })
+
+  test('never embeds a non-canonical preview URL when the context parser is bypassed', () => {
+    const token = 'aB3z'.repeat(16)
+    const unsafePreviewUrl = `https://launchlog.ai/path/../preview/${token}`
+    const draft = buildOutreachDraft({
+      recipientEmail: 'founder@example.com',
+      firstName: 'Maya',
+      productName: 'ShipFast',
+      sourceName: 'Product Hunt',
+      previewUrl: unsafePreviewUrl,
+    }, 'preview')
+
+    expect(draft.subject).toBe('A LaunchLog idea for ShipFast')
+    expect(draft.text).not.toContain(unsafePreviewUrl)
+    expect(draft.text).toContain('Would you like me to make a private preview first?')
   })
 
   test('accepts only the matching ready and non-expired preview response', () => {

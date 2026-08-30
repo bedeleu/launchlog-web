@@ -125,6 +125,17 @@ describe('outreach send client', () => {
     expect(calls).toHaveLength(0)
   })
 
+  test('rejects the temporarily unwired page payload before making a request', async () => {
+    await expect(useOutreachSend().send({
+      recipientEmail: 'founder@example.com',
+      subject: 'Hello',
+      text: 'Body',
+      requestId,
+    })).rejects.toThrow('Invalid outreach send payload')
+
+    expect(calls).toHaveLength(0)
+  })
+
   test('rejects a malformed full resource before returning it', async () => {
     globals.$fetch = () => Promise.resolve({
       data: {
