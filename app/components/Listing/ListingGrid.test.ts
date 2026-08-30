@@ -17,4 +17,14 @@ describe('private preview focus', () => {
     expect(source).toContain('opacity-25 grayscale blur-[1.5px]')
     expect(source).not.toMatch(/shadow-|drop-shadow|gradient/)
   })
+
+  test('keeps the proof to two desktop rows and progressively removes context with CSS only', () => {
+    expect(preview).toContain('const PREVIEW_SLOTS = 6')
+    expect(source).toContain("'hidden sm:block'")
+    expect(source).toContain("'hidden lg:block'")
+    expect(source).toMatch(/(?:context\w*\s*<\s*3|slice\(0,\s*3\))/)
+    expect(source).toMatch(/(?:context\w*\s*>=\s*3|slice\(3\))/)
+    expect(source).not.toContain('compactContextOnMobile')
+    expect(source).not.toMatch(/matchMedia|innerWidth|resize/)
+  })
 })

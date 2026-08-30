@@ -30,14 +30,3 @@ export const changedAiFields = (
 ): AiEnrichmentField[] => allowed.filter(field => (
   comparable(fieldValue(current, field)) !== comparable(fieldValue(proposed, field))
 ))
-
-export const previewEditFromSuggestion = (
-  current: { title: string; tagline: string; description: string; primary_category_id: string | null },
-  proposed: AiEnrichmentPayload,
-  selected: AiEnrichmentField[],
-) => ({
-  title: selected.includes('name') ? (proposed.title ?? proposed.name ?? current.title) : current.title,
-  tagline: selected.includes('tagline') ? (proposed.tagline ?? current.tagline) : current.tagline,
-  description: selected.includes('description') ? (proposed.description ?? current.description) : current.description,
-  primary_category_id: selected.includes('category') ? (proposed.category_id ?? current.primary_category_id) : current.primary_category_id,
-})

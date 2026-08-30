@@ -30,11 +30,13 @@ export interface AiEnrichmentProposal {
   created_at: string
 }
 
-export interface PreviewAiSuggestion {
-  current: AiEnrichmentPayload
-  proposed: AiEnrichmentPayload
-  evidence: Record<string, unknown>
-  model: string
+export interface AiGenerationQuota {
+  eligible: boolean
+  used: number
+  limit: number
+  remaining: number
+  period_start: string | null
+  period_end: string | null
 }
 
 export const useAiEnrichment = () => {
@@ -42,27 +44,34 @@ export const useAiEnrichment = () => {
   const root = `${config.public.apiUrl}/api/v1`
   const { getIdToken, waitForAuthReady } = useAuth()
 
-  const authHeaders = async (optional = false): Promise<Record<string, string> | undefined> => {
+  const authHeaders = async (): Promise<Record<string, string>> => {
     await waitForAuthReady()
     const token = await getIdToken()
-    if (!token && !optional) throw new Error('Not authenticated')
-    return token ? { Authorization: `Bearer ${token}` } : undefined
+    if (!token) throw new Error('Not authenticated')
+    return { Authorization: `Bearer ${token}` }
   }
 
-  const suggestPreview = async (token: string): Promise<PreviewAiSuggestion> => {
-    const { data } = await $fetch<{ data: PreviewAiSuggestion }>(`${root}/previews/${token}/ai-suggestion`, {
-      method: 'POST',
-      headers: await authHeaders(true),
+  const listOwnerProposals = async (listingId: string): Promise<{ proposals: AiEnrichmentProposal[], quota: AiGenerationQuota }> => {
+    const { data, meta } = await $fetch<{
+      data: AiEnrichmentProposal[]
+      meta: { ai_quota: AiGenerationQuota }
+    }>(`${root}/dashboard/listings/${listingId}/ai-proposals`, {
+      headers: await authHeaders(),
     })
-    return data
+
+    return { proposals: data, quota: meta.ai_quota }
   }
 
-  const generateOwnerProposal = async (listingId: string): Promise<AiEnrichmentProposal> => {
-    const { data } = await $fetch<{ data: AiEnrichmentProposal }>(`${root}/dashboard/listings/${listingId}/ai-proposals`, {
+  const generateOwnerProposal = async (listingId: string): Promise<{ proposal: AiEnrichmentProposal, quota: AiGenerationQuota }> => {
+    const { data, meta } = await $fetch<{
+      data: AiEnrichmentProposal
+      meta: { ai_quota: AiGenerationQuota }
+    }>(`${root}/dashboard/listings/${listingId}/ai-proposals`, {
       method: 'POST',
       headers: await authHeaders(),
     })
-    return data
+
+    return { proposal: data, quota: meta.ai_quota }
   }
 
   const applyOwnerProposal = async (proposalId: string, fields: AiEnrichmentField[]): Promise<AiEnrichmentProposal> => {
@@ -123,7 +132,7 @@ export const useAiEnrichment = () => {
   }
 
   return {
-    suggestPreview,
+    listOwnerProposals,
     generateOwnerProposal,
     applyOwnerProposal,
     rejectOwnerProposal,

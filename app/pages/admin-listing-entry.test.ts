@@ -121,7 +121,7 @@ describe('admin listing entry points', () => {
     expect(page).toContain('listAdminProposals')
     expect(page).not.toContain('savedMessage')
     expect(page).toContain('submit-label="Save manual edits"')
-    expect(review).toContain("return 'Apply & save selected changes'")
+    expect(review).toContain("busy ? 'Applying…' : 'Apply & save selected changes'")
     expect(review).toContain('Selected fields publish immediately')
     expect(review).not.toContain('linear-gradient')
     expect(review).not.toContain('Human approval required')

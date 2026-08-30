@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { CustomerListing, CustomerListingStatus, CustomerListingUpdate } from '~/composables/useCustomerListings'
-import type { AiEnrichmentField, AiEnrichmentProposal } from '~/composables/useAiEnrichment'
+import type { AiEnrichmentField, AiEnrichmentProposal, AiGenerationQuota } from '~/composables/useAiEnrichment'
 import { receiptProofDestinations, receiptUnavailableLabel } from '~/utils/customer-receipt'
 import { toErrorLike } from '~/utils/error-like'
 
@@ -13,14 +13,13 @@ useHead({ title: 'Your launches · LaunchLog', meta: [{ name: 'robots', content:
 
 const { user, logout, waitForAuthReady } = useAuth()
 const { list, update, billingPortal } = useCustomerListings()
-const { generateOwnerProposal, applyOwnerProposal, rejectOwnerProposal } = useAiEnrichment()
+const { listOwnerProposals, generateOwnerProposal, applyOwnerProposal, rejectOwnerProposal } = useAiEnrichment()
 const {
   listings,
   drafts,
   actionErrors,
   savingIds,
   billingIds,
-  savedIds,
   syncListings,
   commitListing,
   isDirty,
@@ -29,7 +28,6 @@ const {
   finishSaving,
   beginBilling,
   finishBilling,
-  markSaved,
   clearSaved,
 } = useCustomerDashboardState()
 
@@ -38,6 +36,11 @@ const error = ref<string | null>(null)
 const authReady = ref(false)
 const signingOut = ref(false)
 const aiProposals = reactive<Record<string, AiEnrichmentProposal | null>>({})
+const aiQuotas = reactive<Record<string, AiGenerationQuota | null>>({})
+type AiLoadState = 'idle' | 'loading' | 'ready' | 'error'
+const aiLoadStates = reactive<Record<string, AiLoadState>>({})
+const aiLoadErrors = reactive<Record<string, string | null>>({})
+const aiLoadAttempts = new Map<string, number>()
 const aiBusyIds = reactive(new Set<string>())
 let dashboardGeneration = 0
 
@@ -89,15 +92,84 @@ function validateDraft(draft: { name: string, tagline: string, description: stri
   return null
 }
 
+function aiQuotaSummary(quota: AiGenerationQuota): string {
+  const periodEnd = quota.period_end ? formatDate(quota.period_end) : 'the billing period ends'
+  return `${quota.used} used · ${quota.remaining} of ${quota.limit} left until ${periodEnd}.`
+}
+
+function clearAiState() {
+  aiBusyIds.clear()
+  aiLoadAttempts.clear()
+  for (const key of Object.keys(aiProposals)) Reflect.deleteProperty(aiProposals, key)
+  for (const key of Object.keys(aiQuotas)) Reflect.deleteProperty(aiQuotas, key)
+  for (const key of Object.keys(aiLoadStates)) Reflect.deleteProperty(aiLoadStates, key)
+  for (const key of Object.keys(aiLoadErrors)) Reflect.deleteProperty(aiLoadErrors, key)
+}
+
+function pruneAiState(items: CustomerListing[]) {
+  const currentIds = new Set(items.map(listing => listing.id))
+  const stores = [aiProposals, aiQuotas, aiLoadStates, aiLoadErrors]
+  for (const store of stores) {
+    for (const key of Object.keys(store)) {
+      if (!currentIds.has(key)) Reflect.deleteProperty(store, key)
+    }
+  }
+  for (const key of aiLoadAttempts.keys()) {
+    if (!currentIds.has(key)) aiLoadAttempts.delete(key)
+  }
+}
+
+async function loadAiStateForListing(listing: CustomerListing, generation: number) {
+  if (!listing.subscription) {
+    aiProposals[listing.id] = null
+    aiQuotas[listing.id] = null
+    aiLoadStates[listing.id] = 'ready'
+    aiLoadErrors[listing.id] = null
+    return
+  }
+
+  const attempt = (aiLoadAttempts.get(listing.id) ?? 0) + 1
+  aiLoadAttempts.set(listing.id, attempt)
+  aiLoadStates[listing.id] = 'loading'
+  aiLoadErrors[listing.id] = null
+
+  try {
+    const result = await listOwnerProposals(listing.id)
+    if (generation !== dashboardGeneration || signingOut.value || aiLoadAttempts.get(listing.id) !== attempt) return
+    aiQuotas[listing.id] = result.quota
+    aiProposals[listing.id] = result.proposals.find(proposal => proposal.status === 'pending') ?? null
+    aiLoadStates[listing.id] = 'ready'
+  }
+  catch (loadError: unknown) {
+    if (generation !== dashboardGeneration || signingOut.value || aiLoadAttempts.get(listing.id) !== attempt) return
+    aiQuotas[listing.id] = null
+    aiProposals[listing.id] = null
+    aiLoadStates[listing.id] = 'error'
+    aiLoadErrors[listing.id] = messageFrom(loadError, 'AI allowance could not be loaded.')
+  }
+}
+
+function loadAiState(items: CustomerListing[], generation: number) {
+  pruneAiState(items)
+  for (const listing of items) void loadAiStateForListing(listing, generation)
+}
+
+function retryAiState(listing: CustomerListing) {
+  if (aiLoadStates[listing.id] === 'loading') return
+  void loadAiStateForListing(listing, dashboardGeneration)
+}
+
 async function loadListings() {
   if (signingOut.value) return
   const generation = dashboardGeneration
-  loading.value = true
+  loading.value = listings.value.length === 0
   error.value = null
   try {
     const items = await list()
     if (generation !== dashboardGeneration || signingOut.value) return
     syncListings(items)
+    loading.value = false
+    loadAiState(items, generation)
   }
   catch (loadError: unknown) {
     if (generation !== dashboardGeneration || signingOut.value) return
@@ -130,7 +202,6 @@ async function save(listing: CustomerListing) {
     const updated = await update(listing.id, fields)
     if (generation !== dashboardGeneration || signingOut.value) return
     commitListing(updated)
-    markSaved(listing.id)
   }
   catch (saveError: unknown) {
     if (generation !== dashboardGeneration || signingOut.value) return
@@ -160,11 +231,16 @@ async function manageBilling(listing: CustomerListing) {
 }
 
 async function generateAiDraft(listing: CustomerListing) {
-  if (aiBusyIds.has(listing.id)) return
+  const quota = aiQuotas[listing.id]
+  if (aiBusyIds.has(listing.id) || aiProposals[listing.id]) return
+  if (aiLoadStates[listing.id] !== 'ready' || !listing.subscription || !quota?.eligible || quota.remaining === 0) return
   aiBusyIds.add(listing.id)
   actionErrors[listing.id] = null
   try {
-    aiProposals[listing.id] = await generateOwnerProposal(listing.id)
+    const result = await generateOwnerProposal(listing.id)
+    aiProposals[listing.id] = result.proposal
+    aiQuotas[listing.id] = result.quota
+    aiLoadStates[listing.id] = 'ready'
   }
   catch (proposalError: unknown) {
     actionErrors[listing.id] = messageFrom(proposalError, 'The grounded AI draft could not be prepared.')
@@ -214,6 +290,7 @@ async function signOut() {
   signingOut.value = true
   dashboardGeneration += 1
   clearPrivateData()
+  clearAiState()
   error.value = null
   try {
     await logout()
@@ -411,18 +488,81 @@ const tierLabel = (tier: string | null | undefined): string => {
                   <h3 class="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-release-paper">Public copy</h3>
                   <p class="mt-2 max-w-xl text-sm leading-6 text-release-paper-muted">Edit only the text visitors should see. Nothing moves until you save.</p>
                 </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  class="shrink-0 rounded-none border-release-seam bg-release-rail font-mono text-xs text-release-paper hover:border-release-paper hover:bg-release-ink"
-                  :disabled="aiBusyIds.has(listing.id)"
-                  @click="generateAiDraft(listing)"
-                >
-                  <AppSpinner v-if="aiBusyIds.has(listing.id) && !aiProposals[listing.id]" color="text-current" label="Preparing grounded draft" />
-                  <FileDiff v-else aria-hidden="true" />
-                  {{ aiBusyIds.has(listing.id) && !aiProposals[listing.id] ? 'Preparing…' : 'Review AI draft' }}
-                </Button>
+                <div v-if="listing.subscription" class="w-full shrink-0 sm:w-auto sm:max-w-xs sm:text-right">
+                  <div
+                    v-if="aiLoadStates[listing.id] === 'loading' || !aiLoadStates[listing.id]"
+                    data-ai-quota-state="loading"
+                    class="flex min-h-10 items-center gap-2 border border-release-seam bg-release-rail px-3 py-2 sm:justify-end"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    <AppSpinner size="size-4" label="Checking AI allowance" />
+                    <span class="text-xs text-release-paper-muted">Checking AI allowance…</span>
+                  </div>
+
+                  <div
+                    v-else-if="aiLoadStates[listing.id] === 'error'"
+                    data-ai-quota-state="error"
+                    class="border border-release-destructive bg-release-rail px-3 py-3 text-left"
+                    role="alert"
+                  >
+                    <p class="text-sm font-semibold text-release-paper">AI allowance unavailable</p>
+                    <p class="mt-1 text-xs leading-5 text-release-paper-muted">{{ aiLoadErrors[listing.id] }}</p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      class="mt-3 rounded-none border-release-seam bg-release-ink font-mono text-xs text-release-paper hover:border-release-paper hover:bg-release-rail"
+                      @click="retryAiState(listing)"
+                    >
+                      Retry AI allowance
+                    </Button>
+                  </div>
+
+                  <div
+                    v-else-if="aiProposals[listing.id]"
+                    data-ai-proposal-status="ready"
+                    class="border border-release-warning/55 bg-release-warning/[0.05] px-3 py-3 text-left"
+                    role="status"
+                  >
+                    <p class="flex items-center gap-2 text-sm font-semibold text-release-paper">
+                      <FileDiff class="size-4 text-release-warning" aria-hidden="true" />
+                      AI draft ready for review
+                    </p>
+                    <p class="mt-1 text-xs leading-5 text-release-paper-muted">Review the proposed changes directly below.</p>
+                    <p v-if="aiQuotas[listing.id]" class="mt-2 font-mono text-[0.65rem] leading-5 text-release-paper-muted">
+                      {{ aiQuotaSummary(aiQuotas[listing.id]!) }}
+                    </p>
+                  </div>
+
+                  <div v-else-if="aiQuotas[listing.id]?.eligible">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      class="rounded-none border-release-seam bg-release-rail font-mono text-xs text-release-paper hover:border-release-paper hover:bg-release-ink"
+                      :disabled="aiBusyIds.has(listing.id) || aiQuotas[listing.id]!.remaining === 0"
+                      @click="generateAiDraft(listing)"
+                    >
+                      <AppSpinner v-if="aiBusyIds.has(listing.id)" color="text-current" label="Preparing grounded draft" />
+                      <FileDiff v-else aria-hidden="true" />
+                      <template v-if="aiBusyIds.has(listing.id)">Preparing…</template>
+                      <template v-else-if="aiQuotas[listing.id]!.remaining === 0">AI limit reached</template>
+                      <template v-else>Improve with AI</template>
+                    </Button>
+                    <p class="mt-2 font-mono text-[0.65rem] leading-5 text-release-paper-muted">
+                      {{ aiQuotaSummary(aiQuotas[listing.id]!) }}
+                    </p>
+                    <p v-if="aiQuotas[listing.id]!.remaining === 0" class="mt-1 text-xs leading-5 text-release-paper-muted">
+                      Manual editing stays available.
+                    </p>
+                  </div>
+
+                  <div v-else class="border border-release-seam bg-release-rail px-3 py-3 text-left" role="status">
+                    <p class="text-sm font-semibold text-release-paper">AI edits unavailable</p>
+                    <p class="mt-1 text-xs leading-5 text-release-paper-muted">Manual editing stays available for this release.</p>
+                  </div>
+                </div>
               </div>
 
               <AiProposalReview
@@ -468,7 +608,6 @@ const tierLabel = (tier: string | null | undefined): string => {
                 <div class="min-h-10 py-1 text-xs leading-5" aria-live="polite" aria-atomic="true">
                   <p v-if="savingIds.has(listing.id)" class="text-release-paper-muted" role="status">Saving changes</p>
                   <p v-else-if="actionErrors[listing.id]" class="text-release-destructive" role="alert">{{ actionErrors[listing.id] }}</p>
-                  <p v-else-if="savedIds.has(listing.id)" class="font-medium text-release-signal" role="status">Saved</p>
                 </div>
               </div>
             </form>
