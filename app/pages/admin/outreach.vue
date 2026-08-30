@@ -149,7 +149,7 @@ function preventSingleLineSubmit(event: KeyboardEvent): void {
               :disabled="sending || !hasDraft"
               @update:model-value="selectSubjectVariant($event as 'preview' | 'fit' | 'source')"
             />
-            <p class="mt-2 text-xs leading-5 text-release-paper-muted">Choose a deterministic seed, then edit the final subject below.</p>
+            <p class="mt-2 text-xs leading-5 text-release-paper-muted">A subject seed is picked at random and remains editable below.</p>
           </div>
 
           <div>

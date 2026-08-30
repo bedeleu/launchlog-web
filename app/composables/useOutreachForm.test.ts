@@ -16,7 +16,7 @@ const acceptedSendFixture: OutreachEmailSend = {
   product_name: 'ShipFast',
   source_name: 'Product Hunt',
   subject_variant: 'preview',
-  subject: 'I made a private LaunchLog preview for ShipFast',
+  subject: 'Your private LaunchLog preview for ShipFast',
   text: 'Exact body',
   preview_url: previewUrl,
   from_address: 'alex@launchlog.ai',
@@ -53,6 +53,7 @@ describe('outreach form controller', () => {
   test('sends the complete normalized payload then resets with a fresh request id', async () => {
     const sent: OutreachSendPayload[] = []
     const form = createOutreachFormController({
+      random: () => 0,
       randomUUID: createRequestIds(),
       verifyPreview: async () => ({ ok: true }),
       send: async (payload) => {
@@ -72,18 +73,18 @@ describe('outreach form controller', () => {
       productName: 'ShipFast',
       sourceName: 'Product Hunt',
       subjectVariant: 'preview',
-      subject: 'I made a private LaunchLog preview for ShipFast',
+      subject: 'Your private LaunchLog preview for ShipFast',
       text: [
         'Hi Maya,',
         '',
-        'I found ShipFast on Product Hunt and thought it would be a good fit for LaunchLog.',
+        'I came across ShipFast on Product Hunt and prepared a private, unpublished preview of how it could look in the LaunchLog catalog.',
         '',
-        'I made a private preview so you can see how it would look:',
+        'View the private preview:',
         previewUrl,
         '',
-        'Nothing has been published. You can review it first and decide whether you want to publish.',
+        "Nothing has been published. If you'd like to claim it or adjust anything, just reply and I'll help.",
         '',
-        'If this is not relevant, just let me know and I will not follow up.',
+        'If this isn\'t relevant, reply "no" and I won\'t follow up.',
         '',
         'Alex',
         'LaunchLog.ai — The log of what just shipped.',
@@ -106,6 +107,7 @@ describe('outreach form controller', () => {
 
   test('preserves the final draft and request id when the provider rejects it', async () => {
     const form = createOutreachFormController({
+      random: () => 0,
       randomUUID: createRequestIds(),
       verifyPreview: async () => ({ ok: true }),
       send: async () => { throw { data: { message: 'The provider rejected this recipient.' } } },
@@ -138,6 +140,7 @@ describe('outreach form controller', () => {
     for (const current of cases) {
       let calls = 0
       const form = createOutreachFormController({
+        random: () => 0,
         randomUUID: createRequestIds(),
         verifyPreview: async () => {
           if (current.result instanceof Error) throw current.result
@@ -162,6 +165,7 @@ describe('outreach form controller', () => {
     let verified = 0
     let sent = 0
     const form = createOutreachFormController({
+      random: () => 0,
       randomUUID: createRequestIds(),
       verifyPreview: async () => {
         verified += 1
@@ -182,6 +186,7 @@ describe('outreach form controller', () => {
 
   test('changes only the seeded subject for an explicit variant and preserves later manual edits', () => {
     const form = createOutreachFormController({
+      random: () => 0,
       randomUUID: createRequestIds(),
       verifyPreview: async () => ({ ok: true }),
       send: async () => acceptedSendFixture,
@@ -190,14 +195,43 @@ describe('outreach form controller', () => {
     form.createDraft()
 
     form.selectSubjectVariant('source')
-    expect(form.subject.value).toBe('Found ShipFast on Product Hunt')
+    expect(form.subject.value).toBe('I prepared a LaunchLog preview for ShipFast')
     form.subject.value = 'Maya, a hand-written idea for ShipFast'
     form.selectSubjectVariant('fit')
-    expect(form.subject.value).toBe('ShipFast could be a fit for LaunchLog')
+    expect(form.subject.value).toBe('ShipFast on LaunchLog — private preview')
     form.subject.value = 'The final handwritten subject'
 
     expect(form.subjectVariant.value).toBe('fit')
     expect(form.subject.value).toBe('The final handwritten subject')
+  })
+
+  test('picks each subject variant from equal random buckets on every successful draft', () => {
+    const values = [0, 0.34, 0.67]
+    const form = createOutreachFormController({
+      random: () => values.shift() ?? 0,
+      randomUUID: createRequestIds(),
+      verifyPreview: async () => ({ ok: true }),
+      send: async () => acceptedSendFixture,
+    })
+    fillValidContext(form)
+
+    expect(form.createDraft()).toBe(true)
+    expect([form.subjectVariant.value, form.subject.value]).toEqual([
+      'preview',
+      'Your private LaunchLog preview for ShipFast',
+    ])
+
+    expect(form.createDraft()).toBe(true)
+    expect([form.subjectVariant.value, form.subject.value]).toEqual([
+      'fit',
+      'ShipFast on LaunchLog — private preview',
+    ])
+
+    expect(form.createDraft()).toBe(true)
+    expect([form.subjectVariant.value, form.subject.value]).toEqual([
+      'source',
+      'I prepared a LaunchLog preview for ShipFast',
+    ])
   })
 
   test('blocks stale and duplicate submits without repeating external work', async () => {
@@ -206,6 +240,7 @@ describe('outreach form controller', () => {
     }
     let sendCalls = 0
     const form = createOutreachFormController({
+      random: () => 0,
       randomUUID: createRequestIds(),
       verifyPreview: async () => ({ ok: true }),
       send: () => {
@@ -231,6 +266,7 @@ describe('outreach form controller', () => {
   test('rotates the request id only when changed content follows a failed provider attempt', async () => {
     const sent: OutreachSendPayload[] = []
     const form = createOutreachFormController({
+      random: () => 0,
       randomUUID: createRequestIds(),
       verifyPreview: async () => ({ ok: true }),
       send: async (payload) => {
@@ -254,6 +290,7 @@ describe('outreach form controller', () => {
   test('verifies the preview before it submits the provider payload', async () => {
     const order: string[] = []
     const form = createOutreachFormController({
+      random: () => 0,
       randomUUID: createRequestIds(),
       verifyPreview: async () => {
         order.push('preview')
