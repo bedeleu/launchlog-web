@@ -1,6 +1,7 @@
 import { computed, reactive, ref } from 'vue'
 import type { ComputedRef, Ref } from 'vue'
 import { toErrorLike } from '../utils/error-like'
+import { isOutreachAuthorizationError } from '../utils/outreach-auth'
 import {
   buildOutreachDraft,
   buildOutreachSubjectOptions,
@@ -48,7 +49,7 @@ export interface OutreachFormController {
   sendDisabled: ComputedRef<boolean>
   createDraft: () => boolean
   selectSubjectVariant: (variant: OutreachSubjectVariant) => void
-  submit: () => Promise<'accepted' | 'invalid' | 'failed'>
+  submit: () => Promise<'accepted' | 'invalid' | 'failed' | 'unauthorized'>
 }
 
 const emptyContext = (): Record<ContextField, string> => ({
@@ -154,7 +155,7 @@ export function createOutreachFormController(dependencies: OutreachFormDependenc
     requestId.value = dependencies.randomUUID()
   }
 
-  const submit = async (): Promise<'accepted' | 'invalid' | 'failed'> => {
+  const submit = async (): Promise<'accepted' | 'invalid' | 'failed' | 'unauthorized'> => {
     if (sending.value) return 'invalid'
 
     clearErrors()
@@ -223,6 +224,7 @@ export function createOutreachFormController(dependencies: OutreachFormDependenc
       return 'accepted'
     }
     catch (error: unknown) {
+      if (isOutreachAuthorizationError(error)) return 'unauthorized'
       const normalized = toErrorLike(error)
       notice.value = {
         kind: 'error',

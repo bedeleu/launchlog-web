@@ -1,8 +1,9 @@
 <script lang="ts">
 import { Button } from '@/components/ui/button'
 import { parseIsoOffsetToMicroseconds } from '~/composables/useOutreachSend'
-import type { OutreachDeliveryStatus, OutreachEmailSend } from '~/composables/useOutreachSend'
+import type { OutreachDeliveryChannel, OutreachDeliveryStatus, OutreachEmailSend } from '~/composables/useOutreachSend'
 import type { OutreachEmailSendPage } from '~/composables/useOutreachHistory'
+import { isOutreachAuthorizationError } from '~/utils/outreach-auth'
 
 interface OutreachHistoryRefreshOptions {
   isVisible: () => boolean
@@ -52,7 +53,9 @@ interface StatusPresentation {
   tone: 'neutral' | 'signal' | 'warning' | 'destructive'
 }
 
-const statusPresentations: Record<OutreachDeliveryStatus, StatusPresentation> = {
+const emit = defineEmits<{ authorizationLost: [] }>()
+
+const statusPresentations: Record<OutreachDeliveryStatus, Omit<StatusPresentation, 'help'> & { help: string | null }> = {
   pending: {
     label: 'Pending',
     help: 'LaunchLog is preparing the provider request.',
@@ -60,12 +63,12 @@ const statusPresentations: Record<OutreachDeliveryStatus, StatusPresentation> = 
   },
   accepted: {
     label: 'Accepted',
-    help: 'Accepted by Resend for delivery.',
+    help: null,
     tone: 'neutral',
   },
   sent: {
     label: 'Sent',
-    help: 'Resend began delivery to the recipient server.',
+    help: null,
     tone: 'neutral',
   },
   delivered: {
@@ -165,9 +168,22 @@ let requestVersion = 0
 let stopAutoRefresh: (() => void) | null = null
 let disposed = false
 
-const statusPresentation = (status: OutreachDeliveryStatus): StatusPresentation => (
-  statusPresentations[status]
+const deliveryChannelName = (channel: OutreachDeliveryChannel): string => (
+  channel === 'resend' ? 'Resend' : 'SMTP'
 )
+const statusPresentation = (
+  status: OutreachDeliveryStatus,
+  channel: OutreachDeliveryChannel,
+): StatusPresentation => {
+  const presentation = statusPresentations[status]
+  if (status === 'accepted') {
+    return { ...presentation, help: `Accepted by the ${deliveryChannelName(channel)} delivery channel.` }
+  }
+  if (status === 'sent') {
+    return { ...presentation, help: `The ${deliveryChannelName(channel)} delivery channel began delivery.` }
+  }
+  return { ...presentation, help: presentation.help ?? 'Delivery status reported by the delivery channel.' }
+}
 
 const dateFormatter = new Intl.DateTimeFormat('en-GB', {
   day: '2-digit',
@@ -226,6 +242,22 @@ const toggleDetails = (id: string) => {
   openRows.value = next
 }
 
+const clearSensitive = (): void => {
+  disposed = true
+  requestVersion += 1
+  stopAutoRefresh?.()
+  stopAutoRefresh = null
+  rows.value = []
+  meta.value = { ...emptyMeta }
+  currentPage.value = 1
+  loading.value = false
+  silentRefreshing.value = false
+  refreshingIds.value = new Set()
+  error.value = null
+  refreshError.value = null
+  openRows.value = new Set()
+}
+
 const load = async (page = currentPage.value, silent = false, force = false): Promise<void> => {
   if (!force && silent && (loading.value || silentRefreshing.value)) return
 
@@ -244,8 +276,13 @@ const load = async (page = currentPage.value, silent = false, force = false): Pr
     error.value = null
     refreshError.value = null
   }
-  catch {
+  catch (loadError: unknown) {
     if (disposed || version !== requestVersion) return
+    if (isOutreachAuthorizationError(loadError)) {
+      clearSensitive()
+      emit('authorizationLost')
+      return
+    }
     if (silent) refreshError.value = 'Delivery history could not be refreshed.'
     else error.value = 'Delivery history could not be loaded.'
   }
@@ -273,8 +310,13 @@ const refreshRow = async (send: OutreachEmailSend): Promise<void> => {
     if (disposed) return
     rows.value = rows.value.map(row => row.id === refreshed.id ? freshestSend(row, refreshed) : row)
   }
-  catch {
+  catch (rowError: unknown) {
     if (disposed) return
+    if (isOutreachAuthorizationError(rowError)) {
+      clearSensitive()
+      emit('authorizationLost')
+      return
+    }
     refreshError.value = `Delivery status for ${send.product_name} could not be refreshed.`
   }
   finally {
@@ -287,7 +329,7 @@ const showLatest = (): Promise<void> => showLatestOutreachPage(
   load,
 )
 
-defineExpose({ showLatest })
+defineExpose({ showLatest, clearSensitive })
 
 onMounted(() => {
   if (typeof document !== 'undefined') {
@@ -432,19 +474,19 @@ onBeforeUnmount(() => {
               <span
                 class="size-2 shrink-0 border"
                 :class="{
-                  'border-release-signal bg-release-signal': statusPresentation(send.status).tone === 'signal',
-                  'border-release-warning bg-release-warning': statusPresentation(send.status).tone === 'warning',
-                  'border-release-destructive bg-release-destructive': statusPresentation(send.status).tone === 'destructive',
-                  'border-release-paper-muted bg-transparent': statusPresentation(send.status).tone === 'neutral',
+                  'border-release-signal bg-release-signal': statusPresentation(send.status, send.delivery_channel).tone === 'signal',
+                  'border-release-warning bg-release-warning': statusPresentation(send.status, send.delivery_channel).tone === 'warning',
+                  'border-release-destructive bg-release-destructive': statusPresentation(send.status, send.delivery_channel).tone === 'destructive',
+                  'border-release-paper-muted bg-transparent': statusPresentation(send.status, send.delivery_channel).tone === 'neutral',
                 }"
                 aria-hidden="true"
               />
               <span class="font-mono text-xs font-semibold uppercase tracking-[0.08em] text-release-paper">
-                {{ statusPresentation(send.status).label }}
+                {{ statusPresentation(send.status, send.delivery_channel).label }}
               </span>
             </div>
             <p class="sr-only">
-              {{ statusPresentation(send.status).help }}
+              {{ statusPresentation(send.status, send.delivery_channel).help }}
             </p>
           </div>
 

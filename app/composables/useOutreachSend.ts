@@ -4,6 +4,10 @@ import {
   outreachSubjectVariants,
   type OutreachSubjectVariant,
 } from '../utils/outreach-template'
+import {
+  normalizeOutreachAuthorizationError,
+  OutreachAuthorizationError,
+} from '../utils/outreach-auth'
 
 export interface OutreachSendPayload {
   recipientEmail: string
@@ -171,29 +175,36 @@ export const useOutreachSend = () => {
 
   const authHeaders = async (): Promise<Record<string, string>> => {
     const token = await getIdToken()
-    if (!token) throw new Error('Not authenticated')
+    if (!token) throw new OutreachAuthorizationError()
     return { Authorization: `Bearer ${token}` }
   }
 
   const send = async (payload: OutreachSendPayload): Promise<OutreachEmailSend> => {
-    const response: unknown = await $fetch(
-      `${config.public.apiUrl}/api/v1/admin/outreach/send`,
-      {
-        method: 'POST',
-        headers: await authHeaders(),
-        body: {
-          recipient_email: payload.recipientEmail,
-          first_name: payload.firstName,
-          product_name: payload.productName,
-          source_name: payload.sourceName,
-          subject_variant: payload.subjectVariant,
-          subject: payload.subject,
-          text: payload.text,
-          preview_url: payload.previewUrl,
-          request_id: payload.requestId,
+    let response: unknown
+    try {
+      response = await $fetch(
+        `${config.public.apiUrl}/api/v1/admin/outreach/send`,
+        {
+          cache: 'no-store',
+          method: 'POST',
+          headers: await authHeaders(),
+          body: {
+            recipient_email: payload.recipientEmail,
+            first_name: payload.firstName,
+            product_name: payload.productName,
+            source_name: payload.sourceName,
+            subject_variant: payload.subjectVariant,
+            subject: payload.subject,
+            text: payload.text,
+            preview_url: payload.previewUrl,
+            request_id: payload.requestId,
+          },
         },
-      },
-    )
+      )
+    }
+    catch (error: unknown) {
+      throw normalizeOutreachAuthorizationError(error)
+    }
 
     const parsed = sendResponseSchema.safeParse(response)
     if (!parsed.success || parsed.data.data.request_id !== payload.requestId) {

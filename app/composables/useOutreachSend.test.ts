@@ -172,6 +172,7 @@ describe('outreach send client', () => {
     expect(calls).toEqual([{
       url: 'https://api.launchlog.test/api/v1/admin/outreach/send',
       options: {
+        cache: 'no-store',
         method: 'POST',
         headers: { Authorization: 'Bearer firebase-admin-token' },
         body: {
@@ -224,6 +225,16 @@ describe('outreach send client', () => {
     })).rejects.toThrow('Not authenticated')
 
     expect(calls).toHaveLength(0)
+  })
+
+  test('normalizes API authorization loss for the outreach page', async () => {
+    for (const status of [401, 403]) {
+      globals.$fetch = () => Promise.reject({ statusCode: status })
+
+      await expect(useOutreachSend().send(sendPayload)).rejects.toMatchObject({
+        name: 'OutreachAuthorizationError',
+      })
+    }
   })
 
   test('accepts a null response preview URL', async () => {
