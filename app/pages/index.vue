@@ -198,7 +198,6 @@ useHead({
           :src="heroListing?.screenshot_url"
           :alt="heroListing ? `${heroListing.name} website screenshot` : 'LaunchLog release cover'"
           :title="heroListing?.name ?? 'Your product becomes the next release'"
-          media-class="lg:aspect-auto lg:h-[clamp(18rem,24vw,22rem)]"
           image-class="object-contain object-top"
         >
           <template #caption>
