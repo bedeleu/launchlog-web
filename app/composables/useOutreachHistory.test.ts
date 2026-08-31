@@ -89,6 +89,7 @@ describe('outreach history API boundary', () => {
     expect(calls).toEqual([{
       url: `${API}/api/v1/admin/outreach/sends`,
       options: {
+        cache: 'no-store',
         headers: { Authorization: `Bearer ${TOKEN}` },
         query: { page: 2 },
       },
@@ -167,6 +168,7 @@ describe('outreach history API boundary', () => {
     expect(calls).toEqual([{
       url: `${API}/api/v1/admin/outreach/sends/${sendId}/refresh`,
       options: {
+        cache: 'no-store',
         method: 'POST',
         headers: { Authorization: `Bearer ${TOKEN}` },
       },
@@ -189,6 +191,16 @@ describe('outreach history API boundary', () => {
     await expect(useOutreachHistory().list(2)).rejects.toThrow('Not authenticated')
 
     expect(calls).toHaveLength(0)
+  })
+
+  test('normalizes API authorization loss so the ledger can be cleared immediately', async () => {
+    for (const status of [401, 403]) {
+      globals.$fetch = () => Promise.reject({ response: { status } })
+
+      await expect(useOutreachHistory().list(2)).rejects.toMatchObject({
+        name: 'OutreachAuthorizationError',
+      })
+    }
   })
 
   test('rejects page metadata that does not describe the requested resource slice', async () => {

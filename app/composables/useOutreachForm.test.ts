@@ -105,6 +105,26 @@ describe('outreach form controller', () => {
     expect(form.draftSignature.value).toBe('')
   })
 
+  test('treats a replayed 202 resource that is already delivered as accepted and resets the form', async () => {
+    const form = createOutreachFormController({
+      random: () => 0,
+      randomUUID: createRequestIds(),
+      verifyPreview: async () => ({ ok: true }),
+      send: async () => ({
+        ...acceptedSendFixture,
+        status: 'delivered',
+        provider_event_at: '2026-08-30T12:00:03Z',
+      }),
+    })
+    fillValidContext(form)
+    form.createDraft()
+
+    expect(await form.submit()).toBe('accepted')
+    expect(form.context.recipientEmail).toBe('')
+    expect(form.subject.value).toBe('')
+    expect(form.notice.value).toEqual({ kind: 'success', message: 'Email accepted for delivery.' })
+  })
+
   test('preserves the final draft and request id when the provider rejects it', async () => {
     const form = createOutreachFormController({
       random: () => 0,
@@ -127,6 +147,20 @@ describe('outreach form controller', () => {
     expect(form.subjectVariant.value).toBe('fit')
     expect(form.requestId.value).toBe(initialRequestId)
     expect(form.notice.value).toEqual({ kind: 'error', message: 'The provider rejected this recipient.' })
+  })
+
+  test('reports authorization loss separately so the page can purge the ledger and redirect', async () => {
+    const form = createOutreachFormController({
+      random: () => 0,
+      randomUUID: createRequestIds(),
+      verifyPreview: async () => ({ ok: true }),
+      send: async () => { throw Object.assign(new Error('Outreach authorization lost'), { name: 'OutreachAuthorizationError' }) },
+    })
+    fillValidContext(form)
+    form.createDraft()
+
+    expect(await form.submit()).toBe('unauthorized')
+    expect(form.notice.value).toBeNull()
   })
 
   test('rejects invalid, expired, mismatched, and unavailable previews before calling send', async () => {

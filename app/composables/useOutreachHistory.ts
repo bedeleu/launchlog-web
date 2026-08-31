@@ -3,6 +3,10 @@ import {
   outreachEmailSendSchema,
   type OutreachEmailSend,
 } from './useOutreachSend'
+import {
+  normalizeOutreachAuthorizationError,
+  OutreachAuthorizationError,
+} from '../utils/outreach-auth'
 
 export interface OutreachEmailSendPage {
   data: OutreachEmailSend[]
@@ -96,7 +100,7 @@ export const useOutreachHistory = () => {
 
   const authHeaders = async (): Promise<Record<string, string>> => {
     const token = await getIdToken()
-    if (!token) throw new Error('Not authenticated')
+    if (!token) throw new OutreachAuthorizationError()
     return { Authorization: `Bearer ${token}` }
   }
 
@@ -105,10 +109,17 @@ export const useOutreachHistory = () => {
       throw new Error('Invalid outreach history page')
     }
 
-    const response: unknown = await $fetch(endpoint, {
-      headers: await authHeaders(),
-      query: { page },
-    })
+    let response: unknown
+    try {
+      response = await $fetch(endpoint, {
+        cache: 'no-store',
+        headers: await authHeaders(),
+        query: { page },
+      })
+    }
+    catch (error: unknown) {
+      throw normalizeOutreachAuthorizationError(error)
+    }
     const parsed = outreachEmailSendPageSchema.safeParse(response)
 
     if (!parsed.success || parsed.data.meta.current_page !== page) {
@@ -123,10 +134,17 @@ export const useOutreachHistory = () => {
       throw new Error('Invalid outreach send ID')
     }
 
-    const response: unknown = await $fetch(`${endpoint}/${id}/refresh`, {
-      method: 'POST',
-      headers: await authHeaders(),
-    })
+    let response: unknown
+    try {
+      response = await $fetch(`${endpoint}/${id}/refresh`, {
+        cache: 'no-store',
+        method: 'POST',
+        headers: await authHeaders(),
+      })
+    }
+    catch (error: unknown) {
+      throw normalizeOutreachAuthorizationError(error)
+    }
     const parsed = outreachEmailSendResponseSchema.safeParse(response)
 
     if (!parsed.success || parsed.data.data.id !== id) {

@@ -198,19 +198,27 @@ useHead({
           :src="heroListing?.screenshot_url"
           :alt="heroListing ? `${heroListing.name} website screenshot` : 'LaunchLog release cover'"
           :title="heroListing?.name ?? 'Your product becomes the next release'"
+          image-class="object-contain object-top"
         >
           <template #caption>
-            <div class="flex flex-wrap items-baseline justify-between gap-2">
-              <p class="text-base font-semibold tracking-[-0.02em]">
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-1">
+                <p class="flex flex-wrap items-center gap-x-2 font-mono text-[0.62rem] font-semibold tracking-[0.14em] text-release-ink/65 uppercase">
+                  <span aria-hidden="true" class="size-2 bg-release-blaze" />
+                  <span>Latest release</span>
+                  <span aria-hidden="true" class="text-release-ink/35">·</span>
+                  <span>Published record</span>
+                </p>
+                <p class="min-w-0 max-w-full truncate font-mono text-[0.68rem] tracking-[0.08em] text-release-ink/65 sm:max-w-56 sm:text-right">
+                  {{ heroHost }}
+                </p>
+              </div>
+              <p class="mt-2 line-clamp-2 text-sm font-semibold tracking-[-0.02em] sm:text-base">
                 {{ heroListing?.name ?? 'Your product becomes the next release' }}
-              </p>
-              <p class="font-mono text-[0.68rem] tracking-[0.12em] text-release-ink/65 uppercase">
-                Published record
               </p>
             </div>
           </template>
         </ReleaseCover>
-        <ReleaseEvidenceBand class="mt-3" label="Latest release" :value="heroHost" />
       </div>
 
       <template #rail>

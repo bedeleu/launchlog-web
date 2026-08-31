@@ -15,7 +15,9 @@ import {
 } from 'vue'
 import * as VueRuntime from 'vue'
 import { renderToString } from '@vue/server-renderer'
+import { buttonVariants } from '../ui/button'
 import { parseIsoOffsetToMicroseconds } from '../../composables/useOutreachSend'
+import { isOutreachAuthorizationError } from '../../utils/outreach-auth'
 import type { OutreachEmailSend } from '~/composables/useOutreachSend'
 import type { OutreachEmailSendPage } from '~/composables/useOutreachHistory'
 
@@ -23,6 +25,11 @@ const source = readFileSync(fileURLToPath(new URL('./OutreachHistory.vue', impor
 const descriptor = parse(source).descriptor
 const template = descriptor.template?.content
 if (!template) throw new Error('OutreachHistory template is missing')
+
+const passthrough = (tag: string) => defineComponent({
+  inheritAttrs: false,
+  setup: (_props, { attrs, slots }) => () => h(tag, attrs, slots.default?.() ?? []),
+})
 
 const compiledSfcScript = compileScript(descriptor, {
   id: 'outreach-history-test',
@@ -33,6 +40,8 @@ const executableScript = transpiledScript
     `const { ${bindings.replaceAll(' as ', ': ')} } = VueRuntime;`
   ))
   .replace(/import\s*{\s*parseIsoOffsetToMicroseconds\s*}\s*from\s*["']~\/composables\/useOutreachSend["'];?/g, '')
+  .replace(/import\s*{\s*isOutreachAuthorizationError\s*}\s*from\s*["']~\/utils\/outreach-auth["'];?/g, '')
+  .replace(/import\s*{\s*Button\s*}\s*from\s*["']@\/components\/ui\/button["'];?/g, 'const { Button } = Components;')
   .replace('export default', 'return')
 const render = new Function('Vue', compile(template, {
   mode: 'function',
@@ -42,13 +51,11 @@ const render = new Function('Vue', compile(template, {
 const OutreachHistory = new Function(
   'VueRuntime',
   'parseIsoOffsetToMicroseconds',
+  'isOutreachAuthorizationError',
+  'Components',
   executableScript,
-)(VueRuntime, parseIsoOffsetToMicroseconds)
+)(VueRuntime, parseIsoOffsetToMicroseconds, isOutreachAuthorizationError, { Button: passthrough('button') })
 OutreachHistory.render = render
-const passthrough = (tag: string) => defineComponent({
-  inheritAttrs: false,
-  setup: (_props, { attrs, slots }) => () => h(tag, attrs, slots.default?.() ?? []),
-})
 
 interface TestNode {
   type: string
@@ -156,6 +163,8 @@ interface MountedHistoryHarness {
   state: MountedHistoryState
   resources: MountedHistoryResources
   showLatest: () => Promise<void>
+  clearSensitive: () => void
+  authorizationLosses: () => number
   unmount: () => void
 }
 
@@ -208,6 +217,7 @@ const mountHistoryComponent = (api: MountedHistoryApi): MountedHistoryHarness =>
     removedListeners: [],
   }
   let nextIntervalId = 1
+  let authorizationLosses = 0
   const pageDocument = {
     visibilityState: 'visible',
     addEventListener: (type: string, listener: () => void) => {
@@ -236,11 +246,15 @@ const mountHistoryComponent = (api: MountedHistoryApi): MountedHistoryHarness =>
   })
 
   const root = createTestNode('root')
-  const app = mountedRenderer.createApp(OutreachHistory)
+  const app = mountedRenderer.createApp(OutreachHistory, {
+    onAuthorizationLost: () => { authorizationLosses += 1 },
+  })
   app.config.warnHandler = () => undefined
-  app.component('Button', passthrough('button'))
   app.component('AppSpinner', passthrough('span'))
-  const instance = app.mount(root) as unknown as { showLatest: () => Promise<void> }
+  const instance = app.mount(root) as unknown as {
+    showLatest: () => Promise<void>
+    clearSensitive: () => void
+  }
   const internalInstance = (app as unknown as {
     _instance: { setupState: MountedHistoryState }
   })._instance
@@ -250,6 +264,8 @@ const mountHistoryComponent = (api: MountedHistoryApi): MountedHistoryHarness =>
     state: internalInstance.setupState,
     resources,
     showLatest: instance.showLatest,
+    clearSensitive: instance.clearSensitive,
+    authorizationLosses: () => authorizationLosses,
     unmount: () => {
       if (unmounted) return
       unmounted = true
@@ -344,6 +360,7 @@ const renderHistory = (overrides: RenderOverrides = {}) => {
   const app = createSSRApp({
     render,
     setup: () => ({
+      Button: passthrough('button'),
       rows: overrides.rows ?? [send],
       loading: overrides.loading ?? false,
       error: overrides.error ?? null,
@@ -353,10 +370,10 @@ const renderHistory = (overrides: RenderOverrides = {}) => {
       openRows: overrides.openRows ?? new Set<string>(),
       meta: overrides.pageMeta ?? meta,
       currentPage: overrides.pageMeta?.current_page ?? meta.current_page,
-      statusPresentation: (status: string) => ({
+      statusPresentation: (status: string, channel: string) => ({
         label: status === 'accepted' ? 'Accepted' : status === 'delivered' ? 'Delivered' : status,
         help: status === 'accepted'
-          ? 'Accepted by Resend for delivery.'
+          ? `Accepted by the ${channel === 'smtp' ? 'SMTP' : 'Resend'} delivery channel.`
           : status === 'delivered'
             ? 'The recipient server accepted the email. Inbox placement is not guaranteed.'
             : 'Delivery status reported by the provider.',
@@ -373,7 +390,6 @@ const renderHistory = (overrides: RenderOverrides = {}) => {
     }),
   })
   app.config.warnHandler = () => undefined
-  app.component('Button', passthrough('button'))
   app.component('AppSpinner', passthrough('span'))
   return renderToString(app)
 }
@@ -383,7 +399,9 @@ const loadModuleHelpers = () => {
   if (!script) throw new Error('OutreachHistory module helpers are missing')
   const transpiled = new Bun.Transpiler({ loader: 'ts' }).transformSync(script)
   const executable = transpiled
+    .replace(/import\s*{\s*Button\s*}\s*from\s*["']@\/components\/ui\/button["'];?/g, '')
     .replace(/import\s*{\s*parseIsoOffsetToMicroseconds\s*}\s*from\s*["']~\/composables\/useOutreachSend["'];?/g, '')
+    .replace(/import\s*{\s*isOutreachAuthorizationError\s*}\s*from\s*["']~\/utils\/outreach-auth["'];?/g, '')
     .replaceAll('export function ', 'function ')
   return new Function(`${executable}\nreturn { startOutreachHistoryRefresh, showLatestOutreachPage }`)() as {
     startOutreachHistoryRefresh: (options: Record<string, unknown>) => () => void
@@ -395,6 +413,18 @@ const loadModuleHelpers = () => {
 }
 
 describe('outreach delivery ledger', () => {
+  test('resolves the project button and inherits its compact padding and focus treatment', async () => {
+    const html = await renderHistory()
+    const buttonClass = buttonVariants({ size: 'sm' })
+
+    expect(String(compiledSfcScript.bindings?.Button)).toBe('setup-maybe-ref')
+    expect(html).toContain('<button')
+    expect(html).not.toContain('<Button')
+    expect(buttonClass).toContain('h-8')
+    expect(buttonClass).toContain('px-3')
+    expect(buttonClass).toContain('focus-visible:ring-2')
+  })
+
   test('renders real mounted loading, empty, error, and retry states', async () => {
     const initial = deferred<OutreachEmailSendPage>()
     const loading = mountHistoryComponent({
@@ -610,10 +640,74 @@ describe('outreach delivery ledger', () => {
     const delivered = await renderHistory({ rows: [{ ...send, status: 'delivered' }] })
 
     expect(accepted).toContain('>Accepted<')
-    expect(accepted).toContain('Accepted by Resend for delivery.')
+    expect(accepted).toContain('Accepted by the Resend delivery channel.')
     expect(accepted).not.toContain('>Sent<')
     expect(delivered).toContain('The recipient server accepted the email.')
     expect(delivered).toContain('Inbox placement is not guaranteed.')
+  })
+
+  test('uses channel-aware accepted wording for SMTP without naming Resend', async () => {
+    const smtp = await renderHistory({
+      rows: [sendWith({ delivery_channel: 'smtp', provider_email_id: 'smtp-message-id' })],
+    })
+
+    expect(smtp).toContain('Accepted by the SMTP delivery channel.')
+    expect(smtp).not.toContain('Accepted by Resend')
+  })
+
+  test('purges sensitive rows and ignores a late in-flight response after authorization loss', async () => {
+    const late = deferred<OutreachEmailSendPage>()
+    const harness = mountHistoryComponent({
+      list: () => late.promise,
+      refresh: async () => send,
+    })
+    await flushComponent()
+
+    harness.clearSensitive()
+    expect(harness.state.rows).toHaveLength(0)
+    expect(harness.resources.intervals.size).toBe(0)
+    expect(harness.resources.visibilityListeners.size).toBe(0)
+
+    late.resolve(pageFor([send]))
+    await flushComponent()
+    expect(harness.state.rows).toHaveLength(0)
+  })
+
+  test('purges the mounted ledger and notifies the page when a page request loses authorization', async () => {
+    let listCalls = 0
+    const harness = mountHistoryComponent({
+      list: async () => {
+        listCalls += 1
+        if (listCalls === 1) return pageFor([send])
+        throw Object.assign(new Error('Not authenticated'), { name: 'OutreachAuthorizationError' })
+      },
+      refresh: async () => send,
+    })
+    await flushComponent()
+    expect(harness.state.rows).toHaveLength(1)
+
+    await click(findButton(harness.root, 'Refresh current outreach history page'))
+    await flushComponent()
+
+    expect(harness.state.rows).toHaveLength(0)
+    expect(harness.authorizationLosses()).toBe(1)
+    expect(harness.resources.intervals.size).toBe(0)
+  })
+
+  test('purges the mounted ledger when manual status refresh loses authorization', async () => {
+    const harness = mountHistoryComponent({
+      list: async () => pageFor([send]),
+      refresh: async () => {
+        throw Object.assign(new Error('Not authenticated'), { name: 'OutreachAuthorizationError' })
+      },
+    })
+    await flushComponent()
+
+    await click(findButton(harness.root, 'Refresh delivery status for ShipFast to founder@example.com'))
+    await flushComponent()
+
+    expect(harness.state.rows).toHaveLength(0)
+    expect(harness.authorizationLosses()).toBe(1)
   })
 
   test('renders the expanded audit rail with exact text and a direct untracked preview', async () => {
@@ -641,6 +735,38 @@ describe('outreach delivery ledger', () => {
     expect(html).toContain(send.created_at)
     expect(html).toContain('provider_refresh_failed')
     expect(html).not.toMatch(/href="https?:\/\/(?:bit\.ly|[^"]+[?&]utm_)/i)
+  })
+
+  test('keeps audit metadata above a full-width message detail panel', async () => {
+    const html = await renderHistory({ openRows: new Set([sendId]) })
+    const metadataIndex = html.indexOf('data-outreach-history-details-meta')
+    const contentIndex = html.indexOf('data-outreach-history-details-content')
+
+    expect(html).toContain('data-outreach-history-details')
+    expect(metadataIndex).toBeGreaterThan(-1)
+    expect(contentIndex).toBeGreaterThan(metadataIndex)
+    expect(source).not.toContain('xl:ml-[10rem]')
+    expect(source).toContain('px-4 py-4 sm:px-5')
+  })
+
+  test('bounds expanded admin details to a compact working height', async () => {
+    const html = await renderHistory({ openRows: new Set([sendId]) })
+
+    expect(html).toMatch(/data-outreach-history-details-meta[^>]*class="[^"]*py-4/)
+    expect(html).toMatch(/aria-label="Plain-text email body"[^>]*class="[^"]*max-h-64/)
+    expect(html).not.toContain('max-h-96')
+  })
+
+  test('themes the scrollable email body instead of leaking the browser default', async () => {
+    const html = await renderHistory({ openRows: new Set([sendId]) })
+
+    expect(html).toContain('outreach-message-scroll')
+    expect(html).toContain('aria-label="Plain-text email body"')
+    expect(html).toContain('tabindex="0"')
+    expect(source).toContain('scrollbar-width: thin')
+    expect(source).toContain('::-webkit-scrollbar')
+    expect(source).toContain('var(--release-rail)')
+    expect(source).toContain('var(--release-blaze)')
   })
 
   test('renders unavailable sender snapshots as clear em dashes', async () => {

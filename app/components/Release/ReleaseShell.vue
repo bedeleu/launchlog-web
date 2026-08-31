@@ -43,7 +43,7 @@ withDefaults(defineProps<{
         ? [
             'grid items-start gap-6',
             wideRail
-              ? 'xl:grid-cols-[minmax(0,3fr)_minmax(26rem,2fr)] xl:gap-8'
+              ? 'lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-8 xl:grid-cols-[minmax(0,3fr)_minmax(26rem,2fr)]'
               : 'lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-8',
           ]
         : 'block'"
@@ -54,7 +54,7 @@ withDefaults(defineProps<{
       <aside
         v-if="$slots.rail"
         data-release-rail
-        :class="['min-w-0', wideRail ? 'xl:sticky xl:top-24' : 'lg:sticky lg:top-24']"
+        class="min-w-0 lg:sticky lg:top-24"
       >
         <slot name="rail" />
       </aside>

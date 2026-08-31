@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ReleaseSelect } from '@/components/ui/select'
 import { useOutreachForm } from '~/composables/useOutreachForm'
+import { createOutreachAuthorizationGuard } from '~/utils/outreach-auth'
 import { shouldPreventOutreachEnterSubmit } from '~/utils/outreach-template'
 
 definePageMeta({ middleware: 'admin' })
@@ -17,7 +18,17 @@ useHead({
 })
 
 const inputClass = 'release-field mt-2 h-11 px-3'
-const historyRef = ref<{ showLatest: () => Promise<void> } | null>(null)
+const route = useRoute()
+const { user } = useAuth()
+const historyRef = ref<{
+  showLatest: () => Promise<void>
+  clearSensitive: () => void
+} | null>(null)
+const authorizationGuard = createOutreachAuthorizationGuard({
+  clearSensitive: () => historyRef.value?.clearSensitive(),
+  currentPath: () => route.fullPath,
+  redirectToLogin: async location => { await navigateTo(location) },
+})
 const {
   context,
   contextErrors,
@@ -53,8 +64,20 @@ async function submitOutreach(): Promise<void> {
     document.querySelector<HTMLElement>('#outreach-recipient')?.focus()
     return
   }
+  if (outcome === 'unauthorized') {
+    await authorizationGuard.handleAuthorizationLoss()
+    return
+  }
   if (outcome === 'invalid') await focusFirstInvalid()
 }
+
+const handleAuthorizationLoss = (): Promise<void> => (
+  authorizationGuard.handleAuthorizationLoss()
+)
+
+watch(user, (current, previous) => {
+  authorizationGuard.handleAuthStateChange(current, previous)
+})
 
 function preventSingleLineSubmit(event: KeyboardEvent): void {
   const target = event.target
@@ -183,6 +206,10 @@ function preventSingleLineSubmit(event: KeyboardEvent): void {
       </section>
     </form>
 
-    <AdminOutreachHistory ref="historyRef" class="mt-10" />
+    <AdminOutreachHistory
+      ref="historyRef"
+      class="mt-10"
+      @authorization-lost="handleAuthorizationLoss"
+    />
   </div>
 </template>
