@@ -6,7 +6,6 @@ const source = readFileSync(fileURLToPath(new URL('./AppBar.vue', import.meta.ur
 const footerSource = readFileSync(fileURLToPath(new URL('./Footer.vue', import.meta.url)), 'utf8')
 const llmsSource = readFileSync(fileURLToPath(new URL('../../server/routes/llms.txt.get.ts', import.meta.url)), 'utf8')
 const llmsFullSource = readFileSync(fileURLToPath(new URL('../../server/routes/llms-full.txt.get.ts', import.meta.url)), 'utf8')
-const nuxtConfigSource = readFileSync(fileURLToPath(new URL('../../nuxt.config.ts', import.meta.url)), 'utf8')
 
 describe('authenticated header navigation', () => {
   test('keeps the customer dashboard available to every signed-in account', () => {
@@ -47,7 +46,6 @@ describe('authenticated header navigation', () => {
     expect(footerSource).toContain("{ label: 'Blog', to: '/blog' }")
     expect(llmsSource).toContain('- Blog: ${site}/blog')
     expect(llmsFullSource).toContain('${site}/blog/${p.slug}')
-    expect(nuxtConfigSource).toContain("'/api/__sitemap__/blog-urls'")
   })
 
   test('keeps desktop navigation and actions at xl while the menu remains available below it', () => {

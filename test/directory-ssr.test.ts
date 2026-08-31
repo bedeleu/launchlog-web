@@ -594,6 +594,7 @@ describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
     expect(seeded.status).toBe(200)
     expect(seeded.headers.get('cache-control')).toBe(publicSitemapCache)
     expect(seededBody).toContain('/listing/seeded')
+    expect(seededBody).toContain('/blog/seeded-article')
 
     advanceFixtureClockBy(601)
     upstreamState.listings = { status: 503, body: { message: 'listing discovery unavailable' } }
@@ -619,9 +620,12 @@ describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
     await waitForBody(`${BASE}/sitemap.xml`, '/listing/recovered')
 
     const recovered = await fetch(`${BASE}/sitemap.xml`)
+    const recoveredBody = await recovered.text()
+
     expect(recovered.status).toBe(200)
     expect(recovered.headers.get('cache-control')).toBe(publicSitemapCache)
-    expect(await recovered.text()).toContain('/listing/recovered')
+    expect(recoveredBody).toContain('/listing/recovered')
+    expect(recoveredBody).toContain('/blog/seeded-article')
   })
 
   test.each([
