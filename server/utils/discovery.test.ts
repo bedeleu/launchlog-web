@@ -44,6 +44,34 @@ test('returns a complete current discovery listing array unchanged', async () =>
   ]
 
   expect(parseDiscoveryListingsOrThrow(listings)).toEqual(listings)
+  expect(parseDiscoveryListingsOrThrow(listings)).toBe(listings)
+})
+
+test.each([
+  { slug: 'alpha\nbeta', name: 'Alpha', tagline: null, updated_at: '2026-08-01T10:00:00.000000Z' },
+  { slug: '../alpha', name: 'Alpha', tagline: null, updated_at: '2026-08-01T10:00:00.000000Z' },
+  { slug: 'Alpha', name: 'Alpha', tagline: null, updated_at: '2026-08-01T10:00:00.000000Z' },
+  { slug: 'alpha beta', name: 'Alpha', tagline: null, updated_at: '2026-08-01T10:00:00.000000Z' },
+  { slug: 'alpha-', name: 'Alpha', tagline: null, updated_at: '2026-08-01T10:00:00.000000Z' },
+])('rejects hostile canonical listing slugs %#', async (listing) => {
+  const parseDiscoveryListingsOrThrow = await loadDiscoveryListingParser()
+
+  expect(() => parseDiscoveryListingsOrThrow([listing])).toThrow(TypeError)
+})
+
+test.each([
+  '2026-02-29T10:00:00Z',
+  '2026-04-31T10:00:00Z',
+  '2026-08-01T24:00:00Z',
+  '2026-08-01T10:00:00',
+  '2026-08-01T10:00:00+24:00',
+  '2026-08-01T10:00:00+10:60',
+  '2026-08-01T10:00:00.1234567Z',
+])('rejects invalid canonical timestamps %#', async (updated_at) => {
+  const parseDiscoveryListingsOrThrow = await loadDiscoveryListingParser()
+  const listing = { slug: 'alpha', name: 'Alpha', tagline: null, updated_at }
+
+  expect(() => parseDiscoveryListingsOrThrow([listing])).toThrow(TypeError)
 })
 
 test.each([
