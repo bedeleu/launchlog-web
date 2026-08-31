@@ -4,11 +4,15 @@ withDefaults(defineProps<{
   alt?: string
   title?: string
   loading?: boolean
+  mediaClass?: string
+  imageClass?: string
 }>(), {
   src: null,
   alt: '',
   title: undefined,
   loading: false,
+  mediaClass: '',
+  imageClass: 'object-cover',
 })
 </script>
 
@@ -18,12 +22,12 @@ withDefaults(defineProps<{
     :aria-busy="loading"
     class="overflow-hidden border border-release-seam bg-release-paper text-release-ink"
   >
-    <div class="relative aspect-[16/10] overflow-hidden bg-[#d7cebc]">
+    <div :class="['relative aspect-[16/10] overflow-hidden bg-[#d7cebc]', mediaClass]">
       <img
         v-if="src"
         :src="src"
         :alt="alt"
-        class="size-full object-cover"
+        :class="['size-full', imageClass]"
       >
       <div
         v-else

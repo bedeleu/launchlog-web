@@ -14,7 +14,6 @@ const nav = [
   { label: 'Tech Products', to: '/tech-products' },
   { label: 'Featured', to: '/featured' },
   { label: 'Pricing', to: '/pricing' },
-  { label: 'Blog', to: '/blog' },
   { label: 'Contact', to: '/contact' },
 ]
 
@@ -56,7 +55,7 @@ watch(user, async () => {
       </NuxtLink>
 
       <!-- Desktop nav -->
-      <nav class="hidden items-center gap-1 lg:flex">
+      <nav class="hidden items-center gap-1 xl:flex">
         <NuxtLink
           v-for="item in nav"
           :key="item.to"
@@ -71,7 +70,7 @@ watch(user, async () => {
       </nav>
 
       <!-- Desktop actions -->
-      <div class="hidden items-center gap-2 lg:flex">
+      <div class="hidden items-center gap-2 xl:flex">
         <NuxtLink to="/browse-all" aria-label="Search products" class="border border-transparent p-2 text-release-paper-muted transition-colors hover:border-release-seam hover:text-release-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus">
           <Search class="size-5" />
         </NuxtLink>
@@ -114,7 +113,7 @@ watch(user, async () => {
 
       <!-- Mobile toggle -->
       <button
-        class="border border-release-seam p-2 text-release-paper transition-colors hover:border-release-paper-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus lg:hidden"
+        class="border border-release-seam p-2 text-release-paper transition-colors hover:border-release-paper-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus xl:hidden"
         :aria-expanded="open"
         aria-label="Toggle menu"
         @click="open = !open"
@@ -130,7 +129,7 @@ watch(user, async () => {
       leave-active-class="transition duration-100 ease-in"
       leave-to-class="opacity-0 -translate-y-1"
     >
-      <div v-if="open" class="border-t border-release-seam bg-release-ink lg:hidden">
+      <div v-if="open" class="border-t border-release-seam bg-release-ink xl:hidden">
         <nav class="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-3">
           <NuxtLink
             v-for="item in nav"
