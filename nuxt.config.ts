@@ -89,6 +89,8 @@ export default defineNuxtConfig({
   },
   routeRules: {
     '/': { isr: 600 },
+    '/shipped': { swr: 600 },
+    '/shipped/**': { swr: 600 },
     '/sitemap.xml': { headers: { 'cache-control': 'private, no-store' } },
     '/browse-all': { isr: 1800 },
     '/tech-products': { isr: 1800 },

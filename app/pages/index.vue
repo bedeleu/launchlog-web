@@ -6,6 +6,19 @@ import { composeHomepageListings } from '~/utils/listing-placement'
 
 const { user } = useAuth()
 const { listListings } = useListings()
+const editionClient = useEditions()
+
+// Editions are an editorial discovery surface, not homepage listing inventory.
+// Start the request independently and fail it soft so neither upstream can hide
+// or postpone the other surface.
+const latestEditionRequest = useAsyncData('homepage-latest-edition', async () => {
+  try {
+    return (await editionClient.fetchArchive(1)).data[0] ?? null
+  }
+  catch {
+    return null
+  }
+})
 
 interface HomeListings {
   featured: ListingCard[]
@@ -34,6 +47,7 @@ const { data: homeListings, error: homeListingsError, refresh: refreshHomeListin
   },
   { default: () => ({ featured: [], recent: [] }) },
 )
+const { data: latestEdition } = await latestEditionRequest
 
 const homepageComposition = computed(() => composeHomepageListings(
   homeListings.value?.featured ?? [],
@@ -227,7 +241,7 @@ useHead({
           title="Prepare your release"
           description="Paste one public URL. We capture the site and prepare the listing before you choose a placement."
         >
-          <IntakePreviewForm stacked />
+          <IntakePreviewForm stacked source="homepage" />
           <ReleaseStateMarker
             state="active"
             label="Human approval"
@@ -251,7 +265,7 @@ useHead({
 
     <section v-if="homeListingsFailed" class="border-t border-release-seam">
       <div class="mx-auto max-w-[96rem] px-4 py-14 sm:px-8 lg:px-12">
-        <div class="border border-release-destructive/50 border-l-4 bg-release-rail py-14 text-center">
+        <div class="border border-release-destructive/50 bg-release-rail py-14 text-center">
           <p class="text-lg font-medium text-[#f6f1e7]">
             Listings are temporarily unavailable
           </p>
@@ -276,6 +290,27 @@ useHead({
           </NuxtLink>
         </div>
         <ListingGrid class="mt-7" :listings="featuredListings" mode="homepage-featured" />
+      </div>
+    </section>
+
+    <section v-if="latestEdition" class="border-t border-release-seam" aria-labelledby="latest-edition-title">
+      <div class="mx-auto max-w-[96rem] px-4 py-12 sm:px-8 lg:px-12">
+        <div class="flex flex-wrap items-end justify-between gap-4 border-b border-release-seam pb-5">
+          <div>
+            <p class="font-mono text-[0.68rem] font-semibold tracking-[0.2em] text-release-warning uppercase">
+              Weekly record
+            </p>
+            <h2 id="latest-edition-title" class="mt-2 text-3xl font-semibold tracking-[-0.03em] text-[#f6f1e7]">
+              Latest weekly edition
+            </h2>
+          </div>
+          <NuxtLink to="/shipped" class="font-mono text-xs font-semibold tracking-[0.08em] text-release-blaze uppercase transition-colors hover:text-release-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus focus-visible:ring-offset-4 focus-visible:ring-offset-release-ink">
+            Browse the archive
+          </NuxtLink>
+        </div>
+        <div class="border-t border-release-seam">
+          <EditionSummary :summary="latestEdition" />
+        </div>
       </div>
     </section>
 

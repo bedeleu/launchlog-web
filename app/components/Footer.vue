@@ -19,6 +19,7 @@ const columns = [
     title: 'Services',
     links: [
       { label: 'Browse Directory', to: '/browse-all' },
+      { label: 'Shipped', to: '/shipped' },
       { label: 'Tech Products', to: '/tech-products' },
       { label: 'Featured', to: '/featured' },
       { label: 'Submit a Product', to: '/submit' },

@@ -1,5 +1,16 @@
 import { track } from '../utils/analytics'
 export type PreviewStatus = 'generating' | 'ready' | 'failed' | 'converted' | 'expired'
+export type ReferralSource =
+  | 'direct'
+  | 'organic'
+  | 'homepage'
+  | 'edition'
+  | 'category'
+  | 'channel_map'
+  | 'newsletter'
+  | 'unknown'
+
+const EDITION_SLUG = /^\d{4}-w(?:0[1-9]|[1-4]\d|5[0-3])$/
 
 export interface ExistingListingConflict {
   action: 'manage' | 'claim'
@@ -76,10 +87,19 @@ export const usePreviews = () => {
     return token ? { Authorization: `Bearer ${token}` } : undefined
   }
 
-  const createPreview = async (url: string): Promise<Preview> => {
+  const createPreview = async (
+    url: string,
+    source: ReferralSource,
+    editionSlug?: string,
+  ): Promise<Preview> => {
+    const body: { url: string, source: ReferralSource, edition_slug?: string } = { url, source }
+    if (source === 'edition' && editionSlug && EDITION_SLUG.test(editionSlug)) {
+      body.edition_slug = editionSlug
+    }
+
     const { data } = await $fetch<{ data: Preview }>(`${base}/previews`, {
       method: 'POST',
-      body: { url },
+      body,
       headers: await authHeaders(),
     })
     track('Preview Created')

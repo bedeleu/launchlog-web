@@ -4,13 +4,22 @@ import { useForm } from 'vee-validate'
 import * as z from 'zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import type { ExistingListingConflict } from '~/composables/usePreviews'
+import type { ExistingListingConflict, ReferralSource } from '~/composables/usePreviews'
 import { existingListingConflictFromError } from '~/composables/usePreviews'
 
-withDefaults(defineProps<{
+interface PreviewReferralContext {
+  source: ReferralSource
+  editionSlug?: string
+}
+
+const props = withDefaults(defineProps<{
   stacked?: boolean
+  source?: PreviewReferralContext['source']
+  editionSlug?: PreviewReferralContext['editionSlug']
 }>(), {
   stacked: false,
+  source: 'direct',
+  editionSlug: undefined,
 })
 
 const { createPreview } = usePreviews()
@@ -56,7 +65,7 @@ const onSubmit = handleSubmit(async (values) => {
   try {
     // Always ask the API first. A locally remembered preview cannot prove that
     // the canonical domain is still unclaimed or belongs to this account.
-    const preview = await createPreview(values.url)
+    const preview = await createPreview(values.url, props.source, props.editionSlug)
     intake.rememberPreview(preview)
     await navigateTo(`/preview/${preview.token}`)
   }

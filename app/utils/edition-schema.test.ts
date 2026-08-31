@@ -124,7 +124,7 @@ describe('weekly edition JSON-LD', () => {
     const hostileEdition: EditionDetail = {
       ...edition,
       introduction: hostile,
-      items: [{ ...edition.items[0], name: hostile, tagline: hostile }],
+      items: [{ ...edition.items[0]!, name: hostile, tagline: hostile }],
     }
     const schema = buildEditionSchema(hostileEdition, 'https://launchlog.ai')
     const graph = schema['@graph'] as Array<Record<string, unknown>>

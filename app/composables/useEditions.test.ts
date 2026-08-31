@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+import type { EditionItem } from '#shared/types/editions'
 import { createEditionClient, normalizeEditionPage } from './useEditions'
 
 const API = 'https://api.launchlog.test'
@@ -28,7 +29,7 @@ const currentItem = {
   listing_path: '/listing/current-launch',
   provenance_url: 'https://proof.example/current-launch',
   include_in_item_list: true,
-}
+} satisfies EditionItem
 
 const archive = (page = 1, data: unknown[] = [summary]) => ({
   data,
@@ -40,7 +41,7 @@ const archive = (page = 1, data: unknown[] = [summary]) => ({
   },
 })
 
-const detail = (items: unknown[] = [currentItem]) => ({
+const detail = (items: EditionItem[] = [currentItem]) => ({
   data: {
     slug: summary.slug,
     week_starts_at: summary.week_starts_at,
@@ -66,8 +67,8 @@ describe('edition discovery client', () => {
     '01',
     'no',
     '9999999999',
-    ['1'],
-    ['1', '2'],
+    [['1']],
+    [['1', '2']],
     2,
     null,
   ])('rejects non-canonical page input %p', (raw) => {

@@ -253,6 +253,13 @@ describe.skipIf(!isBuilt)('/shipped SSR', () => {
     expect(canonicalIn(html)).toBe('https://launchlog.ai/shipped/2026-w35')
     expect(html).toContain(`href="${CURRENT_PATH}"`)
     expect(html).toContain(`href="${CARRIED_PATH}"`)
+    const currentAnchor = html.match(new RegExp(`<a[^>]+href="${CURRENT_PATH}"[^>]*>`))?.[0] ?? ''
+    expect(currentAnchor).toContain('rel="noopener sponsored"')
+
+    const proofAnchor = html.match(/<a[^>]+href="https:\/\/current\.example\/release"[^>]*>/)?.[0] ?? ''
+    expect(proofAnchor).toContain('rel="noopener"')
+    expect(proofAnchor).not.toContain('noreferrer')
+    expect(proofAnchor).not.toContain('sponsored')
     expect(html).toContain('Reported after cutoff')
     expect(html).toContain('No longer active')
     expect(html).not.toContain('/listing/withdrawn')
@@ -316,7 +323,10 @@ describe.skipIf(!isBuilt)('/shipped SSR', () => {
 
   test('builds exact per-instance SWR rules for archive and detail', () => {
     const output = readFileSync(nitroChunk, 'utf8')
-    expect(output).toMatch(/"\/shipped":\s*\{\s*"swr":\s*600\s*\}/)
-    expect(output).toMatch(/"\/shipped\/\*\*":\s*\{\s*"swr":\s*600\s*\}/)
+    // Nitro expands `swr: 600` with its normalized `cache` object in the
+    // production bundle. Pin the public rule and value without rejecting that
+    // framework-owned representation.
+    expect(output).toMatch(/"\/shipped":\s*\{[^}]*"swr":\s*600/)
+    expect(output).toMatch(/"\/shipped\/\*\*":\s*\{[^}]*"swr":\s*600/)
   })
 })
