@@ -3,6 +3,7 @@
 // their exact order — it must never log, translate, mutate, or mask errors.
 export interface ErrorLike {
   data?: {
+    code?: string
     message?: string
     error?: string
   }

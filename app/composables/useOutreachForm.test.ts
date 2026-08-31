@@ -149,6 +149,45 @@ describe('outreach form controller', () => {
     expect(form.notice.value).toEqual({ kind: 'error', message: 'The provider rejected this recipient.' })
   })
 
+  test('marks the recipient invalid when outreach history already contains the address', async () => {
+    const duplicateMessage = 'Email not sent. This recipient already exists in outreach history.'
+    let sendCalls = 0
+    const form = createOutreachFormController({
+      random: () => 0,
+      randomUUID: createRequestIds(),
+      verifyPreview: async () => ({ ok: true }),
+      send: async () => {
+        sendCalls += 1
+        throw {
+          data: {
+            code: 'outreach_recipient_already_contacted',
+            message: duplicateMessage,
+          },
+        }
+      },
+    })
+    fillValidContext(form, { recipientEmail: ' support@tinythings.app ' })
+    form.createDraft()
+    const preservedDraft = {
+      subject: form.subject.value,
+      text: form.text.value,
+      signature: form.draftSignature.value,
+    }
+
+    const outcome = await form.submit()
+
+    expect(outcome).toBe('invalid')
+    expect(form.contextErrors.recipientEmail).toBe(duplicateMessage)
+    expect(form.context.recipientEmail).toBe(' support@tinythings.app ')
+    expect({
+      subject: form.subject.value,
+      text: form.text.value,
+      signature: form.draftSignature.value,
+    }).toEqual(preservedDraft)
+    expect(form.requestId.value).toBe(initialRequestId)
+    expect(sendCalls).toBe(1)
+  })
+
   test('reports authorization loss separately so the page can purge the ledger and redirect', async () => {
     const form = createOutreachFormController({
       random: () => 0,

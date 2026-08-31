@@ -24,6 +24,9 @@ type ContextField = 'recipientEmail' | 'firstName' | 'productName' | 'sourceName
 type DraftField = 'subject' | 'text'
 type FormNotice = { kind: 'success' | 'error', message: string } | null
 
+const recipientAlreadyContactedCode = 'outreach_recipient_already_contacted'
+const recipientAlreadyContactedFallback = 'Email not sent. This recipient already exists in outreach history.'
+
 export interface OutreachFormDependencies {
   random: () => number
   randomUUID: () => string
@@ -226,6 +229,12 @@ export function createOutreachFormController(dependencies: OutreachFormDependenc
     catch (error: unknown) {
       if (isOutreachAuthorizationError(error)) return 'unauthorized'
       const normalized = toErrorLike(error)
+      if (normalized.data?.code === recipientAlreadyContactedCode) {
+        const message = normalized.data.message ?? recipientAlreadyContactedFallback
+        contextErrors.recipientEmail = message
+        notice.value = { kind: 'error', message }
+        return 'invalid'
+      }
       notice.value = {
         kind: 'error',
         message: normalized.data?.message ?? 'Could not send the email. The draft was preserved.',
