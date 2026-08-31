@@ -5,12 +5,11 @@ import { fileURLToPath } from 'node:url'
 const source = readFileSync(fileURLToPath(new URL('./index.vue', import.meta.url)), 'utf8')
 
 describe('Home bounded catalog proof', () => {
-  test('keeps the latest screenshot complete inside a bounded desktop proof', () => {
+  test('keeps the latest screenshot complete without letterboxing it inside a forced desktop height', () => {
     const releaseCoverTag = source.match(/<ReleaseCover[\s\S]*?>/)?.[0] ?? ''
 
-    expect(releaseCoverTag).toContain('media-class=')
-    expect(releaseCoverTag).toContain('lg:aspect-auto')
-    expect(releaseCoverTag).toContain('lg:h-[clamp(18rem,24vw,22rem)]')
+    expect(releaseCoverTag).not.toContain('media-class=')
+    expect(releaseCoverTag).not.toContain('h-[clamp(')
     expect(releaseCoverTag).toContain('image-class=')
     expect(releaseCoverTag).toContain('object-contain')
     expect(releaseCoverTag).toContain('object-top')
