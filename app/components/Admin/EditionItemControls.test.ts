@@ -11,8 +11,15 @@ describe('EditionItemControls', () => {
     expect(source).not.toContain('v-model')
   })
 
-  test('disables the visibility control while its request is pending', () => {
+  test('disables every visibility control while pending but marks only its own request busy', () => {
     expect(source).toContain(':disabled="pending"')
+    expect(source).toContain('visibilityPending: boolean')
+    expect(source).toContain(':aria-busy="visibilityPending"')
+    expect(source).toContain("visibilityPending ? 'Saving visibility…'")
+  })
+
+  test('gives Show or Hide an item-specific accessible name', () => {
+    expect(source).toContain(':aria-label="`${item.visible ? \'Hide\' : \'Show\'} ${item.snapshot_name}`"')
   })
 
   test('uses Release Catalog materials without legacy visual treatments', () => {

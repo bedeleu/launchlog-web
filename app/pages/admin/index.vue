@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowRight, Camera, CheckCircle2, Clock3, Gauge, ListChecks, ScanLine, Send, ShieldCheck, Sparkles } from '@lucide/vue'
+import { ArrowRight, CalendarDays, Camera, CheckCircle2, Clock3, Gauge, ListChecks, ScanLine, Send, ShieldCheck, Sparkles } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import type { AdminDashboard, AdminListing, FounderScreenshotStatus } from '~/composables/useAdminListings'
 import { toErrorLike } from '~/utils/error-like'
@@ -197,6 +197,12 @@ onMounted(async () => {
           <NuxtLink to="/admin/listings">
             <ListChecks class="mr-2 size-4" />
             Listings
+          </NuxtLink>
+        </Button>
+        <Button as-child variant="outline">
+          <NuxtLink to="/admin/weekly-editions">
+            <CalendarDays class="mr-2 size-4" />
+            Weekly editions
           </NuxtLink>
         </Button>
         <Button as-child>
