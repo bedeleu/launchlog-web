@@ -14,4 +14,12 @@ describe('admin page routing', () => {
     expect(existsSync(`${pagesDirectory}/admin/outreach.vue`)).toBe(true)
     expect(existsSync(`${pagesDirectory}/admin-outreach.vue`)).toBe(false)
   })
+
+  test('owns weekly editions under the canonical nested admin routes only', () => {
+    expect(existsSync(`${pagesDirectory}/admin/weekly-editions/index.vue`)).toBe(true)
+    expect(existsSync(`${pagesDirectory}/admin/weekly-editions/[id].vue`)).toBe(true)
+    expect(existsSync(`${pagesDirectory}/admin/weekly-editions.vue`)).toBe(false)
+    expect(existsSync(`${pagesDirectory}/admin-weekly-editions.vue`)).toBe(false)
+    expect(existsSync(`${pagesDirectory}/admin-weekly-editions/[id].vue`)).toBe(false)
+  })
 })
