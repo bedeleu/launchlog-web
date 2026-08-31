@@ -454,7 +454,10 @@ watch(
 
       <!-- Keep the real product visible while enrichment runs. The buyer can
            understand the placement and plans instead of staring at a fake page. -->
-      <div class="mt-8 grid gap-10 xl:grid-cols-[minmax(0,1fr)_minmax(18rem,20rem)_15rem] xl:items-start xl:gap-6">
+      <div
+        class="grid gap-10 xl:grid-cols-[minmax(0,1fr)_minmax(18rem,20rem)_15rem] xl:items-start xl:gap-6"
+        :class="isGenerating ? 'mt-5' : 'mt-8'"
+      >
         <!-- LEFT: compact proof and editable listing details in normal document flow. -->
         <div class="min-w-0">
           <IntakePlacementPreview

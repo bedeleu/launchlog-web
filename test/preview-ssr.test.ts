@@ -59,6 +59,7 @@ let base = ''
 describe('preview release flow source contract', () => {
   test('keeps the proof compact and the listing editor in the normal document flow', () => {
     expect(previewPage).not.toContain('xl:sticky xl:top-8')
+    expect(previewPage).toContain(":class=\"isGenerating ? 'mt-5' : 'mt-8'\"")
     expect(previewPage.indexOf('<IntakePlacementPreview')).toBeLessThan(previewPage.indexOf('<IntakePreviewEditor'))
     expect(previewPage.indexOf('<IntakePreviewEditor')).toBeLessThan(previewPage.indexOf('<IntakePlanSelector'))
   })
@@ -155,6 +156,9 @@ describe.skipIf(!isBuilt)('preview and ownership-request SSR', () => {
     expect(html).toContain('Reading the website')
     expect(html).toContain('Validate')
     expect(html).toContain('Ready')
+    expect(html).toContain('aria-current="step"')
+    expect(html).toContain('>Current</span>')
+    expect(html).toContain('>Complete</span>')
     expect(html).toContain('maker.example')
     expect(html).toContain('Your LaunchLog placement')
     expect(html).toContain('We’re reading your website details.')
