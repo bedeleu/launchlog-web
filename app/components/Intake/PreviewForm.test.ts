@@ -53,6 +53,16 @@ const renderForm = async (
 }
 
 describe('PreviewForm existing-listing state', () => {
+  test('requires an owned source and forwards only the explicit edition context', () => {
+    expect(source).toContain('source: ReferralSource')
+    expect(source).toContain('editionSlug?: string')
+    expect(source).toContain('createPreview(values.url, props.source, props.editionSlug)')
+    expect(source).not.toContain('edition_slug')
+    expect(source).not.toContain('document.referrer')
+    expect(source).not.toContain('route.query')
+    expect(source).not.toContain('window.location')
+  })
+
   test('does not offer a stale local preview after the API reports a represented domain', async () => {
     const html = await renderForm({
       action: 'claim',

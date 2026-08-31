@@ -37,7 +37,7 @@ describe('preview identity and existing-listing routing', () => {
   test('sends the verified identity on create and lookup', async () => {
     const previews = usePreviews()
 
-    await previews.createPreview('https://maker.example')
+    await previews.createPreview('https://maker.example', 'homepage')
     await previews.getPreview('p'.repeat(64))
 
     expect(calls).toHaveLength(2)
@@ -45,7 +45,7 @@ describe('preview identity and existing-listing routing', () => {
       url: `${API}/api/v1/previews`,
       options: {
         method: 'POST',
-        body: { url: 'https://maker.example' },
+        body: { url: 'https://maker.example', source: 'homepage' },
         headers: { Authorization: 'Bearer firebase-id-token' },
       },
     })
@@ -67,7 +67,7 @@ describe('preview identity and existing-listing routing', () => {
       },
     })
 
-    await usePreviews().createPreview('https://maker.example')
+    await usePreviews().createPreview('https://maker.example', 'direct')
 
     expect(calls[0]?.options?.headers).toBeUndefined()
     expect(authEvents).toEqual(['ready', 'token'])
@@ -87,6 +87,57 @@ describe('preview identity and existing-listing routing', () => {
     }])
     expect(authEvents).toEqual(['ready', 'token'])
   })
+
+  test('sends the exact edition source and syntactically valid edition slug', async () => {
+    await usePreviews().createPreview(
+      'https://maker.example/path?private=1',
+      'edition',
+      '2026-w35',
+    )
+
+    expect(calls).toEqual([{
+      url: `${API}/api/v1/previews`,
+      options: {
+        method: 'POST',
+        body: {
+          url: 'https://maker.example/path?private=1',
+          source: 'edition',
+          edition_slug: '2026-w35',
+        },
+        headers: { Authorization: 'Bearer firebase-id-token' },
+      },
+    }])
+    expect(Object.keys(calls[0]!.options!.body as object).sort()).toEqual([
+      'edition_slug',
+      'source',
+      'url',
+    ])
+    expect(authEvents).toEqual(['ready', 'token'])
+  })
+
+  test.each(['2026-W35', '2026-w00', '2026-w54', '2026-w35/extra', ''])(
+    'omits an invalid edition slug %p',
+    async (editionSlug) => {
+      await usePreviews().createPreview('https://maker.example', 'edition', editionSlug)
+
+      expect(calls[0]?.options?.body).toEqual({
+        url: 'https://maker.example',
+        source: 'edition',
+      })
+    },
+  )
+
+  test.each(['direct', 'homepage', 'organic', 'category', 'channel_map', 'newsletter', 'unknown'] as const)(
+    'never sends an edition slug beside non-edition source %s',
+    async (source) => {
+      await usePreviews().createPreview('https://maker.example', source, '2026-w35')
+
+      expect(calls[0]?.options?.body).toEqual({
+        url: 'https://maker.example',
+        source,
+      })
+    },
+  )
 
   test('accepts only the safe conflict contract from a 409 response', () => {
     const conflict = existingListingConflictFromError({
