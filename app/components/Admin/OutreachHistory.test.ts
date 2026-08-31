@@ -15,6 +15,7 @@ import {
 } from 'vue'
 import * as VueRuntime from 'vue'
 import { renderToString } from '@vue/server-renderer'
+import { buttonVariants } from '../ui/button'
 import { parseIsoOffsetToMicroseconds } from '../../composables/useOutreachSend'
 import type { OutreachEmailSend } from '~/composables/useOutreachSend'
 import type { OutreachEmailSendPage } from '~/composables/useOutreachHistory'
@@ -23,6 +24,11 @@ const source = readFileSync(fileURLToPath(new URL('./OutreachHistory.vue', impor
 const descriptor = parse(source).descriptor
 const template = descriptor.template?.content
 if (!template) throw new Error('OutreachHistory template is missing')
+
+const passthrough = (tag: string) => defineComponent({
+  inheritAttrs: false,
+  setup: (_props, { attrs, slots }) => () => h(tag, attrs, slots.default?.() ?? []),
+})
 
 const compiledSfcScript = compileScript(descriptor, {
   id: 'outreach-history-test',
@@ -33,6 +39,7 @@ const executableScript = transpiledScript
     `const { ${bindings.replaceAll(' as ', ': ')} } = VueRuntime;`
   ))
   .replace(/import\s*{\s*parseIsoOffsetToMicroseconds\s*}\s*from\s*["']~\/composables\/useOutreachSend["'];?/g, '')
+  .replace(/import\s*{\s*Button\s*}\s*from\s*["']@\/components\/ui\/button["'];?/g, 'const { Button } = Components;')
   .replace('export default', 'return')
 const render = new Function('Vue', compile(template, {
   mode: 'function',
@@ -42,13 +49,10 @@ const render = new Function('Vue', compile(template, {
 const OutreachHistory = new Function(
   'VueRuntime',
   'parseIsoOffsetToMicroseconds',
+  'Components',
   executableScript,
-)(VueRuntime, parseIsoOffsetToMicroseconds)
+)(VueRuntime, parseIsoOffsetToMicroseconds, { Button: passthrough('button') })
 OutreachHistory.render = render
-const passthrough = (tag: string) => defineComponent({
-  inheritAttrs: false,
-  setup: (_props, { attrs, slots }) => () => h(tag, attrs, slots.default?.() ?? []),
-})
 
 interface TestNode {
   type: string
@@ -238,7 +242,6 @@ const mountHistoryComponent = (api: MountedHistoryApi): MountedHistoryHarness =>
   const root = createTestNode('root')
   const app = mountedRenderer.createApp(OutreachHistory)
   app.config.warnHandler = () => undefined
-  app.component('Button', passthrough('button'))
   app.component('AppSpinner', passthrough('span'))
   const instance = app.mount(root) as unknown as { showLatest: () => Promise<void> }
   const internalInstance = (app as unknown as {
@@ -344,6 +347,7 @@ const renderHistory = (overrides: RenderOverrides = {}) => {
   const app = createSSRApp({
     render,
     setup: () => ({
+      Button: passthrough('button'),
       rows: overrides.rows ?? [send],
       loading: overrides.loading ?? false,
       error: overrides.error ?? null,
@@ -373,7 +377,6 @@ const renderHistory = (overrides: RenderOverrides = {}) => {
     }),
   })
   app.config.warnHandler = () => undefined
-  app.component('Button', passthrough('button'))
   app.component('AppSpinner', passthrough('span'))
   return renderToString(app)
 }
@@ -383,6 +386,7 @@ const loadModuleHelpers = () => {
   if (!script) throw new Error('OutreachHistory module helpers are missing')
   const transpiled = new Bun.Transpiler({ loader: 'ts' }).transformSync(script)
   const executable = transpiled
+    .replace(/import\s*{\s*Button\s*}\s*from\s*["']@\/components\/ui\/button["'];?/g, '')
     .replace(/import\s*{\s*parseIsoOffsetToMicroseconds\s*}\s*from\s*["']~\/composables\/useOutreachSend["'];?/g, '')
     .replaceAll('export function ', 'function ')
   return new Function(`${executable}\nreturn { startOutreachHistoryRefresh, showLatestOutreachPage }`)() as {
@@ -395,6 +399,18 @@ const loadModuleHelpers = () => {
 }
 
 describe('outreach delivery ledger', () => {
+  test('resolves the project button and inherits its compact padding and focus treatment', async () => {
+    const html = await renderHistory()
+    const buttonClass = buttonVariants({ size: 'sm' })
+
+    expect(String(compiledSfcScript.bindings?.Button)).toBe('setup-maybe-ref')
+    expect(html).toContain('<button')
+    expect(html).not.toContain('<Button')
+    expect(buttonClass).toContain('h-8')
+    expect(buttonClass).toContain('px-3')
+    expect(buttonClass).toContain('focus-visible:ring-2')
+  })
+
   test('renders real mounted loading, empty, error, and retry states', async () => {
     const initial = deferred<OutreachEmailSendPage>()
     const loading = mountHistoryComponent({
@@ -652,7 +668,15 @@ describe('outreach delivery ledger', () => {
     expect(metadataIndex).toBeGreaterThan(-1)
     expect(contentIndex).toBeGreaterThan(metadataIndex)
     expect(source).not.toContain('xl:ml-[10rem]')
-    expect(source).toContain('px-5 py-6 sm:px-6 xl:px-8')
+    expect(source).toContain('px-4 py-4 sm:px-5')
+  })
+
+  test('bounds expanded admin details to a compact working height', async () => {
+    const html = await renderHistory({ openRows: new Set([sendId]) })
+
+    expect(html).toMatch(/data-outreach-history-details-meta[^>]*class="[^"]*py-4/)
+    expect(html).toMatch(/aria-label="Plain-text email body"[^>]*class="[^"]*max-h-64/)
+    expect(html).not.toContain('max-h-96')
   })
 
   test('themes the scrollable email body instead of leaking the browser default', async () => {
