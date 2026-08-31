@@ -1,5 +1,7 @@
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
-import { existsSync } from 'node:fs'
+import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test'
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 // Regression guard for a real production defect: ListingGrid passed 'NuxtLink' to
@@ -18,6 +20,7 @@ if (!isBuilt && process.env.SSR_TESTS === 'required') {
 const UPSTREAM_PORT = 3199
 const SERVER_PORT = 3198
 const BASE = `http://127.0.0.1:${SERVER_PORT}`
+const preload = fileURLToPath(new URL('./helpers/fake-clock-preload.mjs', import.meta.url))
 
 const card = (slug: string, tier: 'basic' | 'featured') => ({
   slug,
@@ -58,11 +61,58 @@ const DIRECTORY_META = {
   slots_used: 30,
 }
 
+const discoveryListing = (slug: string) => ({
+  slug,
+  name: `Discovery ${slug}`,
+  tagline: 'A production-shaped discovery record.',
+  updated_at: '2026-08-26T10:00:00.000000Z',
+})
+
+const wordpressPost = (slug: string) => ({
+  id: 1,
+  date: '2026-08-26T10:00:00',
+  modified: '2026-08-26T10:00:00',
+  slug,
+  link: `http://127.0.0.1:${UPSTREAM_PORT}/blog/${slug}`,
+  title: { rendered: `Blog ${slug}` },
+  excerpt: { rendered: `Excerpt for ${slug}` },
+})
+
+type UpstreamState = {
+  status: number
+  body?: unknown
+}
+
+const defaultUpstreamState = () => ({
+  listings: {
+    status: 200,
+    body: { data: [discoveryListing('seeded')] },
+  } satisfies UpstreamState,
+  directory: { status: 200 } satisfies UpstreamState,
+  wordpress: {
+    status: 200,
+    body: [wordpressPost('seeded-article')],
+  } satisfies UpstreamState,
+})
+
+let upstreamState = defaultUpstreamState()
+
+const seededDirectoryState = (): UpstreamState => ({
+  status: 200,
+  body: {
+    data: LISTINGS,
+    meta: { ...DIRECTORY_META, last_page: 2, to: LISTINGS.length, total: LISTINGS.length * 2 },
+  },
+})
+
 /** Every upstream URL the SSR render asked for, so tests can assert the request. */
 const upstreamRequests: string[] = []
+const listingDiscoveryResponseStatuses: number[] = []
 
 let upstream: ReturnType<typeof Bun.serve> | undefined
 let server: ReturnType<typeof Bun.spawn> | undefined
+let clockDir = ''
+let clockFile = ''
 
 async function waitForServer(timeoutMs = 60_000): Promise<void> {
   const deadline = Date.now() + timeoutMs
@@ -81,14 +131,119 @@ async function waitForServer(timeoutMs = 60_000): Promise<void> {
   throw new Error(`SSR server did not become ready on ${BASE}`)
 }
 
+function spawnNitro(): ReturnType<typeof Bun.spawn> {
+  if (!clockFile) throw new Error('Fixture clock has not been initialized')
+
+  return Bun.spawn({
+    cmd: ['node', serverEntry],
+    env: {
+      ...process.env,
+      PORT: String(SERVER_PORT),
+      NUXT_PUBLIC_API_URL: `http://127.0.0.1:${UPSTREAM_PORT}`,
+      NUXT_PUBLIC_WORDPRESS_BLOG_URL: `http://127.0.0.1:${UPSTREAM_PORT}`,
+      LAUNCHLOG_TEST_CLOCK_FILE: clockFile,
+      NODE_OPTIONS: [process.env.NODE_OPTIONS, `--import=${preload}`].filter(Boolean).join(' '),
+    },
+    stdout: 'ignore',
+    stderr: 'ignore',
+  })
+}
+
+async function restartNitroInstance(): Promise<void> {
+  server?.kill()
+  await server?.exited
+  server = spawnNitro()
+  await waitForServer()
+}
+
+function advanceFixtureClockBy(seconds: number): void {
+  if (!clockFile) throw new Error('Fixture clock has not been initialized')
+
+  writeFileSync(clockFile, String(seconds * 1000))
+}
+
+async function waitForBody(url: string, text: string, timeoutMs = 10_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs
+
+  while (Date.now() < deadline) {
+    const body = await fetch(url).then(response => response.text())
+    if (body.includes(text)) return
+    await Bun.sleep(100)
+  }
+
+  throw new Error(`Timed out waiting for ${text}`)
+}
+
+async function waitForListingDiscoveryResponse(
+  status: number,
+  startIndex: number,
+  timeoutMs = 10_000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs
+
+  while (Date.now() < deadline) {
+    if (listingDiscoveryResponseStatuses.slice(startIndex).includes(status)) {
+      // The local upstream has returned the status to Nitro; yield once before
+      // moving to recovery so the background refresh can finish its error path.
+      await Bun.sleep(0)
+      return
+    }
+    await Bun.sleep(25)
+  }
+
+  throw new Error(`Timed out waiting for listing discovery response ${status}`)
+}
+
 describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
   beforeAll(async () => {
+    // These files exist only while the built suite is actually running. A skipped
+    // pre-build import must not leak a temp directory into a developer checkout.
+    clockDir = mkdtempSync(join(tmpdir(), 'launchlog-swr-clock-'))
+    clockFile = join(clockDir, 'offset-ms')
+    writeFileSync(clockFile, '0')
+
     upstream = Bun.serve({
       port: UPSTREAM_PORT,
       fetch(request) {
         upstreamRequests.push(request.url)
 
         const url = new URL(request.url)
+
+        if (url.pathname === '/api/v1/discovery/listings') {
+          const { status, body } = upstreamState.listings
+          listingDiscoveryResponseStatuses.push(status)
+          return Response.json(body, { status })
+        }
+
+        if (url.pathname === '/wp-json/wp/v2/posts') {
+          return Response.json(upstreamState.wordpress.body, {
+            status: upstreamState.wordpress.status,
+            headers: {
+              'x-wp-total': Array.isArray(upstreamState.wordpress.body)
+                ? String(upstreamState.wordpress.body.length)
+                : '1',
+              'x-wp-totalpages': '1',
+            },
+          })
+        }
+
+        if (url.pathname === '/wp-json/wp/v2/media') {
+          return Response.json([], { status: upstreamState.wordpress.status })
+        }
+
+        if (url.pathname !== '/api/v1/listings') {
+          return new Response('not found', { status: 404 })
+        }
+
+        if (upstreamState.directory.status !== 200) {
+          return Response.json(upstreamState.directory.body ?? { message: 'directory unavailable' }, {
+            status: upstreamState.directory.status,
+          })
+        }
+
+        if (upstreamState.directory.body !== undefined) {
+          return Response.json(upstreamState.directory.body)
+        }
 
         // The homepage asks for its Featured cohort separately. Keep this stub
         // production-shaped so the SSR test can guard the homepage geometry too.
@@ -124,23 +279,22 @@ describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
       },
     })
 
-    server = Bun.spawn({
-      cmd: ['node', serverEntry],
-      env: {
-        ...process.env,
-        PORT: String(SERVER_PORT),
-        NUXT_PUBLIC_API_URL: `http://127.0.0.1:${UPSTREAM_PORT}`,
-      },
-      stdout: 'ignore',
-      stderr: 'ignore',
-    })
+    server = spawnNitro()
 
     await waitForServer()
   })
 
-  afterAll(() => {
+  afterEach(() => {
+    upstreamState = defaultUpstreamState()
+    listingDiscoveryResponseStatuses.length = 0
+    if (clockFile) writeFileSync(clockFile, '0')
+  })
+
+  afterAll(async () => {
     server?.kill()
-    upstream?.stop(true)
+    await server?.exited
+    await upstream?.stop(true)
+    if (clockDir) rmSync(clockDir, { recursive: true, force: true })
   })
 
   test('every listing card is a real anchor to its listing page', async () => {
@@ -374,5 +528,150 @@ describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
 
     // The page's own title is the h1, so cards must not jump straight to h3.
     expect(html).toContain('<h2 class="min-w-0 font-semibold text-[#f6f1e7]')
+  })
+
+  test.each([
+    ['listing discovery failure', () => {
+      upstreamState.listings = { status: 503, body: { message: 'listing discovery unavailable' } }
+    }],
+    ['directory pagination failure', () => {
+      upstreamState.directory = { status: 503, body: { message: 'directory unavailable' } }
+    }],
+    ['WordPress blog failure', () => {
+      upstreamState.wordpress = { status: 503, body: { message: 'blog unavailable' } }
+    }],
+    ['malformed listing envelope', () => {
+      upstreamState.listings = { status: 200, body: { data: {} } }
+    }],
+    ['malformed listing item', () => {
+      upstreamState.listings = {
+        status: 200,
+        body: { data: [{ slug: 'broken', name: 'Broken', tagline: null }] },
+      }
+    }],
+  ])('fails a fresh sitemap closed for %s', async (_name, setFailure) => {
+    upstreamState.directory = seededDirectoryState()
+    setFailure()
+    await restartNitroInstance()
+
+    const response = await fetch(`${BASE}/sitemap.xml`)
+    const body = await response.text()
+
+    expect(response.status).toBe(503)
+    expect(response.headers.get('cache-control')).toBe('private, no-store')
+    expect(body).not.toContain('<urlset')
+    expect(body).not.toContain('/listing/seeded')
+    expect(body).not.toContain('/blog/seeded-article')
+    expect(body).not.toContain('/browse-all?page=2')
+    expect(body).not.toContain('/tech-products?page=2')
+    expect(body).not.toContain('/featured?page=2')
+  })
+
+  test('keeps truthful empty listing and blog discovery data indexable', async () => {
+    upstreamState.listings = { status: 200, body: { data: [] } }
+    upstreamState.wordpress = { status: 200, body: [] }
+    await restartNitroInstance()
+
+    const response = await fetch(`${BASE}/sitemap.xml`)
+    const body = await response.text()
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('cache-control')).toBe(
+      'public, max-age=0, s-maxage=600, stale-while-revalidate=600',
+    )
+    expect(body).toContain('<urlset')
+    expect(body).not.toContain('/listing/seeded')
+    expect(body).not.toContain('/blog/seeded-article')
+  })
+
+  test('serves only a complete stale sitemap during refresh failure and replaces it on recovery', async () => {
+    await restartNitroInstance()
+
+    const seeded = await fetch(`${BASE}/sitemap.xml`)
+    const seededBody = await seeded.text()
+    const publicSitemapCache = 'public, max-age=0, s-maxage=600, stale-while-revalidate=600'
+
+    expect(seeded.status).toBe(200)
+    expect(seeded.headers.get('cache-control')).toBe(publicSitemapCache)
+    expect(seededBody).toContain('/listing/seeded')
+
+    advanceFixtureClockBy(601)
+    upstreamState.listings = { status: 503, body: { message: 'listing discovery unavailable' } }
+    const refreshRequestStart = listingDiscoveryResponseStatuses.length
+
+    const stale = await fetch(`${BASE}/sitemap.xml`)
+    const staleBody = await stale.text()
+
+    expect(stale.status).toBe(200)
+    expect(stale.headers.get('cache-control')).toBe(publicSitemapCache)
+    expect(staleBody).toBe(seededBody)
+    expect(staleBody).toContain('/listing/seeded')
+
+    await waitForListingDiscoveryResponse(503, refreshRequestStart)
+    expect(listingDiscoveryResponseStatuses.slice(refreshRequestStart)).toContain(503)
+
+    const staleAfterFailedRefresh = await fetch(`${BASE}/sitemap.xml`)
+    expect(staleAfterFailedRefresh.status).toBe(200)
+    expect(staleAfterFailedRefresh.headers.get('cache-control')).toBe(publicSitemapCache)
+    expect(await staleAfterFailedRefresh.text()).toBe(seededBody)
+
+    upstreamState.listings = { status: 200, body: { data: [discoveryListing('recovered')] } }
+    await waitForBody(`${BASE}/sitemap.xml`, '/listing/recovered')
+
+    const recovered = await fetch(`${BASE}/sitemap.xml`)
+    expect(recovered.status).toBe(200)
+    expect(recovered.headers.get('cache-control')).toBe(publicSitemapCache)
+    expect(await recovered.text()).toContain('/listing/recovered')
+  })
+
+  test.each([
+    ['listing discovery failure', () => {
+      upstreamState.listings = { status: 503, body: { message: 'listing discovery unavailable' } }
+    }],
+    ['WordPress blog failure', () => {
+      upstreamState.wordpress = { status: 503, body: { message: 'blog unavailable' } }
+    }],
+    ['malformed listing envelope', () => {
+      upstreamState.listings = { status: 200, body: { data: {} } }
+    }],
+    ['malformed listing item', () => {
+      upstreamState.listings = {
+        status: 200,
+        body: { data: [{ slug: 'broken', name: 'Broken', tagline: null }] },
+      }
+    }],
+    ['malformed WordPress payload', () => {
+      upstreamState.wordpress = { status: 200, body: { posts: [] } }
+    }],
+  ])('returns an atomic llms-full 503 for %s', async (_name, setFailure) => {
+    setFailure()
+    await restartNitroInstance()
+
+    const response = await fetch(`${BASE}/llms-full.txt`)
+    const body = await response.text()
+
+    expect(response.status).toBe(503)
+    expect(response.headers.get('cache-control')).toBe('private, no-store')
+    expect(body).toBe('# LaunchLog — temporarily unavailable\n')
+    expect(body).not.toContain('## Published listings')
+    expect(body).not.toContain('## Published blog articles')
+  })
+
+  test('renders truthful empty llms-full sections with the public SWR contract', async () => {
+    upstreamState.listings = { status: 200, body: { data: [] } }
+    upstreamState.wordpress = { status: 200, body: [] }
+    await restartNitroInstance()
+
+    const response = await fetch(`${BASE}/llms-full.txt`)
+    const body = await response.text()
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('cache-control')).toBe(
+      'public, max-age=0, s-maxage=600, stale-while-revalidate=600',
+    )
+    expect(body).toContain('## Published listings')
+    expect(body).toContain('(No public listings indexed yet.)')
+    expect(body).toContain('## Published blog articles')
+    expect(body).toContain('(No articles available.)')
   })
 })
