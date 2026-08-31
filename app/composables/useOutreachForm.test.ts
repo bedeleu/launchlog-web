@@ -88,7 +88,7 @@ describe('outreach form controller', () => {
         '',
         'Alex',
         'LaunchLog.ai — The log of what just shipped.',
-        'AB Solutions SRL · Timișoara, Romania',
+        'AB Solutions',
       ].join('\n'),
       previewUrl,
       requestId: initialRequestId,

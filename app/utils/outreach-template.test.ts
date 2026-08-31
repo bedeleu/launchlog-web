@@ -71,7 +71,7 @@ describe('minimal outreach draft', () => {
         '',
         'Alex',
         'LaunchLog.ai — The log of what just shipped.',
-        'AB Solutions SRL · Timișoara, Romania',
+        'AB Solutions',
       ].join('\n'),
     })
     expect(draft.text).not.toMatch(/street|strada|postal/i)
@@ -106,7 +106,7 @@ describe('minimal outreach draft', () => {
         '',
         'Alex',
         'LaunchLog.ai — The log of what just shipped.',
-        'AB Solutions SRL · Timișoara, Romania',
+        'AB Solutions',
       ].join('\n'),
     })
   })

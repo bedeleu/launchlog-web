@@ -187,7 +187,7 @@ export function buildOutreachDraft(
         '',
         'Alex',
         'LaunchLog.ai — The log of what just shipped.',
-        'AB Solutions SRL · Timișoara, Romania',
+        'AB Solutions',
       ].join('\n'),
     }
   }
@@ -205,7 +205,7 @@ export function buildOutreachDraft(
       '',
       'Alex',
       'LaunchLog.ai — The log of what just shipped.',
-      'AB Solutions SRL · Timișoara, Romania',
+      'AB Solutions',
     ].join('\n'),
   }
 }
