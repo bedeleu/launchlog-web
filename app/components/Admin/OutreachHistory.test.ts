@@ -655,6 +655,18 @@ describe('outreach delivery ledger', () => {
     expect(source).toContain('px-5 py-6 sm:px-6 xl:px-8')
   })
 
+  test('themes the scrollable email body instead of leaking the browser default', async () => {
+    const html = await renderHistory({ openRows: new Set([sendId]) })
+
+    expect(html).toContain('outreach-message-scroll')
+    expect(html).toContain('aria-label="Plain-text email body"')
+    expect(html).toContain('tabindex="0"')
+    expect(source).toContain('scrollbar-width: thin')
+    expect(source).toContain('::-webkit-scrollbar')
+    expect(source).toContain('var(--release-rail)')
+    expect(source).toContain('var(--release-blaze)')
+  })
+
   test('renders unavailable sender snapshots as clear em dashes', async () => {
     const html = await renderHistory({
       rows: [sendWith({

@@ -612,7 +612,11 @@ onBeforeUnmount(() => {
 
               <div class="mt-5 border-t border-release-seam pt-5">
                 <p class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-release-paper-muted">Plain-text body</p>
-                <pre class="mt-3 max-h-96 w-full overflow-auto whitespace-pre-wrap break-words border border-release-seam bg-release-rail p-4 font-mono text-xs leading-6 text-release-paper sm:p-5">{{ send.text }}</pre>
+                <pre
+                  aria-label="Plain-text email body"
+                  tabindex="0"
+                  class="outreach-message-scroll mt-3 max-h-96 w-full overflow-auto whitespace-pre-wrap break-words border border-release-seam bg-release-rail p-4 font-mono text-xs leading-6 text-release-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus focus-visible:ring-offset-2 focus-visible:ring-offset-release-ink sm:p-5"
+                >{{ send.text }}</pre>
               </div>
             </div>
           </div>
@@ -659,3 +663,31 @@ onBeforeUnmount(() => {
     </nav>
   </section>
 </template>
+
+<style scoped>
+.outreach-message-scroll {
+  scrollbar-color: color-mix(in srgb, var(--release-paper-muted) 48%, var(--release-rail)) var(--release-rail);
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+}
+
+.outreach-message-scroll::-webkit-scrollbar {
+  width: 0.375rem;
+  height: 0.375rem;
+}
+
+.outreach-message-scroll::-webkit-scrollbar-track,
+.outreach-message-scroll::-webkit-scrollbar-corner {
+  background: var(--release-rail);
+}
+
+.outreach-message-scroll::-webkit-scrollbar-thumb {
+  border: 1px solid var(--release-rail);
+  background: color-mix(in srgb, var(--release-paper-muted) 48%, var(--release-rail));
+}
+
+.outreach-message-scroll::-webkit-scrollbar-thumb:hover,
+.outreach-message-scroll::-webkit-scrollbar-thumb:active {
+  background: var(--release-blaze);
+}
+</style>
