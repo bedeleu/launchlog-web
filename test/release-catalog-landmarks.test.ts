@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 
 const defaultLayoutPages = [
   '../app/pages/pricing.vue',
@@ -12,12 +12,17 @@ const defaultLayoutPages = [
   '../app/pages/admin/outreach.vue',
   '../app/pages/admin/listings/new.vue',
   '../app/pages/admin/listings/[id].vue',
+  '../app/pages/shipped/index.vue',
+  '../app/pages/shipped/[slug].vue',
 ]
 
 describe('Release Catalog landmarks', () => {
   it('lets the default layout own the single main landmark', () => {
     for (const path of defaultLayoutPages) {
-      const source = readFileSync(new URL(path, import.meta.url), 'utf8')
+      const url = new URL(path, import.meta.url)
+      expect(existsSync(url)).toBeTrue()
+      if (!existsSync(url)) continue
+      const source = readFileSync(url, 'utf8')
       expect(source).not.toMatch(/<main(?:\s|>)/)
     }
   })

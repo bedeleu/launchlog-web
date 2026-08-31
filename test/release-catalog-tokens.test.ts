@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'bun:test'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
+
+const requiredSource = (path: string): string => {
+  const url = new URL(path, import.meta.url)
+  return existsSync(url) ? readFileSync(url, 'utf8') : `__MISSING_RELEASE_SURFACE__:${path}`
+}
 
 describe('Release Catalog tokens', () => {
   const css = readFileSync(new URL('../app/assets/css/tailwind.css', import.meta.url), 'utf8')
@@ -10,7 +15,11 @@ describe('Release Catalog tokens', () => {
     '../app/pages/admin/index.vue',
     '../app/pages/admin/listings/index.vue',
     '../app/pages/admin/outreach.vue',
-  ].map(path => readFileSync(new URL(path, import.meta.url), 'utf8')).join('\n')
+    '../app/pages/shipped/index.vue',
+    '../app/pages/shipped/[slug].vue',
+    '../app/components/Edition/EditionItem.vue',
+    '../app/components/Edition/EditionSummary.vue',
+  ].map(requiredSource).join('\n')
   const neutralSurfaces = [
     '../app/components/AppBar.vue',
     '../app/components/Intake/PlacementPreview.vue',
@@ -19,7 +28,15 @@ describe('Release Catalog tokens', () => {
     '../app/pages/api-docs.vue',
     '../app/pages/pricing.vue',
     '../app/pages/seo-guide.vue',
-  ].map(path => readFileSync(new URL(path, import.meta.url), 'utf8')).join('\n')
+    '../app/pages/shipped/index.vue',
+    '../app/pages/shipped/[slug].vue',
+    '../app/components/Edition/EditionItem.vue',
+    '../app/components/Edition/EditionSummary.vue',
+  ].map(requiredSource).join('\n')
+
+  it('requires every guarded Release Catalog surface to exist', () => {
+    expect(`${transitionSurfaces}\n${neutralSurfaces}`).not.toContain('__MISSING_RELEASE_SURFACE__')
+  })
 
   it('defines the approved material palette', () => {
     expect(css).toContain('--release-ink: #080907')

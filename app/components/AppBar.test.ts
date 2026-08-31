@@ -48,6 +48,11 @@ describe('authenticated header navigation', () => {
     expect(llmsFullSource).toContain('${site}/blog/${p.slug}')
   })
 
+  test('exposes the weekly shipped record in primary and footer navigation', () => {
+    expect(source).toContain("{ label: 'Shipped', to: '/shipped' }")
+    expect(footerSource).toContain("{ label: 'Shipped', to: '/shipped' }")
+  })
+
   test('keeps desktop navigation and actions at xl while the menu remains available below it', () => {
     expect(source.match(/class="hidden items-center[^"]*xl:flex"/g) ?? []).toHaveLength(2)
     expect(source.match(/xl:hidden/g) ?? []).toHaveLength(2)

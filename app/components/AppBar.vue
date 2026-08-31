@@ -10,6 +10,7 @@ const authReady = ref(false)
 
 const nav = [
   { label: 'Home', to: '/' },
+  { label: 'Shipped', to: '/shipped' },
   { label: 'Browse All', to: '/browse-all' },
   { label: 'Tech Products', to: '/tech-products' },
   { label: 'Featured', to: '/featured' },
