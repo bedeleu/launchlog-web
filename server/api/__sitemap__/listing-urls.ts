@@ -1,16 +1,20 @@
-import { toListingSitemapEntries, type DiscoveryListing } from '../../utils/discovery'
+import { parseDiscoveryListingsOrThrow, toListingSitemapEntries } from '../../utils/discovery'
 
 export default defineSitemapEventHandler(async () => {
   const config = useRuntimeConfig()
   const site = getSiteUrl()
 
-  try {
-    const response = await $fetch<{ data: DiscoveryListing[] }>(`${config.public.apiUrl}/api/v1/discovery/listings`, {
-      timeout: 5000,
-    })
+  const response = await $fetch<unknown>(`${config.public.apiUrl}/api/v1/discovery/listings`, {
+    timeout: 5000,
+  })
 
-    return toListingSitemapEntries(response.data ?? [], site)
-  } catch {
-    return []
+  if (!isRecord(response) || !Object.hasOwn(response, 'data')) {
+    throw new TypeError('Invalid discovery listing response')
   }
+
+  return toListingSitemapEntries(parseDiscoveryListingsOrThrow(response.data), site)
 })
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}

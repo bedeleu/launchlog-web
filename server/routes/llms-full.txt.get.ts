@@ -1,35 +1,37 @@
 // server/routes/llms-full.txt.get.ts
 // Dynamic /llms-full.txt — complete listing and article index for compatible consumers.
 
-interface PublicListing {
-  slug: string
-  name: string
-  tagline: string | null
-}
+import { setHeader, setResponseStatus } from 'h3'
+import { parseDiscoveryListingsOrThrow, type DiscoveryListing } from '../utils/discovery'
 
 export default defineEventHandler(async (event) => {
-  setHeader(event, 'Content-Type', 'text/plain; charset=utf-8')
-  setHeader(event, 'Cache-Control', 'public, max-age=3600')
   const site = getSiteUrl()
   const apiUrl = useRuntimeConfig().public.apiUrl
 
-  let listings: PublicListing[]
+  let listings: DiscoveryListing[]
+  let posts: Array<{ slug: string, title: string, excerpt: string }>
   try {
-    const res = await $fetch<{ data: PublicListing[] }>(`${apiUrl}/api/v1/discovery/listings`, {
-      timeout: 5000,
-    })
-    listings = res?.data ?? []
-  } catch {
-    listings = []
+    const [response, blog] = await Promise.all([
+      $fetch<unknown>(`${apiUrl}/api/v1/discovery/listings`, { timeout: 5000 }),
+      fetchAllWordPressPostSummaries(),
+    ])
+
+    if (!isRecord(response) || !Object.hasOwn(response, 'data')) {
+      throw new TypeError('Invalid discovery listing response')
+    }
+
+    listings = parseDiscoveryListingsOrThrow(response.data)
+    posts = (blog ?? []).map((p) => ({ slug: p.slug, title: p.title, excerpt: p.excerpt }))
+  }
+  catch {
+    setResponseStatus(event, 503)
+    setHeader(event, 'Content-Type', 'text/plain; charset=utf-8')
+    setHeader(event, 'Cache-Control', 'private, no-store')
+    return '# LaunchLog — temporarily unavailable\n'
   }
 
-  let posts: Array<{ slug: string; title: string; excerpt: string }>
-  try {
-    const blog = await fetchAllWordPressPostSummaries()
-    posts = (blog ?? []).map((p) => ({ slug: p.slug, title: p.title, excerpt: p.excerpt }))
-  } catch {
-    posts = []
-  }
+  setHeader(event, 'Content-Type', 'text/plain; charset=utf-8')
+  setHeader(event, 'Cache-Control', 'public, max-age=0, s-maxage=600, stale-while-revalidate=600')
 
   const lines: string[] = []
   lines.push('# LaunchLog — complete directory index')
@@ -70,3 +72,7 @@ export default defineEventHandler(async (event) => {
   lines.push('')
   return lines.join('\n')
 })
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}

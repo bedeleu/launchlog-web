@@ -1,10 +1,4 @@
-import { paginationSitemapEntries } from '../../utils/pagination-sitemap'
-
-interface PaginationResponse {
-  meta?: {
-    last_page?: number
-  }
-}
+import { paginationSitemapEntries, parseSitemapPageCountOrThrow } from '../../utils/pagination-sitemap'
 
 interface DirectorySequence {
   path: string
@@ -30,18 +24,24 @@ export default defineSitemapEventHandler(async () => {
   ]
 
   const entries = await Promise.all(sequences.map(async (sequence) => {
-    try {
-      const response = await $fetch<PaginationResponse>(endpoint, {
-        query: sequence.query,
-        timeout: 5000,
-      })
+    const response = await $fetch<unknown>(endpoint, {
+      query: sequence.query,
+      timeout: 5000,
+    })
 
-      return paginationSitemapEntries(sequence.path, Number(response.meta?.last_page ?? 1))
+    if (!isRecord(response) || !isRecord(response.meta)) {
+      throw new TypeError('Invalid directory pagination response')
     }
-    catch {
-      return []
-    }
+
+    return paginationSitemapEntries(
+      sequence.path,
+      parseSitemapPageCountOrThrow(response.meta.last_page),
+    )
   }))
 
   return entries.flat()
 })
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}

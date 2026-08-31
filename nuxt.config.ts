@@ -89,6 +89,7 @@ export default defineNuxtConfig({
   },
   routeRules: {
     '/': { isr: 600 },
+    '/sitemap.xml': { headers: { 'cache-control': 'private, no-store' } },
     '/browse-all': { isr: 1800 },
     '/tech-products': { isr: 1800 },
     '/featured': { isr: 3600 },
@@ -143,6 +144,7 @@ export default defineNuxtConfig({
     name: 'LaunchLog',
   },
   sitemap: {
+    cacheMaxAgeSeconds: 600,
     exclude: [
       '/admin',
       '/admin/**',
@@ -158,11 +160,6 @@ export default defineNuxtConfig({
       '/privacy',
       '/terms',
       '/status',
-    ],
-    sources: [
-      '/api/__sitemap__/blog-urls',
-      '/api/__sitemap__/listing-urls',
-      '/api/__sitemap__/directory-pages',
     ],
   },
 })
