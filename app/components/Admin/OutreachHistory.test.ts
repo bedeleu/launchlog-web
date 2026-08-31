@@ -643,6 +643,18 @@ describe('outreach delivery ledger', () => {
     expect(html).not.toMatch(/href="https?:\/\/(?:bit\.ly|[^"]+[?&]utm_)/i)
   })
 
+  test('keeps audit metadata above a full-width message detail panel', async () => {
+    const html = await renderHistory({ openRows: new Set([sendId]) })
+    const metadataIndex = html.indexOf('data-outreach-history-details-meta')
+    const contentIndex = html.indexOf('data-outreach-history-details-content')
+
+    expect(html).toContain('data-outreach-history-details')
+    expect(metadataIndex).toBeGreaterThan(-1)
+    expect(contentIndex).toBeGreaterThan(metadataIndex)
+    expect(source).not.toContain('xl:ml-[10rem]')
+    expect(source).toContain('px-5 py-6 sm:px-6 xl:px-8')
+  })
+
   test('renders unavailable sender snapshots as clear em dashes', async () => {
     const html = await renderHistory({
       rows: [sendWith({

@@ -501,115 +501,120 @@ onBeforeUnmount(() => {
         >
           <div
             :id="`outreach-details-${send.id}`"
+            data-outreach-history-details
             role="cell"
             aria-colspan="6"
-            class="border-l-2 border-l-release-blaze bg-release-ink/70 px-4 py-5 sm:px-6 xl:ml-[10rem]"
+            class="border-l border-l-release-blaze bg-release-ink/70"
           >
-          <div class="grid gap-x-8 gap-y-5 sm:grid-cols-2 xl:grid-cols-3">
-            <dl class="space-y-4 text-sm">
-              <div>
-                <dt class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-release-paper-muted">From</dt>
-                <dd class="mt-1 break-words text-release-paper">{{ send.from_address ? `${send.from_name ? `${send.from_name} ` : ''}<${send.from_address}>` : (send.from_name || '—') }}</dd>
-              </div>
-              <div>
-                <dt class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-release-paper-muted">Reply-To</dt>
-                <dd class="mt-1 break-all text-release-paper">{{ send.reply_to_address || '—' }}</dd>
-              </div>
-              <div>
-                <dt class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-release-paper-muted">To</dt>
-                <dd class="mt-1 break-all text-release-paper">{{ send.recipient_email }}</dd>
-              </div>
-              <div>
-                <dt class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-release-paper-muted">Delivery channel</dt>
-                <dd class="mt-1 font-mono uppercase text-release-paper">{{ send.delivery_channel }}</dd>
-              </div>
-            </dl>
+            <div data-outreach-history-details-meta class="px-5 py-6 sm:px-6 xl:px-8">
+              <div class="grid min-w-0 gap-x-8 gap-y-5 sm:grid-cols-2 xl:grid-cols-3">
+                <dl class="min-w-0 space-y-4 text-sm">
+                  <div>
+                    <dt class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-release-paper-muted">From</dt>
+                    <dd class="mt-1 break-words text-release-paper">{{ send.from_address ? `${send.from_name ? `${send.from_name} ` : ''}<${send.from_address}>` : (send.from_name || '—') }}</dd>
+                  </div>
+                  <div>
+                    <dt class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-release-paper-muted">Reply-To</dt>
+                    <dd class="mt-1 break-all text-release-paper">{{ send.reply_to_address || '—' }}</dd>
+                  </div>
+                  <div>
+                    <dt class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-release-paper-muted">To</dt>
+                    <dd class="mt-1 break-all text-release-paper">{{ send.recipient_email }}</dd>
+                  </div>
+                  <div>
+                    <dt class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-release-paper-muted">Delivery channel</dt>
+                    <dd class="mt-1 font-mono uppercase text-release-paper">{{ send.delivery_channel }}</dd>
+                  </div>
+                </dl>
 
-            <dl class="space-y-4 text-sm">
-              <div>
-                <dt class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-release-paper-muted">Product</dt>
-                <dd class="mt-1 text-release-paper">{{ send.product_name }}</dd>
-              </div>
-              <div>
-                <dt class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-release-paper-muted">Source</dt>
-                <dd class="mt-1 text-release-paper">{{ send.source_name }}</dd>
-              </div>
-              <div>
-                <dt class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-release-paper-muted">Subject variant</dt>
-                <dd class="mt-1 font-mono uppercase text-release-paper">{{ send.subject_variant }}</dd>
-              </div>
-              <div>
-                <dt class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-release-paper-muted">Preview</dt>
-                <dd class="mt-1">
-                  <a
-                    v-if="send.preview_url"
-                    :href="send.preview_url"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="break-all text-release-blaze underline decoration-release-seam underline-offset-4 hover:decoration-release-blaze focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus active:text-release-paper active:decoration-release-paper"
-                  >
-                    Open direct preview ↗
-                  </a>
-                  <span v-else class="text-release-paper-muted">—</span>
-                </dd>
-              </div>
-            </dl>
+                <dl class="min-w-0 space-y-4 text-sm">
+                  <div>
+                    <dt class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-release-paper-muted">Product</dt>
+                    <dd class="mt-1 text-release-paper">{{ send.product_name }}</dd>
+                  </div>
+                  <div>
+                    <dt class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-release-paper-muted">Source</dt>
+                    <dd class="mt-1 text-release-paper">{{ send.source_name }}</dd>
+                  </div>
+                  <div>
+                    <dt class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-release-paper-muted">Subject variant</dt>
+                    <dd class="mt-1 font-mono uppercase text-release-paper">{{ send.subject_variant }}</dd>
+                  </div>
+                  <div>
+                    <dt class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-release-paper-muted">Preview</dt>
+                    <dd class="mt-1">
+                      <a
+                        v-if="send.preview_url"
+                        :href="send.preview_url"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="break-all text-release-blaze underline decoration-release-seam underline-offset-4 hover:decoration-release-blaze focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus active:text-release-paper active:decoration-release-paper"
+                      >
+                        Open direct preview ↗
+                      </a>
+                      <span v-else class="text-release-paper-muted">—</span>
+                    </dd>
+                  </div>
+                </dl>
 
-            <dl class="space-y-4 text-sm sm:col-span-2 xl:col-span-1">
-              <div>
-                <dt class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-release-paper-muted">Request ID</dt>
-                <dd class="mt-1 break-all font-mono text-xs text-release-paper">{{ send.request_id }}</dd>
+                <dl class="min-w-0 space-y-4 text-sm sm:col-span-2 xl:col-span-1">
+                  <div>
+                    <dt class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-release-paper-muted">Request ID</dt>
+                    <dd class="mt-1 break-all font-mono text-xs text-release-paper">{{ send.request_id }}</dd>
+                  </div>
+                  <div>
+                    <dt class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-release-paper-muted">Provider ID</dt>
+                    <dd class="mt-1 break-all font-mono text-xs text-release-paper">{{ send.provider_email_id || '—' }}</dd>
+                  </div>
+                  <div v-if="safeDiagnosticCode(send.diagnostic_code)">
+                    <dt class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-release-paper-muted">Diagnostic code</dt>
+                    <dd class="mt-1 break-all font-mono text-xs text-release-warning">{{ safeDiagnosticCode(send.diagnostic_code) }}</dd>
+                  </div>
+                </dl>
               </div>
-              <div>
-                <dt class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-release-paper-muted">Provider ID</dt>
-                <dd class="mt-1 break-all font-mono text-xs text-release-paper">{{ send.provider_email_id || '—' }}</dd>
-              </div>
-              <div v-if="safeDiagnosticCode(send.diagnostic_code)">
-                <dt class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-release-paper-muted">Diagnostic code</dt>
-                <dd class="mt-1 break-all font-mono text-xs text-release-warning">{{ safeDiagnosticCode(send.diagnostic_code) }}</dd>
-              </div>
-            </dl>
-          </div>
 
-          <div class="mt-6 border-t border-release-seam pt-5">
-            <p class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-release-paper-muted">Exact subject</p>
-            <p class="mt-2 text-sm leading-6 text-release-paper">{{ send.subject }}</p>
-          </div>
-
-          <div class="mt-5 border-t border-release-seam pt-5">
-            <p class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-release-paper-muted">Plain-text body</p>
-            <pre class="mt-3 max-h-96 overflow-auto whitespace-pre-wrap break-words border border-release-seam bg-release-rail p-4 font-mono text-xs leading-6 text-release-paper">{{ send.text }}</pre>
-          </div>
-
-          <dl class="mt-5 grid gap-4 border-t border-release-seam pt-5 text-xs sm:grid-cols-2 xl:grid-cols-4">
-            <div>
-              <dt class="font-mono uppercase tracking-[0.12em] text-release-paper-muted">Accepted</dt>
-              <dd class="mt-1 font-mono text-release-paper">
-                <time v-if="send.accepted_at" :datetime="send.accepted_at">{{ formatTimestamp(send.accepted_at) }}</time>
-                <span v-else>—</span>
-              </dd>
+              <dl class="mt-6 grid gap-4 border-t border-release-seam pt-5 text-xs sm:grid-cols-2 xl:grid-cols-4">
+                <div>
+                  <dt class="font-mono uppercase tracking-[0.12em] text-release-paper-muted">Created</dt>
+                  <dd class="mt-1 font-mono text-release-paper">
+                    <time :datetime="send.created_at">{{ formatTimestamp(send.created_at) }}</time>
+                  </dd>
+                </div>
+                <div>
+                  <dt class="font-mono uppercase tracking-[0.12em] text-release-paper-muted">Accepted</dt>
+                  <dd class="mt-1 font-mono text-release-paper">
+                    <time v-if="send.accepted_at" :datetime="send.accepted_at">{{ formatTimestamp(send.accepted_at) }}</time>
+                    <span v-else>—</span>
+                  </dd>
+                </div>
+                <div>
+                  <dt class="font-mono uppercase tracking-[0.12em] text-release-paper-muted">Provider event</dt>
+                  <dd class="mt-1 font-mono text-release-paper">
+                    <time v-if="send.provider_event_at" :datetime="send.provider_event_at">{{ formatTimestamp(send.provider_event_at) }}</time>
+                    <span v-else>—</span>
+                  </dd>
+                </div>
+                <div>
+                  <dt class="font-mono uppercase tracking-[0.12em] text-release-paper-muted">Last synced</dt>
+                  <dd class="mt-1 font-mono text-release-paper">
+                    <time v-if="send.last_synced_at" :datetime="send.last_synced_at">{{ formatTimestamp(send.last_synced_at) }}</time>
+                    <span v-else>—</span>
+                  </dd>
+                </div>
+              </dl>
             </div>
-            <div>
-              <dt class="font-mono uppercase tracking-[0.12em] text-release-paper-muted">Provider event</dt>
-              <dd class="mt-1 font-mono text-release-paper">
-                <time v-if="send.provider_event_at" :datetime="send.provider_event_at">{{ formatTimestamp(send.provider_event_at) }}</time>
-                <span v-else>—</span>
-              </dd>
+
+            <div data-outreach-history-details-content class="border-t border-release-seam px-5 py-6 sm:px-6 xl:px-8">
+              <div>
+                <p class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-release-paper-muted">Exact subject</p>
+                <p class="mt-2 text-sm leading-6 text-release-paper">{{ send.subject }}</p>
+              </div>
+
+              <div class="mt-5 border-t border-release-seam pt-5">
+                <p class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-release-paper-muted">Plain-text body</p>
+                <pre class="mt-3 max-h-96 w-full overflow-auto whitespace-pre-wrap break-words border border-release-seam bg-release-rail p-4 font-mono text-xs leading-6 text-release-paper sm:p-5">{{ send.text }}</pre>
+              </div>
             </div>
-            <div>
-              <dt class="font-mono uppercase tracking-[0.12em] text-release-paper-muted">Last synced</dt>
-              <dd class="mt-1 font-mono text-release-paper">
-                <time v-if="send.last_synced_at" :datetime="send.last_synced_at">{{ formatTimestamp(send.last_synced_at) }}</time>
-                <span v-else>—</span>
-              </dd>
-            </div>
-            <div>
-              <dt class="font-mono uppercase tracking-[0.12em] text-release-paper-muted">Created</dt>
-              <dd class="mt-1 font-mono text-release-paper">
-                <time :datetime="send.created_at">{{ formatTimestamp(send.created_at) }}</time>
-              </dd>
-            </div>
-          </dl>
           </div>
         </div>
       </div>
