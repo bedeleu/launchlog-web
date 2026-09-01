@@ -13,6 +13,7 @@ import { STATUS_CODES } from 'node:http'
 import { defineNitroPlugin } from 'nitropack/runtime/plugin'
 import { shouldDeindexErrorStatus } from '../../app/utils/error-indexing'
 import { acceptsExplicitMarkdown } from '../utils/markdown'
+import { resolveMarkdownRoute } from '../utils/markdown-route'
 
 const DISCOVERY_PATH = /^(?:\/shipped(?:\/.*)?|\/category\/.*|\/launch-channels\/?|\/listing\/[^/]+(?:\/(?:markdown|schema))?\/?|\/llms(?:-full)?\.txt)$/
 
@@ -54,7 +55,8 @@ async function sendPrivateDiscoveryError(
   const shouldDeindex = shouldDeindexErrorStatus(status) || isAlwaysNoindexArtifact(pathname)
   const artifact = renderDiscoveryError(pathname, status, acceptsMarkdown, shouldDeindex)
 
-  if (/^\/listing\/[^/]+\/?$/.test(pathname)) appendVaryAccept(event)
+  if (/^\/listing\/[^/]+\/?$/.test(pathname)
+    || (acceptsMarkdown && isEditionPath(pathname))) appendVaryAccept(event)
   removeResponseHeader(event, 'Content-Signal')
   removeResponseHeader(event, 'Content-Length')
   removeResponseHeader(event, 'X-Robots-Tag')
@@ -83,14 +85,22 @@ function renderDiscoveryError(
       ? 'Discovery resource withdrawn'
       : 'Discovery temporarily unavailable'
 
+  const isEditionMarkdown = acceptsMarkdown && isEditionPath(pathname)
   const isMarkdown = /^\/listing\/[^/]+\/markdown\/?$/.test(pathname)
     || (acceptsMarkdown && /^\/listing\/[^/]+\/?$/.test(pathname))
+    || isEditionMarkdown
   if (isMarkdown) {
-    const body = status === 404
-      ? '# Listing not found\n\n> This listing does not exist.\n'
-      : status === 410
-        ? '# Listing withdrawn\n\n> This listing has been withdrawn and is no longer available.\n'
-        : '# Listing temporarily unavailable\n\n> This listing cannot be loaded right now. Please try again later.\n'
+    const body = isEditionMarkdown
+      ? status === 404
+        ? '# Not found\n'
+        : status === 410
+          ? '# Withdrawn\n'
+          : '# Temporarily unavailable\n'
+      : status === 404
+        ? '# Listing not found\n\n> This listing does not exist.\n'
+        : status === 410
+          ? '# Listing withdrawn\n\n> This listing has been withdrawn and is no longer available.\n'
+          : '# Listing temporarily unavailable\n\n> This listing cannot be loaded right now. Please try again later.\n'
     return { contentType: 'text/markdown; charset=utf-8', body }
   }
 
@@ -142,6 +152,11 @@ ${shouldDeindex ? '  <meta name="robots" content="noindex,nofollow">\n' : ''}  <
 
 function isAlwaysNoindexArtifact(pathname: string): boolean {
   return /^\/listing\/[^/]+\/(?:markdown|schema)\/?$/.test(pathname)
+}
+
+function isEditionPath(pathname: string): boolean {
+  const route = resolveMarkdownRoute(pathname)
+  return route?.kind === 'edition_archive' || route?.kind === 'edition_detail'
 }
 
 function appendVaryAccept(event: Parameters<typeof getRequestURL>[0]): void {

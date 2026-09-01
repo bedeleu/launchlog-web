@@ -445,7 +445,8 @@ describe.skipIf(!isBuilt)('/shipped SSR', () => {
     for (const edition of editionSummaries(25)) {
       expect(sitemapBody.match(new RegExp(`<loc>https://launchlog\\.ai${edition.path}</loc>`, 'g')) ?? [])
         .toHaveLength(1)
-      expect(sitemapBody).toContain(`<lastmod>${edition.modified_at}</lastmod>`)
+      const sitemapLastmod = edition.modified_at.replace(/\.000Z$/, 'Z')
+      expect(sitemapBody).toContain(`<lastmod>${sitemapLastmod}</lastmod>`)
     }
     expect(sitemapBody).not.toContain('/shipped/2026-w36')
 

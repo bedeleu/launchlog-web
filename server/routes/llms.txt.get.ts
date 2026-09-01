@@ -23,6 +23,7 @@ Canonical site: ${site}
 - Browse all listings: ${site}/browse-all
 - Featured launches: ${site}/featured
 - Tech products: ${site}/tech-products
+- Published weekly editions: ${site}/shipped
 - Pricing: ${site}/pricing
 - Submit a product: ${site}/submit
 - Blog: ${site}/blog
