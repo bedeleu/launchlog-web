@@ -7,14 +7,21 @@ import { serializeJsonLd } from '~/utils/json-ld'
 const route = useRoute()
 const config = useRuntimeConfig()
 const client = useEditions()
+const newsletterClient = useNewsletter()
 const slug = computed(() => String(route.params.slug ?? ''))
 const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
+
+const newsletterCapabilityRequest = useAsyncData(
+  'newsletter-capability:shipped-edition',
+  () => newsletterClient.capability(),
+)
 
 const { data: edition, error, status, refresh } = await useAsyncData<EditionDetail>(
   () => `edition-detail:${slug.value}`,
   () => client.fetchDetail(slug.value),
   { watch: [slug] },
 )
+const { data: newsletterEnabled } = await newsletterCapabilityRequest
 
 const responseStatus = computed(() => extractHttpStatus(error.value))
 
@@ -132,5 +139,11 @@ useHead(() => ({
         </NuxtLink>
       </div>
     </template>
+
+    <NewsletterCapture
+      v-if="newsletterEnabled === true"
+      class="mt-10"
+      source="shipped_edition"
+    />
   </ReleaseShell>
 </template>

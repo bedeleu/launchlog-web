@@ -2,7 +2,7 @@
 const config = useRuntimeConfig()
 const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
 const pageUrl = `${siteUrl}/privacy`
-const updated = 'August 29, 2026'
+const updated = 'September 1, 2026'
 const legalName = config.public.legalName.trim()
 const legalEmail = config.public.legalEmail.trim()
 const description
@@ -25,6 +25,7 @@ const sections = [
       { type: 'list', items: [
         'Account data: email address and authentication identifier when you sign in (handled by Firebase Authentication).',
         'Listing data: the product URL, name, tagline, description, category and contact email you submit or edit for a listing or free preview.',
+        'Newsletter data: the email address you voluntarily submit and the public LaunchLog surface where you submitted it.',
         'Billing data: name and billing details required to process a subscription. Card numbers are entered directly with Stripe and never reach our servers.',
         'Correspondence: messages you send to our support, legal or DMCA addresses.',
       ] },
@@ -49,6 +50,7 @@ const sections = [
         'To keep the service secure, prevent spam and abuse, and improve the product.',
         'With your consent, to measure whether LaunchLog advertising leads to previews, checkout starts and published listings, and to improve campaign delivery.',
         'To send the transactional listing-access email after a paid listing is created.',
+        'To request double opt-in newsletter enrollment when you explicitly submit the newsletter form. Newsletter subscription is voluntary and separate from checkout.',
       ] },
     ],
   },
@@ -77,6 +79,7 @@ const sections = [
         'Cloudflare — DNS, CDN, asset storage (R2) and security.',
         'Microlink — website screenshot and metadata capture for previews.',
         'Resend — transactional email delivery.',
+        'Beehiiv — optional newsletter double opt-in, consent status, delivery, unsubscribe and suppression. LaunchLog sends the submitted address and surface source server-to-server.',
         'Plausible — self-hosted aggregate analytics, used only after your analytics choice.',
         'Meta Platforms — advertising measurement through Meta Pixel and Conversions API, used only after your advertising-measurement choice.',
       ] },
@@ -92,6 +95,7 @@ const sections = [
         'Published listing content remains while your listing is active and may persist in caches and AI/search indexes outside our control after removal.',
         'Account, subscription and payment-reference records are kept while needed to provide the Service and meet applicable accounting or legal obligations.',
         'Operational logs are retained according to the configured application and infrastructure-provider settings.',
+        'LaunchLog does not keep a local newsletter subscriber ledger. Beehiiv retains consent, unsubscribe and suppression records under its configured service terms.',
         'Your analytics and advertising-measurement choices expire after six months. Rejecting or withdrawing stops future requests for that optional purpose; withdrawing advertising consent also removes the Meta Pixel and expires the LaunchLog-domain Meta advertising cookies we can access.',
       ] },
     ],
@@ -146,7 +150,7 @@ useHead({
         name: 'Privacy Policy — LaunchLog',
         description,
         inLanguage: 'en-US',
-        dateModified: '2026-08-29',
+        dateModified: '2026-09-01',
         isPartOf: { '@id': `${siteUrl}/#website` },
       }),
     },

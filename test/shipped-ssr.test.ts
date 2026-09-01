@@ -128,8 +128,11 @@ const wordpressPost = (slug: string) => ({
 })
 
 type UpstreamMode = 'ok' | 'editions-503' | 'listings-503'
+type NewsletterCapabilityMode = 'enabled' | 'disabled' | 'unavailable'
 
 let mode: UpstreamMode = 'ok'
+let newsletterCapabilityMode: NewsletterCapabilityMode = 'disabled'
+let newsletterSubscriptionCalls = 0
 let editionFixtureCount = 25
 let upstream: ReturnType<typeof Bun.serve> | undefined
 let server: ReturnType<typeof Bun.spawn> | undefined
@@ -191,6 +194,19 @@ describe.skipIf(!isBuilt)('/shipped SSR', () => {
       port: UPSTREAM_PORT,
       fetch(request) {
         const url = new URL(request.url)
+
+        if (url.pathname === '/api/v1/newsletter/capability') {
+          if (newsletterCapabilityMode === 'unavailable') {
+            return Response.json({ message: 'capability unavailable' }, { status: 503 })
+          }
+
+          return Response.json({ enabled: newsletterCapabilityMode === 'enabled' })
+        }
+
+        if (url.pathname === '/api/v1/newsletter/subscriptions') {
+          newsletterSubscriptionCalls += 1
+          return Response.json({ accepted: true }, { status: 202 })
+        }
 
         if (url.pathname === '/api/v1/listings') {
           if (mode === 'listings-503') {
@@ -258,6 +274,8 @@ describe.skipIf(!isBuilt)('/shipped SSR', () => {
 
   beforeEach(() => {
     mode = 'ok'
+    newsletterCapabilityMode = 'disabled'
+    newsletterSubscriptionCalls = 0
     editionFixtureCount = 25
   })
 
@@ -522,6 +540,43 @@ describe.skipIf(!isBuilt)('/shipped SSR', () => {
     expect(html).toContain('Product latest-one')
     expect(html).not.toContain('Latest weekly edition')
     expect(html).not.toContain('temporarily unavailable')
+  })
+
+  test('renders archive and edition capture only for an affirmative SSR capability', async () => {
+    const surfaces = [
+      { path: '/shipped', source: 'shipped_archive' },
+      { path: '/shipped/2026-w35', source: 'shipped_edition' },
+    ] as const
+
+    for (const closedMode of ['disabled', 'unavailable'] as const) {
+      newsletterCapabilityMode = closedMode
+      await restartNitro()
+
+      for (const surface of surfaces) {
+        const response = await fetch(`${BASE}${surface.path}`)
+        const html = await response.text()
+
+        expect(response.status).toBe(200)
+        expect(html).not.toContain(`data-newsletter-source="${surface.source}"`)
+        expect(html).not.toContain(`id="newsletter-${surface.source}"`)
+        expect(html).not.toContain('One concise weekly edition')
+      }
+    }
+
+    newsletterCapabilityMode = 'enabled'
+    await restartNitro()
+
+    for (const surface of surfaces) {
+      const response = await fetch(`${BASE}${surface.path}`)
+      const html = await response.text()
+
+      expect(response.status).toBe(200)
+      expect(html).toContain(`data-newsletter-source="${surface.source}"`)
+      expect(html).toContain(`id="newsletter-${surface.source}"`)
+      expect(html).toContain('One concise weekly edition')
+      expect(html).toContain('href="/privacy"')
+    }
+    expect(newsletterSubscriptionCalls).toBe(0)
   })
 
   test('emits one main landmark on each public edition surface', async () => {

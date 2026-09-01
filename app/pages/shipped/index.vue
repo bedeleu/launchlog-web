@@ -6,7 +6,13 @@ import { normalizeEditionPage } from '~/composables/useEditions'
 const route = useRoute()
 const config = useRuntimeConfig()
 const client = useEditions()
+const newsletterClient = useNewsletter()
 const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
+
+const newsletterCapabilityRequest = useAsyncData(
+  'newsletter-capability:shipped-archive',
+  () => newsletterClient.capability(),
+)
 
 const requestedPage = computed(() => {
   try {
@@ -28,6 +34,7 @@ const { data: archive, error, status, refresh } = await useAsyncData<EditionPage
   },
   { watch: [requestedPage] },
 )
+const { data: newsletterEnabled } = await newsletterCapabilityRequest
 
 const responseStatus = computed(() => extractHttpStatus(error.value))
 
@@ -146,5 +153,11 @@ useBreadcrumbs([
         </NuxtLink>
       </nav>
     </template>
+
+    <NewsletterCapture
+      v-if="newsletterEnabled === true"
+      class="mt-10"
+      source="shipped_archive"
+    />
   </ReleaseShell>
 </template>

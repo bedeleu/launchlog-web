@@ -7,6 +7,12 @@ import { composeHomepageListings } from '~/utils/listing-placement'
 const { user } = useAuth()
 const { listListings } = useListings()
 const editionClient = useEditions()
+const newsletterClient = useNewsletter()
+
+const newsletterCapabilityRequest = useAsyncData(
+  'newsletter-capability:homepage',
+  () => newsletterClient.capability(),
+)
 
 // Editions are an editorial discovery surface, not homepage listing inventory.
 // Start the request independently and fail it soft so neither upstream can hide
@@ -48,6 +54,7 @@ const { data: homeListings, error: homeListingsError, refresh: refreshHomeListin
   { default: () => ({ featured: [], recent: [] }) },
 )
 const { data: latestEdition } = await latestEditionRequest
+const { data: newsletterEnabled } = await newsletterCapabilityRequest
 
 const homepageComposition = computed(() => composeHomepageListings(
   homeListings.value?.featured ?? [],
@@ -311,6 +318,12 @@ useHead({
         <div class="border-t border-release-seam">
           <EditionSummary :summary="latestEdition" />
         </div>
+      </div>
+    </section>
+
+    <section v-if="newsletterEnabled === true" class="border-t border-release-seam">
+      <div class="mx-auto max-w-[96rem] px-4 py-10 sm:px-8 lg:px-12">
+        <NewsletterCapture source="homepage" />
       </div>
     </section>
 
