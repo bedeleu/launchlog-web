@@ -1,11 +1,17 @@
 import { describe, expect, test } from 'bun:test'
-import { createNewsletterClient } from './useNewsletter'
+import { createNewsletterClient, normalizeNewsletterEmail } from './useNewsletter'
 
 const API = 'https://api.launchlog.test'
 
 type FetchCall = { url: string, options?: Record<string, unknown> }
 
 describe('newsletter API client', () => {
+  test('normalizes accepted addresses and rejects malformed or oversized input', () => {
+    expect(normalizeNewsletterEmail(' Founder@Example.COM ')).toBe('founder@example.com')
+    expect(normalizeNewsletterEmail('founder@example')).toBeNull()
+    expect(normalizeNewsletterEmail(`${'a'.repeat(244)}@example.com`)).toBeNull()
+  })
+
   test('uses only LaunchLog API with the exact public contract', async () => {
     const calls: FetchCall[] = []
     const client = createNewsletterClient(async (url, options) => {

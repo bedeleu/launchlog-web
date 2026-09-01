@@ -19,7 +19,10 @@ const render = new Function(
 )(await import('vue'))
 const passthrough = (tag: string) => defineComponent({
   inheritAttrs: false,
-  setup: (_props, { attrs, slots }) => () => h(tag, attrs, slots.default?.() ?? []),
+  setup: (_props, { attrs, slots }) => () => h(tag, {
+    ...attrs,
+    href: attrs.to ?? attrs.href,
+  }, slots.default?.() ?? []),
 })
 
 type CaptureState = 'idle' | 'submitting' | 'success' | 'error'

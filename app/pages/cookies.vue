@@ -2,7 +2,7 @@
 const config = useRuntimeConfig()
 const siteUrl = `https://${config.public.domain || 'launchlog.ai'}`
 const pageUrl = `${siteUrl}/cookies`
-const updated = 'August 29, 2026'
+const updated = 'September 1, 2026'
 const legalEmail = config.public.legalEmail.trim()
 const description
   = 'How LaunchLog uses browser storage, optional analytics, optional Meta advertising measurement and Stripe payment cookies.'
@@ -35,6 +35,14 @@ const sections = [
     title: 'Payment cookies',
     blocks: [
       { type: 'p', text: 'When you check out, Stripe may set cookies needed to process payments securely and to detect and prevent fraud. These are set by Stripe as part of providing the payment service and are governed by Stripe’s own cookie and privacy notices.' },
+    ],
+  },
+  {
+    id: 'newsletter',
+    title: 'Newsletter subscription',
+    blocks: [
+      { type: 'p', text: 'The newsletter form does not store your submitted address in cookies, local storage, session storage or IndexedDB. When you submit the form, LaunchLog sends the address and public surface source server-to-server to Beehiiv for double opt-in, delivery, unsubscribe and suppression handling.' },
+      { type: 'p', text: 'Newsletter consent is independent from browser measurement choices and separate from checkout.' },
     ],
   },
   {
@@ -93,7 +101,7 @@ useHead({
         name: 'Cookie Policy — LaunchLog',
         description,
         inLanguage: 'en-US',
-        dateModified: '2026-08-29',
+        dateModified: '2026-09-01',
         isPartOf: { '@id': `${siteUrl}/#website` },
       }),
     },
