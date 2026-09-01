@@ -6,6 +6,8 @@ type OwnedSourceResolver = (
   fetcher?: (source: string) => Promise<unknown>,
 ) => Promise<SitemapSource[]>
 
+const EDITION_SOURCE = '/api/__sitemap__/edition-urls'
+
 async function loadResolver(): Promise<OwnedSourceResolver> {
   // This remains a runtime-only import until the implementation packet creates the module.
   // It keeps the RED failure inside the test rather than breaking collection or typecheck.
@@ -20,6 +22,13 @@ async function loadResolver(): Promise<OwnedSourceResolver> {
 }
 
 describe('owned sitemap source resolution', () => {
+  test('owns the edition source exactly once inside the atomic source set', async () => {
+    const module = await import('./sitemap-fail-closed')
+
+    expect((module.OWNED_SITEMAP_SOURCES as readonly string[])
+      .filter(source => source === EDITION_SOURCE)).toHaveLength(1)
+  })
+
   test('embeds a truthful empty owned source', async () => {
     const resolveOwnedSitemapSourcesOrThrow = await loadResolver()
 
@@ -74,6 +83,18 @@ describe('owned sitemap source resolution', () => {
       if (source.endsWith('listing-urls')) return [{ loc: '/listing/alpha' }]
 
       throw new Error('directory unavailable')
+    })).rejects.toMatchObject({ statusCode: 503 })
+  })
+
+  test('rejects the whole source set when edition discovery fails', async () => {
+    const resolveOwnedSitemapSourcesOrThrow = await loadResolver()
+
+    await expect(resolveOwnedSitemapSourcesOrThrow([
+      '/api/__sitemap__/listing-urls',
+      EDITION_SOURCE,
+    ], async (source) => {
+      if (source === EDITION_SOURCE) throw new Error('edition discovery unavailable')
+      return [{ loc: '/listing/alpha' }]
     })).rejects.toMatchObject({ statusCode: 503 })
   })
 

@@ -68,6 +68,22 @@ const discoveryListing = (slug: string) => ({
   updated_at: '2026-08-26T10:00:00.000000Z',
 })
 
+const editionSummary = (slug: string) => ({
+  slug,
+  week_starts_at: '2026-08-24',
+  week_ends_at: '2026-08-30',
+  introduction: `The durable release record for ${slug}.`,
+  published_at: '2026-08-31T00:00:00+00:00',
+  modified_at: '2026-08-31T00:05:00+00:00',
+  item_count: 1,
+  path: `/shipped/${slug}`,
+})
+
+const editionArchive = (slug: string) => ({
+  data: [editionSummary(slug)],
+  meta: { current_page: 1, last_page: 1, per_page: 24, total: 1 },
+})
+
 const wordpressPost = (slug: string) => ({
   id: 1,
   date: '2026-08-26T10:00:00',
@@ -93,6 +109,10 @@ const defaultUpstreamState = () => ({
     status: 200,
     body: [wordpressPost('seeded-article')],
   } satisfies UpstreamState,
+  editions: {
+    status: 200,
+    body: editionArchive('2026-w35'),
+  } satisfies UpstreamState,
 })
 
 let upstreamState = defaultUpstreamState()
@@ -108,6 +128,7 @@ const seededDirectoryState = (): UpstreamState => ({
 /** Every upstream URL the SSR render asked for, so tests can assert the request. */
 const upstreamRequests: string[] = []
 const listingDiscoveryResponseStatuses: number[] = []
+const editionDiscoveryResponseStatuses: number[] = []
 
 let upstream: ReturnType<typeof Bun.serve> | undefined
 let server: ReturnType<typeof Bun.spawn> | undefined
@@ -194,6 +215,24 @@ async function waitForListingDiscoveryResponse(
   throw new Error(`Timed out waiting for listing discovery response ${status}`)
 }
 
+async function waitForEditionDiscoveryResponse(
+  status: number,
+  startIndex: number,
+  timeoutMs = 10_000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs
+
+  while (Date.now() < deadline) {
+    if (editionDiscoveryResponseStatuses.slice(startIndex).includes(status)) {
+      await Bun.sleep(0)
+      return
+    }
+    await Bun.sleep(25)
+  }
+
+  throw new Error(`Timed out waiting for edition discovery response ${status}`)
+}
+
 describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
   beforeAll(async () => {
     // These files exist only while the built suite is actually running. A skipped
@@ -212,6 +251,12 @@ describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
         if (url.pathname === '/api/v1/discovery/listings') {
           const { status, body } = upstreamState.listings
           listingDiscoveryResponseStatuses.push(status)
+          return Response.json(body, { status })
+        }
+
+        if (url.pathname === '/api/v1/discovery/editions') {
+          const { status, body } = upstreamState.editions
+          editionDiscoveryResponseStatuses.push(status)
           return Response.json(body, { status })
         }
 
@@ -287,6 +332,7 @@ describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
   afterEach(() => {
     upstreamState = defaultUpstreamState()
     listingDiscoveryResponseStatuses.length = 0
+    editionDiscoveryResponseStatuses.length = 0
     if (clockFile) writeFileSync(clockFile, '0')
   })
 
@@ -540,6 +586,9 @@ describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
     ['WordPress blog failure', () => {
       upstreamState.wordpress = { status: 503, body: { message: 'blog unavailable' } }
     }],
+    ['edition discovery failure', () => {
+      upstreamState.editions = { status: 503, body: { message: 'edition discovery unavailable' } }
+    }],
     ['malformed listing envelope', () => {
       upstreamState.listings = { status: 200, body: { data: {} } }
     }],
@@ -562,6 +611,7 @@ describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
     expect(body).not.toContain('<urlset')
     expect(body).not.toContain('/listing/seeded')
     expect(body).not.toContain('/blog/seeded-article')
+    expect(body).not.toContain('/shipped/2026-w35')
     expect(body).not.toContain('/browse-all?page=2')
     expect(body).not.toContain('/tech-products?page=2')
     expect(body).not.toContain('/featured?page=2')
@@ -582,6 +632,7 @@ describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
     expect(body).toContain('<urlset')
     expect(body).not.toContain('/listing/seeded')
     expect(body).not.toContain('/blog/seeded-article')
+    expect(body).toContain('/shipped/2026-w35')
   })
 
   test('serves only a complete stale sitemap during refresh failure and replaces it on recovery', async () => {
@@ -595,6 +646,7 @@ describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
     expect(seeded.headers.get('cache-control')).toBe(publicSitemapCache)
     expect(seededBody).toContain('/listing/seeded')
     expect(seededBody).toContain('/blog/seeded-article')
+    expect(seededBody).toContain('/shipped/2026-w35')
 
     advanceFixtureClockBy(601)
     upstreamState.listings = { status: 503, body: { message: 'listing discovery unavailable' } }
@@ -626,6 +678,52 @@ describe.skipIf(!isBuilt)('directory SSR renders real anchors', () => {
     expect(recovered.headers.get('cache-control')).toBe(publicSitemapCache)
     expect(recoveredBody).toContain('/listing/recovered')
     expect(recoveredBody).toContain('/blog/seeded-article')
+    expect(recoveredBody).toContain('/shipped/2026-w35')
+  })
+
+  test('keeps the complete stale sitemap through an edition failure and replaces it on recovery', async () => {
+    await restartNitroInstance()
+
+    const seeded = await fetch(`${BASE}/sitemap.xml`)
+    const seededBody = await seeded.text()
+    const publicSitemapCache = 'public, max-age=0, s-maxage=600, stale-while-revalidate=600'
+
+    expect(seeded.status).toBe(200)
+    expect(seeded.headers.get('cache-control')).toBe(publicSitemapCache)
+    expect(seededBody).toContain('/listing/seeded')
+    expect(seededBody).toContain('/blog/seeded-article')
+    expect(seededBody).toContain('/shipped/2026-w35')
+
+    advanceFixtureClockBy(601)
+    upstreamState.editions = {
+      status: 503,
+      body: { message: 'edition discovery unavailable' },
+    }
+    const refreshRequestStart = editionDiscoveryResponseStatuses.length
+
+    const stale = await fetch(`${BASE}/sitemap.xml`)
+    expect(stale.status).toBe(200)
+    expect(stale.headers.get('cache-control')).toBe(publicSitemapCache)
+    expect(await stale.text()).toBe(seededBody)
+
+    await waitForEditionDiscoveryResponse(503, refreshRequestStart)
+
+    const staleAfterFailedRefresh = await fetch(`${BASE}/sitemap.xml`)
+    expect(staleAfterFailedRefresh.status).toBe(200)
+    expect(staleAfterFailedRefresh.headers.get('cache-control')).toBe(publicSitemapCache)
+    expect(await staleAfterFailedRefresh.text()).toBe(seededBody)
+
+    upstreamState.editions = { status: 200, body: editionArchive('2026-w36') }
+    await waitForBody(`${BASE}/sitemap.xml`, '/shipped/2026-w36')
+
+    const recovered = await fetch(`${BASE}/sitemap.xml`)
+    const recoveredBody = await recovered.text()
+    expect(recovered.status).toBe(200)
+    expect(recovered.headers.get('cache-control')).toBe(publicSitemapCache)
+    expect(recoveredBody).toContain('/listing/seeded')
+    expect(recoveredBody).toContain('/blog/seeded-article')
+    expect(recoveredBody).toContain('/shipped/2026-w36')
+    expect(recoveredBody).not.toContain('/shipped/2026-w35')
   })
 
   test.each([
