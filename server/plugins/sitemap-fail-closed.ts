@@ -13,6 +13,7 @@ export const OWNED_SITEMAP_SOURCES = [
   '/api/__sitemap__/blog-urls',
   '/api/__sitemap__/listing-urls',
   '/api/__sitemap__/directory-pages',
+  '/api/__sitemap__/edition-urls',
 ] as const
 
 export async function resolveOwnedSitemapSourcesOrThrow(

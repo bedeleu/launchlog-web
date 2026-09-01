@@ -2,7 +2,9 @@
 // Dynamic /llms-full.txt — complete listing and article index for compatible consumers.
 
 import { setHeader, setResponseStatus } from 'h3'
+import { createEditionClient } from '../../app/composables/useEditions'
 import { parseDiscoveryListingsOrThrow, type DiscoveryListing } from '../utils/discovery'
+import { collectEditionSummaries } from '../utils/edition-discovery'
 
 export default defineEventHandler(async (event) => {
   const site = getSiteUrl()
@@ -10,10 +12,16 @@ export default defineEventHandler(async (event) => {
 
   let listings: DiscoveryListing[]
   let posts: Array<{ slug: string, title: string, excerpt: string }>
+  let editions: Awaited<ReturnType<typeof collectEditionSummaries>>
   try {
-    const [response, blog] = await Promise.all([
+    const editionClient = createEditionClient(
+      $fetch as unknown as (url: string, options?: Record<string, unknown>) => Promise<unknown>,
+      apiUrl,
+    )
+    const [response, blog, editionResult] = await Promise.all([
       $fetch<unknown>(`${apiUrl}/api/v1/discovery/listings`, { timeout: 5000 }),
       fetchAllWordPressPostSummaries(),
+      collectEditionSummaries(page => editionClient.fetchArchive(page), 53),
     ])
 
     if (!isRecord(response) || !Object.hasOwn(response, 'data')) {
@@ -22,6 +30,7 @@ export default defineEventHandler(async (event) => {
 
     listings = parseDiscoveryListingsOrThrow(response.data)
     posts = (blog ?? []).map((p) => ({ slug: p.slug, title: p.title, excerpt: p.excerpt }))
+    editions = editionResult
   }
   catch {
     setResponseStatus(event, 503)
@@ -55,14 +64,32 @@ export default defineEventHandler(async (event) => {
     }
   }
   lines.push('')
+  lines.push('## Published weekly editions')
+  lines.push('')
+  if (editions.rows.length === 0) {
+    lines.push('(No weekly editions published yet.)')
+  } else {
+    for (const edition of editions.rows.slice(0, 52)) {
+      const introduction = singleLine(edition.introduction ?? '')
+      const period = `${edition.week_starts_at} to ${edition.week_ends_at}`
+      lines.push(`- ${edition.slug} — ${period}${introduction ? ` — ${introduction}` : ''}`)
+      lines.push(`  ${site}${edition.path}`)
+    }
+  }
+  if (editions.total > 52) {
+    lines.push('')
+    lines.push('More published editions are available in the sitemap:')
+    lines.push(`${site}/sitemap.xml`)
+  }
+  lines.push('')
   lines.push('## Published blog articles')
   lines.push('')
   if (posts.length === 0) {
     lines.push('(No articles available.)')
   } else {
     for (const p of posts) {
-      const title = p.title.replace(/[\r\n]+/g, ' ').trim()
-      const excerpt = p.excerpt.replace(/[\r\n]+/g, ' ').trim()
+      const title = singleLine(p.title)
+      const excerpt = singleLine(p.excerpt)
       lines.push(`- ${title}${excerpt ? ` — ${excerpt}` : ''}`)
       lines.push(`  ${site}/blog/${p.slug}`)
     }
@@ -75,4 +102,8 @@ export default defineEventHandler(async (event) => {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function singleLine(value: string): string {
+  return value.replace(/[\r\n]+/g, ' ').trim()
 }

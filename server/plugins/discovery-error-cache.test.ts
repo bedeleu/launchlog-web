@@ -68,6 +68,8 @@ describe('discovery error cache contract', () => {
     ['/shipped/missing', 404, 404, 'text/html; charset=utf-8', '<h1>LaunchLog page not found</h1>', undefined, undefined, true],
     ['/shipped/withdrawn', 410, 410, 'text/html; charset=utf-8', '<h1>LaunchLog page withdrawn</h1>', undefined, undefined, true],
     ['/shipped', 500, 503, 'text/html; charset=utf-8', '<h1>LaunchLog temporarily unavailable</h1>', undefined, undefined, false],
+    ['/shipped', 500, 503, 'text/markdown; charset=utf-8', '# Temporarily unavailable', 'text/markdown', 'Origin, Accept', false],
+    ['/shipped/2026-w35', 404, 404, 'text/markdown; charset=utf-8', '# Not found', 'text/markdown', 'Origin, Accept', true],
   ] as const)('%s finishes escaped errors with a safe artifact response', async (
     pathname,
     thrownStatus,
