@@ -1,7 +1,15 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button'
+
 const props = defineProps<{
   name: string
   generating?: boolean
+  /**
+   * Intake/preview-only: when the capture failed, lets the buyer retry straight
+   * from the placeholder. Live directory surfaces never pass it, so the button
+   * can never appear on someone else's listing.
+   */
+  recapture?: { retrying: boolean, retry: () => void }
 }>()
 
 const mark = computed(() => {
@@ -38,6 +46,17 @@ const mark = computed(() => {
           {{ generating ? 'Capture in progress' : 'Website capture unavailable' }}
         </p>
       </div>
+      <Button
+        v-if="!generating && recapture"
+        type="button"
+        variant="outline"
+        size="sm"
+        :disabled="recapture.retrying"
+        @click.stop.prevent="recapture.retry()"
+      >
+        <AppSpinner v-if="recapture.retrying" class="mr-2" color="text-current" label="Starting a new capture" />
+        {{ recapture.retrying ? 'Starting…' : 'Capture again' }}
+      </Button>
     </div>
   </div>
 </template>

@@ -9,7 +9,12 @@ const props = defineProps<{
   title: string
   tagline: string
   generating?: boolean
+  /** The capture failed (or never produced a screenshot) — offer retry on the buyer card. */
+  screenshotFailed?: boolean
+  recapturing?: boolean
 }>()
+
+const emit = defineEmits<{ recapture: [] }>()
 
 const isFeatured = computed(() => props.tier === 'featured')
 const displayTitle = computed(() =>
@@ -82,6 +87,14 @@ const buyerCard = computed<ListingCard>(() => ({
  * what we actually ship because it is not a separate implementation.
  */
 const previewListings = computed<ListingCard[]>(() => [buyerCard.value, ...contextCards.value])
+
+// Retry surfaces directly on the buyer's placeholder card, scoped by slug so it
+// can never land on a context card. The recapture call itself stays in the page.
+const buyerRecapture = computed(() =>
+  props.screenshotFailed && !props.preview.screenshot_url
+    ? { slug: buyerCard.value.slug, retrying: props.recapturing ?? false, retry: () => emit('recapture') }
+    : undefined,
+)
 </script>
 
 <template>
@@ -115,6 +128,7 @@ const previewListings = computed<ListingCard[]>(() => [buyerCard.value, ...conte
           :contextual-slugs="contextSlugs"
           focus-slug="preview-buyer"
           :generating="generating"
+          :recapture="buyerRecapture"
         />
       </div>
     </div>

@@ -7,6 +7,8 @@ const props = withDefaults(defineProps<{
   listing: ListingCard
   variant?: ListingCardVariant
   generating?: boolean
+  /** Intake/preview-only retry hook, forwarded to the shot fallback. */
+  recapture?: { retrying: boolean, retry: () => void }
   /**
    * Heading level for the listing name. Top-level directory pages go h1 -> card,
    * so they pass 'h2'; cards nested under a section heading keep the default.
@@ -15,6 +17,7 @@ const props = withDefaults(defineProps<{
 }>(), {
   variant: 'standard',
   generating: false,
+  recapture: undefined,
   headingLevel: 'h3',
 })
 
@@ -215,6 +218,7 @@ const taglineClass = computed(() => {
           v-else
           :name="listing.name"
           :generating="generating"
+          :recapture="recapture"
         />
       </div>
 

@@ -467,6 +467,9 @@ watch(
             :title="form.title"
             :tagline="form.tagline"
             :generating="isGenerating"
+            :screenshot-failed="!domainConflict && !isGenerating && (screenshotFailed || !hasScreenshot)"
+            :recapturing="recapturing"
+            @recapture="recapture"
           />
 
           <IntakePreviewEditor

@@ -14,6 +14,8 @@ const props = withDefaults(defineProps<{
   /** Preview-only: the buyer's card receives the catalog proof frame. */
   focusSlug?: string
   generating?: boolean
+  /** Intake/preview-only: retry hook delivered ONLY to the card matching `slug`. */
+  recapture?: { slug: string, retrying: boolean, retry: () => void }
   /** Forwarded to every card; top-level directory pages pass 'h2'. */
   headingLevel?: 'h2' | 'h3'
 }>(), {
@@ -22,6 +24,7 @@ const props = withDefaults(defineProps<{
   contextualSlugs: () => [],
   focusSlug: '',
   generating: false,
+  recapture: undefined,
   headingLevel: 'h3',
 })
 
@@ -117,6 +120,7 @@ const contextVisibility = (slug: string): string => {
             :listing="item.listing"
             :variant="item.variant"
             :generating="generating"
+            :recapture="recapture && recapture.slug === item.listing.slug ? recapture : undefined"
             :heading-level="headingLevel"
           />
         </component>
