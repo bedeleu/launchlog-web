@@ -60,14 +60,11 @@ describe('minimal outreach draft', () => {
       text: [
         'Hi Maya,',
         '',
-        'I came across ShipFast on Product Hunt and prepared a private, unpublished preview of how it could look in the LaunchLog catalog.',
+        'I came across ShipFast on Product Hunt and put together a private preview of how it could look in the LaunchLog catalog — free to view, nothing published.',
         '',
-        'View the private preview:',
         previewUrl,
         '',
-        "Nothing has been published. If you'd like to claim it or adjust anything, just reply and I'll help.",
-        '',
-        'If this isn\'t relevant, reply "no" and I won\'t follow up.',
+        'If you like it, reply and I\'ll help you take it live. If it\'s not for you, reply "no" and I won\'t follow up.',
         '',
         'Alex',
         'LaunchLog.ai — The log of what just shipped.',
@@ -98,11 +95,9 @@ describe('minimal outreach draft', () => {
       text: [
         'Hi,',
         '',
-        'I found QuietKit on Indie Hackers and thought it would be a good fit for LaunchLog.',
+        'I found QuietKit on Indie Hackers and thought it would be a good fit for LaunchLog. I can put together a free private preview first — no cost, nothing published unless you want it.',
         '',
-        'Nothing has been published. Would you like me to make a private preview first?',
-        '',
-        'If this is not relevant, just let me know and I will not follow up.',
+        'Want me to send it over?',
         '',
         'Alex',
         'LaunchLog.ai — The log of what just shipped.',
@@ -146,7 +141,7 @@ describe('minimal outreach draft', () => {
 
     expect(draft.subject).toBe('A LaunchLog idea for ShipFast')
     expect(draft.text).not.toContain(unsafePreviewUrl)
-    expect(draft.text).toContain('Would you like me to make a private preview first?')
+    expect(draft.text).toContain('Want me to send it over?')
   })
 
   test('accepts only the matching ready and non-expired preview response', () => {
