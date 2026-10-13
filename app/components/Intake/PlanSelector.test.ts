@@ -37,6 +37,7 @@ const renderSelector = (adminMode: boolean) => {
     render,
     setup: () => ({
       adminMode,
+      compact: false,
       disabled: false,
       modelValue: 'featured',
       plans,

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { findPublicPlan } from '#shared/constants/public-plans'
 
 const previewPath = /^\/preview\/([A-Za-z0-9]{64})$/
 const singleLine = (message: string, max: number) => z.string()
@@ -165,6 +166,7 @@ export function buildOutreachDraft(
   variant: OutreachSubjectVariant = 'preview',
 ): OutreachDraft {
   const greeting = `Hi${context.firstName ? ` ${context.firstName}` : ''},`
+  const startingPrice = `${findPublicPlan('basic').priceLabel}/year`
   const preview = context.previewUrl ? parseOutreachPreviewUrl(context.previewUrl) : null
   const subject = buildOutreachSubjectOptions(context)
     .find(option => option.value === variant)?.subject
@@ -176,15 +178,16 @@ export function buildOutreachDraft(
       text: [
         greeting,
         '',
-        `I came across ${context.productName} on ${context.sourceName} and put together a private preview of how it could look in the LaunchLog catalog — free to view, nothing published.`,
+        `I came across ${context.productName} on ${context.sourceName} and prepared a private LaunchLog page for it — free to view, nothing published.`,
         '',
         preview.url,
         '',
-        'If you like it, reply and I\'ll help you take it live. If it\'s not for you, reply "no" and I won\'t follow up.',
+        `Review the page, then choose a placement and publish if you'd like. Listings start at ${startingPrice}.`,
+        '',
+        'Reply if you need a hand. If it\'s not for you, reply "no" and I won\'t follow up.',
         '',
         'Alex',
         'LaunchLog.ai — The log of what just shipped.',
-        'AB Solutions',
       ].join('\n'),
     }
   }
@@ -194,13 +197,12 @@ export function buildOutreachDraft(
     text: [
       greeting,
       '',
-      `I found ${context.productName} on ${context.sourceName} and thought it would be a good fit for LaunchLog. I can put together a free private preview first — no cost, nothing published unless you want it.`,
+      `I found ${context.productName} on ${context.sourceName} and thought it would be a good fit for LaunchLog. I can prepare a private page for you first — free to view, nothing published. Publishing starts at ${startingPrice}.`,
       '',
       'Want me to send it over?',
       '',
       'Alex',
       'LaunchLog.ai — The log of what just shipped.',
-      'AB Solutions',
     ].join('\n'),
   }
 }

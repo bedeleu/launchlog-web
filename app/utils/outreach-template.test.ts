@@ -43,7 +43,7 @@ describe('minimal outreach draft', () => {
     expect(buildOutreachSubjectOptions(context).map(option => option.subject)).not.toContain('Maya')
   })
 
-  test('builds the exact preview email with the required operator footer', () => {
+  test('builds the exact preview email with self-serve publishing and the runbook signature', () => {
     const previewUrl = `https://launchlog.ai/preview/${'aB3z'.repeat(16)}`
     const context = outreachContextSchema.parse({
       recipientEmail: 'founder@example.com',
@@ -60,17 +60,19 @@ describe('minimal outreach draft', () => {
       text: [
         'Hi Maya,',
         '',
-        'I came across ShipFast on Product Hunt and put together a private preview of how it could look in the LaunchLog catalog — free to view, nothing published.',
+        'I came across ShipFast on Product Hunt and prepared a private LaunchLog page for it — free to view, nothing published.',
         '',
         previewUrl,
         '',
-        'If you like it, reply and I\'ll help you take it live. If it\'s not for you, reply "no" and I won\'t follow up.',
+        'Review the page, then choose a placement and publish if you\'d like. Listings start at $24.99/year.',
+        '',
+        'Reply if you need a hand. If it\'s not for you, reply "no" and I won\'t follow up.',
         '',
         'Alex',
         'LaunchLog.ai — The log of what just shipped.',
-        'AB Solutions',
       ].join('\n'),
     })
+    expect(draft.text.split(previewUrl)).toHaveLength(2)
     expect(draft.text).not.toMatch(/street|strada|postal/i)
   })
 
@@ -95,13 +97,12 @@ describe('minimal outreach draft', () => {
       text: [
         'Hi,',
         '',
-        'I found QuietKit on Indie Hackers and thought it would be a good fit for LaunchLog. I can put together a free private preview first — no cost, nothing published unless you want it.',
+        'I found QuietKit on Indie Hackers and thought it would be a good fit for LaunchLog. I can prepare a private page for you first — free to view, nothing published. Publishing starts at $24.99/year.',
         '',
         'Want me to send it over?',
         '',
         'Alex',
         'LaunchLog.ai — The log of what just shipped.',
-        'AB Solutions',
       ].join('\n'),
     })
   })

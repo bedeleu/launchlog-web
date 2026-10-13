@@ -101,5 +101,5 @@ export function createAdminEditionClient(fetcher: Fetcher, apiUrl: string, token
 export function useAdminEditions() {
   const config = useRuntimeConfig()
   const { getIdToken } = useAuth()
-  return createAdminEditionClient($fetch, config.public.apiUrl as string, getIdToken)
+  return createAdminEditionClient($fetch as unknown as Fetcher, config.public.apiUrl as string, getIdToken)
 }

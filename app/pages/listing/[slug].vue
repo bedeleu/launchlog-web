@@ -7,6 +7,7 @@ import { listingProofDestinations } from '~/utils/customer-receipt'
 import { serializeJsonLd } from '~/utils/json-ld'
 import { buildListingSchema } from '~/utils/listing-schema'
 import { releaseEdition } from '~/utils/release-edition'
+import { previewScreenshotCandidates } from '~/utils/preview-screenshot'
 
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? ''))
@@ -77,9 +78,12 @@ const socialLabel = (url: string): string => {
   return host
 }
 
-// Gracefully fall back to the blank cover when a screenshot_url 404s (file not
-// on the CDN yet / stale snapshot) instead of rendering a broken-image glyph.
-const heroShotFailed = ref(false)
+// Keep the published cover as sharp as its private preview, with the original
+// image as fallback for older snapshots whose large variant is unavailable.
+const heroShotIndex = ref(0)
+const heroShotSources = computed(() => previewScreenshotCandidates(listing.value?.screenshot_url ?? null))
+const heroShotSource = computed(() => heroShotSources.value[heroShotIndex.value])
+watch(() => listing.value?.screenshot_url, () => { heroShotIndex.value = 0 })
 
 const descriptionParagraphs = computed<string[]>(() =>
   (listing.value?.description ?? '')
@@ -286,13 +290,13 @@ useHead({
       <figure class="mt-8 border border-release-seam bg-release-rail p-3 sm:p-4">
         <div class="relative aspect-[16/10] w-full overflow-hidden border border-release-seam bg-release-ink">
           <img
-            v-if="listing.screenshot_url && !heroShotFailed"
-            :src="listing.screenshot_url"
+            v-if="heroShotSource"
+            :src="heroShotSource"
             :alt="`${listing.name} screenshot`"
             class="size-full object-cover object-top"
             width="1280"
             height="800"
-            @error="heroShotFailed = true"
+            @error="heroShotIndex += 1"
           >
           <div v-else class="relative grid size-full place-items-center px-8 text-center">
             <span aria-hidden="true" class="absolute inset-y-0 left-1/3 border-l border-dashed border-release-seam" />

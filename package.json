@@ -2,6 +2,9 @@
   "name": "launchlog-web",
   "type": "module",
   "private": true,
+  "imports": {
+    "#shared/constants/public-plans": "./shared/constants/public-plans.ts"
+  },
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev",

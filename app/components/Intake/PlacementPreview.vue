@@ -100,13 +100,16 @@ const buyerRecapture = computed(() =>
 <template>
   <div>
     <div class="flex items-center justify-between gap-3">
-      <h2 class="text-sm font-semibold uppercase tracking-[0.2em] text-release-paper-muted">
-        Your LaunchLog placement
+      <h2 class="text-sm font-semibold uppercase tracking-[0.2em] text-release-paper-muted" aria-live="polite" aria-atomic="true">
+        {{ isFeatured ? 'Featured placement' : 'Standard placement' }}
       </h2>
       <span class="shrink-0 border border-release-seam px-2.5 py-1 font-mono text-[0.62rem] font-semibold tracking-[0.1em] text-release-paper-muted uppercase">
-        Catalog proof
+        Directory preview
       </span>
     </div>
+    <p class="mt-3 text-xs leading-5 text-release-paper-muted lg:hidden">
+      Cards adapt to smaller screens. Featured keeps its priority placement.
+    </p>
 
     <div class="mt-3 overflow-hidden border border-release-seam bg-release-rail">
       <div class="flex items-center gap-2 border-b border-release-seam bg-black/20 px-4 py-2.5">
@@ -118,7 +121,7 @@ const buyerRecapture = computed(() =>
         </div>
       </div>
 
-      <div class="p-5">
+      <div class="p-4 sm:p-5">
         <!-- Only the buyer's tier changes between plan selections, so the grid is
              never destroyed and the screenshot is never re-fetched on a swap. -->
         <ListingGrid
