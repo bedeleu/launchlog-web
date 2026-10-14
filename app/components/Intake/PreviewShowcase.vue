@@ -69,7 +69,7 @@ const websiteUrl = computed(() => {
     </header>
 
     <figure class="overflow-hidden bg-release-rail">
-      <div class="preview-showcase-media w-full" :class="{ 'preview-showcase-media--compact': compact }">
+      <div class="preview-showcase-media w-full">
         <img
           v-if="screenshotSource"
           :key="screenshotSource"
@@ -126,12 +126,5 @@ const websiteUrl = computed(() => {
 <style scoped>
 .preview-showcase-media {
   aspect-ratio: 16 / 10;
-}
-
-@media (min-width: 1024px) {
-  .preview-showcase-media--compact {
-    height: clamp(16rem, 48vh, 28rem);
-    aspect-ratio: auto;
-  }
 }
 </style>
