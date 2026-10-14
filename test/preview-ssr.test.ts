@@ -80,16 +80,12 @@ describe('preview release flow source contract', () => {
     expect(previewPage.match(/@click="payAndPublish"/g) ?? []).toHaveLength(1)
   })
 
-  test('the first action reveals publishing choices instead of starting a payment', () => {
-    const publishToggle = previewPage.match(/<Button\b[^>]*data-preview-publish-toggle[^>]*>/)?.[0] ?? ''
-    const revealAction = previewPage.match(/const revealPublishing = async \(\) => \{([\s\S]*?)\n\}/)?.[1] ?? ''
-
-    expect(publishToggle).toContain('@click="revealPublishing"')
-    expect(publishToggle).toContain(':aria-expanded="showPublishing"')
-    expect(publishToggle).toContain('aria-controls="preview-publishing"')
-    expect(revealAction).toContain('showPublishing.value = true')
-    expect(revealAction).not.toMatch(/createSession|payAndPublish|publishAdminPreview|updatePreview/)
+  test('offers direct plan comparison without a separate reveal or duplicate payment action', () => {
+    expect(previewPage).not.toContain('data-preview-publish-toggle')
+    expect(previewPage).not.toContain('revealPublishing')
+    expect(previewPage).not.toContain('Back to full preview')
     expect(previewPage.match(/@click="payAndPublish"/g) ?? []).toHaveLength(1)
+    expect(previewPage.match(/@click="publishAsAdmin"/g) ?? []).toHaveLength(1)
   })
 })
 
@@ -98,7 +94,7 @@ const publishingSection = (html: string): string => html.match(/<section\b[^>]*\
 const attribute = (tag: string, name: string): string => tag.match(new RegExp(`\\s${name}="([^"]*)"`))?.[1] ?? ''
 const isHidden = (tag: string): boolean => /style="[^"]*display:\s*none|\shidden(?:=|\s|>)/.test(tag)
 
-function expectDirectoryWorkspace(html: string): void {
+function expectPreviewWorkspace(html: string, activeView: 'product' | 'directory' = 'product'): void {
   const publishing = publishingSection(html)
   const tabs = [...html.matchAll(/(<button\b[^>]*\brole="tab"[^>]*>)([\s\S]*?)<\/button>/g)]
   const directoryTab = tabs.find(tab => tab[2]?.includes('Directory placement'))?.[1] ?? ''
@@ -112,15 +108,15 @@ function expectDirectoryWorkspace(html: string): void {
   expect(html).toContain('aria-label="Preview views"')
   expect(tabs).toHaveLength(2)
   expect(directoryTab).toContain('role="tab"')
-  expect(directoryTab).toContain('aria-selected="true"')
+  expect(directoryTab).toContain(`aria-selected="${activeView === 'directory'}"`)
   expect(productTab).toContain('role="tab"')
-  expect(productTab).toContain('aria-selected="false"')
+  expect(productTab).toContain(`aria-selected="${activeView === 'product'}"`)
   expect(directoryPanel).toContain('role="tabpanel"')
   expect(attribute(directoryPanel, 'aria-labelledby')).toBe(attribute(directoryTab, 'id'))
-  expect(isHidden(directoryPanel)).toBeFalse()
+  expect(isHidden(directoryPanel)).toBe(activeView !== 'directory')
   expect(productPanel).toContain('role="tabpanel"')
   expect(attribute(productPanel, 'aria-labelledby')).toBe(attribute(productTab, 'id'))
-  expect(isHidden(productPanel)).toBeTrue()
+  expect(isHidden(productPanel)).toBe(activeView !== 'product')
   for (const [tab, panel] of [[directoryTab, directoryPanel], [productTab, productPanel]]) {
     const controls = attribute(tab!, 'aria-controls')
     if (controls) expect(controls).toBe(attribute(panel!, 'id'))
@@ -130,6 +126,7 @@ function expectDirectoryWorkspace(html: string): void {
   expect(html.match(/id="workspace-product-about-title"/g) ?? []).toHaveLength(1)
   expect(html).not.toContain('id="preview-about-title"')
   expect(html).not.toContain('data-preview-publish-toggle')
+  expect(html).not.toContain('Back to full preview')
   for (const tag of [directoryTab, productTab, directoryPanel, productPanel]) {
     const id = attribute(tag, 'id')
     expect(id).not.toBe('')
@@ -211,40 +208,39 @@ describe.skipIf(!isBuilt)('preview and ownership-request SSR', () => {
     api?.stop(true)
   })
 
-  test('a ready preview leads with the real product and a large capture while publishing choices stay collapsed', async () => {
+  test('a ready preview shows the product page, annual offers, and one publishing action immediately', async () => {
     const response = await fetch(`${base}/preview/${READY_TOKEN}`)
     const html = renderedMarkup(await response.text())
     const showcase = html.match(/<article\b[^>]*data-preview-showcase[^>]*>[\s\S]*?<\/article>/)?.[0] ?? ''
-    const publishToggle = showcase.match(/<button\b[^>]*data-preview-publish-toggle[^>]*>/)?.[0] ?? ''
-    const publishing = publishingSection(html)
+    const planChoices = [...html.slice(html.indexOf('data-plan-selector')).matchAll(/(<button\b[^>]*>)([\s\S]*?)<\/button>/g)].slice(0, 2)
 
     expectPrivatePreview(response)
-    expect(showcase).toMatch(/<h1\b[^>]*>\s*Maker Studio\s*<\/h1>/)
-    expect(showcase).toContain(readyPreview.tagline!)
+    expectPreviewWorkspace(html)
+    expect(html).toMatch(/<h1\b[^>]*>\s*Maker Studio\s*<\/h1>/)
+    expect(showcase).toContain('Maker Studio')
+    expect(html).toContain(readyPreview.tagline!)
     for (const paragraph of readyPreview.description!.split('\n\n')) expect(showcase).toContain(paragraph)
     expect(showcase).toContain(`src="${SNAPSHOT_PATH}/featured.webp?v=123"`)
     expect(showcase).toContain('alt="Maker Studio website screenshot"')
     expect(showcase).toContain('href="https://maker.example/"')
     expect(showcase).toContain('Private preview · not published')
-    expect(showcase).toContain('Choose placement')
-    expect(showcase).toContain('From $24.99/year')
-    expect(publishToggle).toContain('aria-expanded="false"')
-    expect(publishToggle).toContain('aria-controls="preview-publishing"')
-    expect(publishing).not.toBe('')
-    expect(isHidden(publishing)).toBeTrue()
-    expect(publishing).toContain('data-preview-workspace')
+    expect(html).toContain('data-plan-selector')
+    expect(planChoices).toHaveLength(2)
+    expect(planChoices[0]?.[2]).toContain('Standard')
+    expect(planChoices[0]?.[2]).toContain('$24.99')
+    expect(planChoices[1]?.[2]).toContain('Featured')
+    expect(planChoices[1]?.[2]).toContain('$99')
+    for (const choice of planChoices) expect(choice[1]).toMatch(/\sdisabled(?:=|\s|>)/)
+    expect(html).toContain('Pay $24.99 &amp; publish')
     expect(html.match(/data-preview-showcase/g) ?? []).toHaveLength(1)
-    expect(html.match(/<h1\b/g) ?? []).toHaveLength(1)
-    expect(html).toContain('id="preview-about-title"')
-    expect(html).not.toContain('data-preview-tabs')
-    expect(html).not.toContain('id="workspace-product-about-title"')
     expect(showcase).not.toContain('data-payment-docket')
   })
 
   test('generation keeps the real product surface visible instead of a blank skeleton', async () => {
     const response = await fetch(`${base}/preview/${GENERATING_TOKEN}`)
     const html = renderedMarkup(await response.text())
-    const publishToggle = html.match(/<button\b[^>]*data-preview-publish-toggle[^>]*>/)?.[0] ?? ''
+    const publishButton = [...html.matchAll(/(<button\b[^>]*>)([\s\S]*?)<\/button>/g)]
+      .find(button => button[2]?.includes('Preparing preview…'))?.[1] ?? ''
 
     expectPrivatePreview(response)
     expect(html).toContain('Private release recorder')
@@ -258,9 +254,10 @@ describe.skipIf(!isBuilt)('preview and ownership-request SSR', () => {
     expect(html).toContain('data-preview-showcase')
     expect(html).toContain('Your product page is taking shape.')
     expect(html).toContain('Preparing your website screenshot')
-    expect(html).toContain('Preparing your page…')
-    expect(publishToggle).toContain('disabled')
-    expect(isHidden(publishingSection(html))).toBeTrue()
+    expect(publishButton).toMatch(/\sdisabled(?:=|\s|>)/)
+    expect(isHidden(publishingSection(html))).toBeFalse()
+    expect(html).toContain('data-plan-selector')
+    expect(html).toContain('Checkout unlocks automatically when the preview is ready.')
     expect(html).not.toContain('data-preview-editor')
   })
 
@@ -279,8 +276,10 @@ describe.skipIf(!isBuilt)('preview and ownership-request SSR', () => {
     expect(html).not.toContain('data-preview-editor')
     expect(html).not.toContain('data-preview-tabs')
     const publishing = publishingSection(html)
-    expect(publishing).not.toBe('')
-    expect(isHidden(publishing)).toBeTrue()
+    if (publishing) expect(isHidden(publishing)).toBeTrue()
+    const buttons = [...html.matchAll(/(<button\b[^>]*>)([\s\S]*?)<\/button>/g)]
+      .filter(button => /Standard|Featured|Pay \$/.test(button[2] ?? ''))
+    for (const button of buttons) expect(button[1]).toMatch(/\sdisabled(?:=|\s|>)/)
   })
 
   test('an active reservation exposes the saved checkout and its original plan without another reveal step', async () => {
@@ -288,7 +287,7 @@ describe.skipIf(!isBuilt)('preview and ownership-request SSR', () => {
     const html = renderedMarkup(await response.text())
 
     expectPrivatePreview(response)
-    expectDirectoryWorkspace(html)
+    expectPreviewWorkspace(html)
     expect(html).toContain('Your secure checkout is ready to resume')
     expect(html).toContain('Featured')
     expect(html).toContain('maker@example.com')
@@ -301,7 +300,7 @@ describe.skipIf(!isBuilt)('preview and ownership-request SSR', () => {
     const html = renderedMarkup(await response.text())
 
     expectPrivatePreview(response)
-    expectDirectoryWorkspace(html)
+    expectPreviewWorkspace(html)
     expect(html).toContain('Cancelling secure checkout…')
     expect(html).toContain('Confirming with Stripe and releasing this website now.')
     expect(html).toContain('Featured')
@@ -315,7 +314,7 @@ describe.skipIf(!isBuilt)('preview and ownership-request SSR', () => {
     const html = renderedMarkup(await response.text())
 
     expectPrivatePreview(response)
-    expectDirectoryWorkspace(html)
+    expectPreviewWorkspace(html)
     expect(html).toContain('Cancelling secure checkout…')
     expect(html).toContain('Confirming with Stripe and releasing this website now.')
     expect(html).toContain('Cancelling checkout…')

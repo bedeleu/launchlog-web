@@ -20,7 +20,7 @@ const { plans } = usePlans()
       type="button"
       :aria-pressed="modelValue === plan.tier"
       :disabled="disabled"
-      class="relative block w-full min-w-0 border px-4 py-4 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus focus-visible:ring-offset-2 focus-visible:ring-offset-release-ink disabled:cursor-not-allowed disabled:opacity-60"
+      class="relative block w-full min-w-0 border px-3 py-3 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-release-focus focus-visible:ring-offset-2 focus-visible:ring-offset-release-ink disabled:cursor-not-allowed disabled:opacity-60"
       :class="modelValue === plan.tier
         ? 'border-release-paper bg-release-rail'
         : 'border-release-seam bg-release-ink hover:border-release-paper-muted'"
@@ -43,17 +43,18 @@ const { plans } = usePlans()
           </span>
         </div>
         <div class="shrink-0" :class="compact ? 'text-left' : 'text-right'">
-          <template v-if="adminMode">
+          <template v-if="compact">
+            <div class="text-xl font-semibold tabular-nums text-release-paper">
+              {{ plan.priceLabel }}<span class="ml-1 text-xs font-normal text-release-paper-muted">/ year</span>
+            </div>
+            <p v-if="adminMode" class="mt-0.5 text-[11px] text-release-paper-muted">Admin · no checkout</p>
+          </template>
+          <template v-else-if="adminMode">
             <div v-if="!compact" class="font-mono text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-release-paper">
               Manual placement
             </div>
             <div class="mt-0.5 text-[11px] text-release-paper-muted">
               {{ compact ? 'No checkout' : 'No Stripe subscription' }}
-            </div>
-          </template>
-          <template v-else-if="compact">
-            <div class="font-semibold tabular-nums text-release-paper">
-              {{ plan.priceLabel }}<span class="text-xs font-normal text-release-paper-muted"> / year</span>
             </div>
           </template>
           <template v-else>

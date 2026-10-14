@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useIntervalFn } from '@vueuse/core'
-import { ArrowLeft, ArrowRight, Check, CheckCircle2 } from '@lucide/vue'
+import { Check, CheckCircle2, ChevronDown } from '@lucide/vue'
 import { TabsContent, TabsList, TabsRoot, TabsTrigger } from 'reka-ui'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -100,38 +100,20 @@ const checkoutCancellationState = ref<'idle' | 'pending' | 'done' | 'error'>(
   route.query.checkout === 'cancelled' ? 'pending' : 'idle',
 )
 let checkoutCancellationRunning = false
-const showPublishing = ref(false)
-const activePreview = ref('directory')
-const publishingHeading = ref<HTMLElement | null>(null)
-const entryPriceLabel = computed(() => checkoutReserved.value
-  ? `${selectedPlan.value.name} · ${selectedPlan.value.priceLabel}/year`
-  : `From ${findPlan('basic').priceLabel}/year`)
-
-// A returning buyer must always see their reservation or cancellation recovery.
-watch([checkoutReserved, checkoutCancellationState], ([reserved, cancellation]) => {
-  if (reserved || cancellation !== 'idle') showPublishing.value = true
-}, { immediate: true })
-
-const revealPublishing = async () => {
+const activePreview = ref('product')
+const summaryFeatures = computed(() => selectedTier.value === 'featured'
+  ? selectedPlan.value.features.slice(1, 3)
+  : [selectedPlan.value.features[2], selectedPlan.value.features[0]])
+const choosePlan = (tier: PlanTier) => {
+  selectedTier.value = tier
   activePreview.value = 'directory'
-  showPublishing.value = true
-  await nextTick()
-  publishingHeading.value?.focus({ preventScroll: true })
-  publishingHeading.value?.scrollIntoView({ block: 'start' })
-}
-
-const closePublishing = async () => {
-  showPublishing.value = false
-  await nextTick()
-  document.getElementById('preview-publish-toggle')?.focus({ preventScroll: true })
-  window.scrollTo({ top: 0 })
 }
 
 const status = computed(() => preview.value?.status)
 const isGenerating = computed(() => status.value === 'generating')
 const isFailed = computed(() => status.value === 'failed')
 const domainConflict = computed(() => isFailed.value && preview.value?.error_code === 'domain_conflict')
-const publishingVisible = computed(() => showPublishing.value && !domainConflict.value && authAccessState.value !== 'unavailable')
+const publishingVisible = computed(() => !domainConflict.value && authAccessState.value !== 'unavailable')
 const existingListing = computed(() => preview.value?.existing_listing ?? null)
 const claimPath = computed(() => {
   const domain = existingListing.value?.domain || preview.value?.domain || ''
@@ -434,7 +416,7 @@ watch(
 </script>
 
 <template>
-  <div class="mx-auto max-w-[84rem] px-5 pt-10 pb-16 sm:px-8 lg:px-12 lg:pt-14 lg:pb-24">
+  <div class="mx-auto max-w-[96rem] px-4 pt-4 pb-10 sm:px-6 lg:px-8">
     <div v-if="error || !preview" class="py-16 text-center">
       <h1 class="text-3xl font-semibold tracking-[-0.03em] text-release-paper">Preview not found</h1>
       <p class="mx-auto mt-3 max-w-md leading-7 text-release-paper-muted">
@@ -482,6 +464,7 @@ watch(
 
       <IntakePreviewShowcase
         v-if="!publishingVisible"
+        compact
         :title="form.title"
         :tagline="form.tagline"
         :description="form.description"
@@ -489,29 +472,7 @@ watch(
         :url="preview.url"
         :screenshot-url="preview.screenshot_url"
         :generating="isGenerating"
-      >
-        <template #action>
-          <div v-if="!domainConflict && authAccessState !== 'unavailable'" class="flex flex-wrap items-center gap-x-5 gap-y-3 md:max-w-64 md:flex-col md:items-stretch">
-            <Button
-              id="preview-publish-toggle"
-              data-preview-publish-toggle
-              type="button"
-              size="lg"
-              class="min-h-12 rounded-none border border-release-paper bg-release-paper px-6 text-release-ink hover:border-release-warning hover:bg-release-warning"
-              :disabled="isGenerating"
-              :aria-expanded="showPublishing"
-              aria-controls="preview-publishing"
-              @click="revealPublishing"
-            >
-              {{ isGenerating ? 'Preparing your page…' : checkoutReserved && !isAdminAccount ? 'Resume checkout' : 'Choose placement' }}
-              <ArrowRight v-if="!isGenerating" class="size-4 shrink-0" aria-hidden="true" />
-            </Button>
-            <p class="text-xs leading-5 text-release-paper-muted md:text-center">
-              {{ isAdminAccount ? 'Admin placement · no checkout' : entryPriceLabel }}
-            </p>
-          </div>
-        </template>
-      </IntakePreviewShowcase>
+      />
 
       <section
         v-show="publishingVisible"
@@ -520,53 +481,36 @@ watch(
         data-preview-workspace
         aria-labelledby="preview-publishing-title"
       >
-        <header class="mb-8 border-b border-release-seam pb-7 sm:mb-10">
-          <button
-            type="button"
-            class="mb-6 inline-flex min-h-10 items-center gap-2 text-sm text-release-paper-muted underline-offset-4 hover:text-release-paper hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus"
-            @click="closePublishing"
-          >
-            <ArrowLeft class="size-4" aria-hidden="true" />
-            Back to full preview
-          </button>
-          <h1 v-if="publishingVisible" id="preview-publishing-title" ref="publishingHeading" tabindex="-1" class="scroll-mt-6 break-words text-3xl font-semibold tracking-[-0.035em] text-release-paper focus:outline-none sm:text-4xl">
+        <header class="mb-3 flex flex-wrap items-baseline gap-x-5 gap-y-1 border-b border-release-seam pb-3">
+          <h1 v-if="publishingVisible" id="preview-publishing-title" class="break-words text-2xl leading-tight font-semibold tracking-[-0.03em] text-release-paper">
             {{ form.title || preview.domain }}
           </h1>
-          <p class="mt-3 max-w-2xl text-sm leading-6 text-release-paper-muted sm:text-base">
-            Your product page is included with both plans. Choose how it appears in the directory.
+          <p class="max-w-[72ch] break-words text-sm leading-5 text-release-paper-muted">
+            {{ form.tagline || (isGenerating ? 'Your product page is taking shape.' : preview.domain) }}
           </p>
         </header>
 
-        <div class="grid items-start gap-7 xl:grid-cols-[minmax(0,1fr)_20rem] xl:grid-rows-[auto_1fr] xl:gap-x-8 xl:gap-y-7">
-          <section data-preview-plan-choice class="min-w-0 xl:col-start-2 xl:row-start-1" aria-labelledby="preview-plan-choice-title">
-            <h2 id="preview-plan-choice-title" class="mb-3 text-lg font-semibold tracking-[-0.02em] text-release-paper">
-              {{ !authReady ? 'Checking access' : checkoutReserved && !isAdminAccount ? 'Your saved placement' : 'Choose placement' }}
+        <div class="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_20rem] lg:grid-rows-[auto_1fr] lg:gap-x-7 lg:gap-y-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
+          <section data-preview-plan-choice class="min-w-0 lg:col-start-2 lg:row-start-1" aria-labelledby="preview-plan-choice-title">
+            <h2 id="preview-plan-choice-title" class="mb-2 text-base font-semibold tracking-[-0.02em] text-release-paper">
+              {{ checkoutReserved && !isAdminAccount ? 'Your saved placement' : 'Choose your placement' }}
             </h2>
             <IntakePlanSelector
-              v-if="authReady"
-              v-model="selectedTier"
+              :model-value="selectedTier"
               compact
               :admin-mode="isAdminAccount"
-              :disabled="checkoutPending || adminPublishPending || domainConflict || (!isAdminAccount && checkoutReserved) || checkoutCancellationState === 'pending'"
+              :disabled="!authReady || checkoutPending || adminPublishPending || domainConflict || (!isAdminAccount && checkoutReserved) || checkoutCancellationState === 'pending'"
+              @update:model-value="choosePlan"
             />
-            <div
-              v-else
-              class="flex min-h-24 items-center gap-3 border border-release-seam bg-release-rail px-4 py-3"
-              aria-busy="true"
-              aria-live="polite"
-            >
-              <AppSpinner class="shrink-0" label="Checking publishing access" />
-              <p class="text-sm text-release-paper-muted">Checking publishing access…</p>
-            </div>
-            <p class="mt-3 text-xs leading-5 text-release-paper-muted">
+            <p class="mt-2 text-xs leading-5 text-release-paper-muted">
               {{ checkoutReserved && !isAdminAccount
                 ? 'This plan is locked to your saved Stripe checkout so returning cannot create a different order.'
-                : 'Switch plans to compare your placement in the directory preview.' }}
+                : 'Both plans include your product page. Switch plans to compare the directory placement.' }}
             </p>
           </section>
 
-          <TabsRoot v-if="publishingVisible" v-model="activePreview" data-preview-tabs :unmount-on-hide="false" class="min-w-0 xl:col-start-1 xl:row-start-1 xl:row-span-2">
-            <TabsList class="mb-6 flex gap-1 border-b border-release-seam" aria-label="Preview views">
+          <TabsRoot v-if="publishingVisible" v-model="activePreview" data-preview-tabs :unmount-on-hide="false" class="min-w-0 lg:col-start-1 lg:row-start-1 lg:row-span-2">
+            <TabsList class="mb-2 flex gap-1 border-b border-release-seam" aria-label="Preview views">
               <TabsTrigger data-preview-tab="product" value="product" class="preview-view-tab">
                 Product page
               </TabsTrigger>
@@ -577,6 +521,7 @@ watch(
             <TabsContent data-preview-panel="product" value="product" class="preview-view-panel">
               <IntakePreviewShowcase
                 compact
+                :show-identity="false"
                 heading-level="h2"
                 id-prefix="workspace-product"
                 :title="form.title"
@@ -602,21 +547,21 @@ watch(
             </TabsContent>
           </TabsRoot>
 
-          <div data-preview-publishing-details class="min-w-0 space-y-7 xl:col-start-2 xl:row-start-2">
-            <section class="border-t border-release-seam pt-6" aria-labelledby="preview-plan-details-title">
-              <h2 id="preview-plan-details-title" class="text-lg font-semibold tracking-[-0.02em] text-release-paper">
+          <div data-preview-publishing-details class="min-w-0 space-y-4 lg:col-start-2 lg:row-start-2">
+            <section class="border-t border-release-seam pt-3" aria-labelledby="preview-plan-details-title">
+              <h2 id="preview-plan-details-title" class="text-sm font-semibold text-release-paper">
                 {{ selectedPlan.name }} includes
               </h2>
-              <ul class="mt-3 space-y-3 text-sm leading-6 text-release-paper-muted">
-                <li v-for="feature in selectedPlan.features" :key="feature" class="flex items-start gap-2.5">
+              <ul class="mt-2 space-y-1 text-xs leading-5 text-release-paper-muted">
+                <li v-for="feature in summaryFeatures" :key="feature" class="flex items-start gap-2">
                   <Check class="mt-1 size-3.5 shrink-0" :stroke-width="2.5" aria-hidden="true" />
                   <span>{{ feature }}</span>
                 </li>
               </ul>
             </section>
             <!-- The existing identity and reservation controls stay in the same flow. -->
-            <section class="space-y-4">
-              <h2 class="text-sm font-semibold uppercase tracking-[0.2em] text-release-paper-muted">
+            <section class="space-y-2">
+              <h2 class="text-sm font-semibold text-release-paper">
                 {{ isAdminAccount
                   ? 'Admin publishing'
                   : checkoutReserved
@@ -679,13 +624,10 @@ watch(
               </div>
               <div
                 v-else-if="isAuthenticatedBuyer"
-                class="flex items-start gap-3 border border-release-seam bg-release-rail px-4 py-3.5"
+                class="flex items-start gap-2 text-release-paper-muted"
               >
                 <CheckCircle2 class="mt-0.5 size-5 shrink-0 text-release-signal" aria-hidden="true" />
                 <div class="min-w-0">
-                  <p class="text-xs font-medium uppercase tracking-[0.14em] text-release-paper-muted">
-                    {{ isAdminAccount ? 'Admin publishing' : 'Publishing as' }}
-                  </p>
                   <p class="mt-1 break-words text-sm font-semibold text-release-paper">
                     {{ authenticatedEmail }}
                   </p>
@@ -724,33 +666,17 @@ watch(
               </div>
             </section>
 
-          <ReleaseActionRail
-            data-payment-docket
-            :title="isAdminAccount ? 'Publish your placement' : 'Your listing, ready to publish'"
-            aria-label="Payment and publish controls"
-          >
-            <ReleaseStateMarker
-              v-if="isAdminAccount"
-              state="success"
-              label="Admin placement"
-              detail="No Stripe subscription."
-            />
-            <dl v-else class="border-y border-release-seam">
-              <div class="py-3">
-                <dt class="font-mono text-[0.65rem] font-semibold tracking-[0.14em] text-release-paper-muted uppercase">
-                  Total today
-                </dt>
-                <dd class="mt-2 text-2xl font-semibold tabular-nums text-release-paper">
-                  {{ selectedPlan.priceLabel }} <span class="text-xs font-normal text-release-paper-muted">/ year</span>
-                </dd>
-              </div>
+          <section data-payment-docket class="border-t border-release-seam pt-3" aria-label="Payment and publish controls">
+            <dl v-if="!isAdminAccount" class="mb-3 flex items-baseline justify-between gap-3 text-sm">
+              <dt class="text-release-paper-muted">Total today</dt>
+              <dd class="text-xl font-semibold tabular-nums text-release-paper">
+                {{ selectedPlan.priceLabel }} <span class="text-xs font-normal text-release-paper-muted">/ year</span>
+              </dd>
             </dl>
-
-            <template #footer>
               <Button
                 v-if="isAdminAccount"
                 size="lg"
-                class="min-h-14 w-full whitespace-normal rounded-none border border-release-paper bg-release-paper px-3 text-release-ink hover:border-release-warning hover:bg-release-warning"
+                class="min-h-12 w-full whitespace-normal rounded-none border border-release-paper bg-release-paper px-3 text-release-ink hover:border-release-warning hover:bg-release-warning"
                 :disabled="!canAdminPublish"
                 @click="publishAsAdmin"
               >
@@ -766,7 +692,7 @@ watch(
               <Button
                 v-else
                 size="lg"
-                class="min-h-14 w-full whitespace-normal rounded-none border border-release-paper bg-release-paper px-3 text-release-ink hover:border-release-warning hover:bg-release-warning"
+                class="min-h-12 w-full whitespace-normal rounded-none border border-release-paper bg-release-paper px-3 text-release-ink hover:border-release-warning hover:bg-release-warning"
                 :disabled="!canPay"
                 @click="payAndPublish"
               >
@@ -783,7 +709,7 @@ watch(
                           ? `Resume · ${selectedPlan.priceLabel}`
                           : `Pay ${selectedPlan.priceLabel} & publish` }}
               </Button>
-              <div class="mt-3 min-h-5 text-center text-xs leading-5" aria-live="polite">
+              <div class="mt-2 min-h-5 text-center text-xs leading-5" aria-live="polite">
                 <p v-if="previewCopyError || adminPublishError || checkoutError" class="text-release-warning" role="alert">
                   {{ previewCopyError || adminPublishError || checkoutError }}
                 </p>
@@ -799,13 +725,25 @@ watch(
                   Secure Stripe checkout · 7-day money-back guarantee.
                 </p>
               </div>
-            </template>
-          </ReleaseActionRail>
+          </section>
+
+            <details class="preview-plan-features border-t border-release-seam pt-1">
+              <summary class="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium text-release-paper-muted hover:text-release-paper focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus">
+                All {{ selectedPlan.name }} features
+                <ChevronDown class="size-4 shrink-0 transition-transform" aria-hidden="true" />
+              </summary>
+              <ul class="space-y-2 pb-2 text-xs leading-5 text-release-paper-muted">
+                <li v-for="feature in selectedPlan.features" :key="feature" class="flex items-start gap-2">
+                  <Check class="mt-1 size-3.5 shrink-0" :stroke-width="2.5" aria-hidden="true" />
+                  <span>{{ feature }}</span>
+                </li>
+              </ul>
+            </details>
           </div>
         </div>
       </section>
 
-      <div v-if="!domainConflict && !isGenerating" class="mt-8 sm:mt-12">
+      <div v-if="!domainConflict && !isGenerating" class="mt-6">
         <IntakePreviewEditor
           v-model:title="form.title"
           v-model:tagline="form.tagline"
@@ -847,8 +785,8 @@ watch(
 <style scoped>
 .preview-view-tab {
   position: relative;
-  min-height: 3rem;
-  padding: 0.75rem 1rem;
+  min-height: 2.75rem;
+  padding: 0.625rem 0.75rem;
   color: var(--release-paper-muted);
   font-size: 0.875rem;
   font-weight: 600;
@@ -881,8 +819,17 @@ watch(
   outline-offset: 4px;
 }
 
+.preview-plan-features summary::-webkit-details-marker {
+  display: none;
+}
+
+.preview-plan-features[open] summary svg {
+  transform: rotate(180deg);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .preview-view-tab {
+  .preview-view-tab,
+  .preview-plan-features summary svg {
     transition: none;
   }
 }

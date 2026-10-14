@@ -9,12 +9,12 @@ import { LockKeyhole } from '@lucide/vue'
       Skip to preview
     </a>
     <header class="border-b border-release-seam">
-      <div class="mx-auto flex min-h-20 max-w-[84rem] flex-wrap items-center justify-between gap-x-5 gap-y-2 px-5 py-4 sm:px-8 lg:px-12">
+      <div class="mx-auto flex min-h-12 max-w-[96rem] flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2.5 sm:px-6 lg:px-8">
         <NuxtLink to="/" aria-label="LaunchLog home" class="inline-flex shrink-0 items-center gap-2.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus">
           <img src="/images/logo.webp" alt="" width="30" height="30" class="size-7">
-          <span class="text-lg font-semibold tracking-[-0.025em]">LaunchLog<span class="text-release-paper-muted">.ai</span></span>
+          <span class="text-base font-semibold tracking-[-0.025em]">LaunchLog<span class="text-release-paper-muted">.ai</span></span>
         </NuxtLink>
-        <p class="flex items-center gap-2 text-xs text-release-paper-muted sm:text-sm">
+        <p class="flex items-center gap-1.5 text-[11px] text-release-paper-muted sm:text-xs">
           <LockKeyhole class="size-3.5 shrink-0" aria-hidden="true" />
           Your private listing preview
         </p>
@@ -23,7 +23,7 @@ import { LockKeyhole } from '@lucide/vue'
     <main id="main-content" tabindex="-1" class="flex-1 focus:outline-none">
       <slot />
     </main>
-    <footer class="mx-auto flex w-full max-w-[84rem] flex-col justify-between gap-4 px-5 py-8 text-xs text-release-paper-muted sm:flex-row sm:px-8 lg:px-12">
+    <footer class="mx-auto flex w-full max-w-[96rem] flex-col justify-between gap-4 px-4 py-6 text-xs text-release-paper-muted sm:flex-row sm:px-6 lg:px-8">
       <p>The log of what just shipped.</p>
       <nav aria-label="Preview support" class="flex flex-wrap gap-x-6 gap-y-3">
         <NuxtLink to="/contact" class="underline-offset-4 hover:text-release-paper hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-release-focus">Need a hand?</NuxtLink>
