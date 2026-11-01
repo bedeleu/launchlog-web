@@ -91,7 +91,7 @@ const sections = [
     title: 'Data retention',
     blocks: [
       { type: 'list', items: [
-        'Free previews are private, excluded from search, and stop being available through the active-preview endpoint after 7 days.',
+        'New free previews are private, excluded from search, and stop being available through the active-preview endpoint after 30 days.',
         'Published listing content remains while your listing is active and may persist in caches and AI/search indexes outside our control after removal.',
         'Account, subscription and payment-reference records are kept while needed to provide the Service and meet applicable accounting or legal obligations.',
         'Operational logs are retained according to the configured application and infrastructure-provider settings.',

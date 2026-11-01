@@ -31,7 +31,7 @@ const categories: Category[] = [
     title: 'Listings & previews',
     summary: 'How previews, publishing and editing work.',
     faqs: [
-      { q: 'What is a free preview?', a: 'When you submit a URL, we light-crawl it and build a private preview of your listing — screenshot, title, tagline, description and category. The preview is private, excluded from search and the directory, reachable only via its unguessable link, and it expires after 7 days.' },
+      { q: 'What is a free preview?', a: 'When you submit a URL, we light-crawl it and build a private preview of your listing — screenshot, title, tagline, description and category. The preview is private, excluded from search and the directory, reachable only via its unguessable link, and new previews expire after 30 days.' },
       { q: 'How long until my listing is live?', a: 'A successful Stripe checkout creates and publishes the listing through the payment webhook. Provider or delivery delays can affect how quickly the completed checkout appears in your dashboard.' },
       { q: 'Can I edit my listing?', a: 'Yes. Before checkout you can edit the preview fields. After publishing, the customer dashboard currently lets you edit the listing name, tagline and description.' },
       { q: 'What does a listing include?', a: 'A dedicated public page on launchlog.ai with your product link, summary, category context, schema.org structured data, sitemap and llms.txt inclusion, markdown content negotiation, and a captured screenshot when one is available.' },
